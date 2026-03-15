@@ -22,11 +22,10 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
   chief_strategist: Target,
 };
 
-const suggestions = [
-  { icon: "🎯", label: "Auditar campanha de Meta Ads" },
-  { icon: "📊", label: "Analisar funil de vendas" },
-  { icon: "🧠", label: "Avaliar copy e oferta" },
-  { icon: "📈", label: "Otimizar performance de mídia" },
+const quickActions = [
+  { icon: "✨", label: "Gerar criativos" },
+  { icon: "🔍", label: "Pesquisa de mercado" },
+  { icon: "📊", label: "Gerar campanha" },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
