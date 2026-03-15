@@ -32,11 +32,14 @@ serve(async (req) => {
 
   try {
     const { messages, analysisContext } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Validate messages
+    const safeMessages = Array.isArray(messages) && messages.length > 0 ? messages : [];
 
     // Build context from analysis data
-    const contextParts = [];
+    const contextParts: string[] = [];
     if (analysisContext) {
       contextParts.push(`DADOS DA ANÁLISE:`);
       if (analysisContext.title) contextParts.push(`Título: ${analysisContext.title}`);
@@ -68,23 +71,28 @@ serve(async (req) => {
       }
     }
 
-    const contextMessage =
+    const systemContent =
       contextParts.length > 0
-        ? {
-            role: "system" as const,
-            content: `${SYSTEM_PROMPT}\n\n${contextParts.join("\n")}`,
-          }
-        : { role: "system" as const, content: SYSTEM_PROMPT };
+        ? `${SYSTEM_PROMPT}\n\n${contextParts.join("\n")}`
+        : SYSTEM_PROMPT;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    // Ensure we always have at least one user message
+    if (safeMessages.length === 0) {
+      safeMessages.push({ role: "user", content: "Olá, analise minha campanha." });
+    }
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: [contextMessage, ...messages],
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemContent },
+          ...safeMessages,
+        ],
         stream: true,
       }),
     });
