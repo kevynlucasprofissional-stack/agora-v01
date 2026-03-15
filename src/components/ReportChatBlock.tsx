@@ -27,6 +27,8 @@ interface CreativeData {
   creative_job_id: string | null;
 }
 
+const CREATIVE_MARKER = "[creative-editor]";
+
 const ACTION_OPTIONS = [
   { label: "Gerar criativos", icon: Sparkles, action: "creative" as const },
   { label: "Pesquisa de mercado", icon: Search, action: "chat" as const, prompt: "Faça uma pesquisa de mercado detalhada com base nos dados desta campanha." },
