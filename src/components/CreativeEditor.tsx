@@ -27,7 +27,12 @@ const TEXT_COLORS = [
 ];
 
 export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegenerating }: CreativeEditorProps) {
-  const [texts, setTexts] = useState<CreativeTexts>(suggestedText);
+  const safeText = {
+    headline: suggestedText?.headline || "Seu Título Aqui",
+    subheadline: suggestedText?.subheadline || "Subtítulo do seu criativo",
+    cta: suggestedText?.cta || "Saiba Mais",
+  };
+  const [texts, setTexts] = useState<CreativeTexts>(safeText);
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [isDownloading, setIsDownloading] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -125,28 +130,28 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => setTexts(prev => ({ ...prev, headline: e.currentTarget.textContent || "" }))}
+              onBlur={(e) => setTexts(prev => ({ ...prev, headline: e.currentTarget?.textContent || prev.headline }))}
               className="text-center text-2xl sm:text-3xl font-display font-bold leading-tight outline-none cursor-text px-4 py-1 rounded hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all"
               style={{
                 color: textColor,
                 textShadow: "0 2px 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)",
               }}
             >
-              {suggestedText.headline}
+              {safeText.headline}
             </div>
 
             {/* Subheadline */}
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => setTexts(prev => ({ ...prev, subheadline: e.currentTarget.textContent || "" }))}
+              onBlur={(e) => setTexts(prev => ({ ...prev, subheadline: e.currentTarget?.textContent || prev.subheadline }))}
               className="text-center text-sm sm:text-base font-medium leading-relaxed outline-none cursor-text px-4 py-1 rounded hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all max-w-[80%]"
               style={{
                 color: textColor,
                 textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               }}
             >
-              {suggestedText.subheadline}
+              {safeText.subheadline}
             </div>
 
             {/* CTA Button */}
@@ -154,7 +159,7 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
               <div
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e) => setTexts(prev => ({ ...prev, cta: e.currentTarget.textContent || "" }))}
+                onBlur={(e) => setTexts(prev => ({ ...prev, cta: e.currentTarget?.textContent || prev.cta }))}
                 className="inline-block px-6 py-2.5 rounded-full text-sm font-bold outline-none cursor-text hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all"
                 style={{
                   backgroundColor: textColor === "#FFFFFF" ? "hsl(var(--primary))" : textColor,
@@ -162,7 +167,7 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
                   boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
                 }}
               >
-                {suggestedText.cta}
+                {safeText.cta}
               </div>
             </div>
           </div>
