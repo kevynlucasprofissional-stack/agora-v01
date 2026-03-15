@@ -125,11 +125,6 @@ export default function AnalysisReportPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="hero" size="sm" asChild>
-              <Link to={`/app/analysis/${id}/campaign`}>
-                <Sparkles className="h-4 w-4 mr-2" /> Gerar Campanha
-              </Link>
-            </Button>
             <Button variant="outline" size="sm" onClick={handleExportDocx}>
               <FileText className="h-4 w-4 mr-2" /> DOCX
             </Button>
