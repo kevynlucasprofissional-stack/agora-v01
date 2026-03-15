@@ -788,8 +788,6 @@ export default function NewAnalysisPage() {
             >
               {(isStreaming || isGeneratingImage) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
-              {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
           </div>
 
           <div className="flex justify-center gap-1.5 sm:gap-2 mt-3">
