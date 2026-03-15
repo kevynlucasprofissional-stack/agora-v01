@@ -36,30 +36,8 @@ export default function AnalysisReportPage() {
     });
   }, [id]);
 
-  // Hover zone: show chat FAB when mouse approaches right edge (desktop only)
-  useEffect(() => {
-    if (isMobile) {
-      setChatButtonVisible(true);
-      return;
-    }
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const threshold = window.innerWidth - 40;
-      if (e.clientX >= threshold && !chatOpen) {
-        setChatButtonVisible(true);
-        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-      } else if (e.clientX < threshold - 20 && !chatOpen) {
-        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 600);
-      }
-    };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  }, [chatOpen, isMobile]);
 
   const handleFeedback = async (type: "like" | "dislike") => {
     if (!analysis || !user) return;
