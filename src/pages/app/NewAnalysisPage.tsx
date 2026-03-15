@@ -431,8 +431,11 @@ export default function NewAnalysisPage() {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant") {
+          setStreamingIdx(prev.length - 1);
           return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
         }
+        const newIdx = prev.length;
+        setStreamingIdx(newIdx);
         return [...prev, { role: "assistant", content: assistantSoFar }];
       });
 
