@@ -45,22 +45,37 @@ export default function HistoryPage() {
       if (convs.length > 0) {
         const convsWithMeta = await Promise.all(
           convs.map(async (c) => {
-            const { data: msgs } = await supabase
-              .from("chat_messages")
-              .select("content")
-              .eq("conversation_id", c.id)
-              .order("created_at", { ascending: false })
-              .limit(1);
+            const [lastMsgRes, firstUserMsgRes, countRes] = await Promise.all([
+              supabase
+                .from("chat_messages")
+                .select("content")
+                .eq("conversation_id", c.id)
+                .order("created_at", { ascending: false })
+                .limit(1),
+              supabase
+                .from("chat_messages")
+                .select("content")
+                .eq("conversation_id", c.id)
+                .eq("role", "user")
+                .order("created_at", { ascending: true })
+                .limit(1),
+              supabase
+                .from("chat_messages")
+                .select("id", { count: "exact", head: true })
+                .eq("conversation_id", c.id),
+            ]);
 
-            const { count } = await supabase
-              .from("chat_messages")
-              .select("id", { count: "exact", head: true })
-              .eq("conversation_id", c.id);
+            // Use first user message as title if conversation title is generic
+            const firstUserMsg = firstUserMsgRes.data?.[0]?.content;
+            const effectiveTitle = (!c.title || c.title === "Nova Análise")
+              ? (firstUserMsg?.replace(/📎.*$/, "").trim().slice(0, 80) || c.title)
+              : c.title;
 
             return {
               ...c,
-              last_message: msgs?.[0]?.content || null,
-              message_count: count || 0,
+              title: effectiveTitle,
+              last_message: lastMsgRes.data?.[0]?.content || null,
+              message_count: countRes.count || 0,
             } as Conversation;
           })
         );
