@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { analysis_id, conversation_id, format = "1080x1080" } = await req.json();
+    const { analysis_id, conversation_id, format = "1080x1080", user_prompt } = await req.json();
     if (!analysis_id) {
       return new Response(JSON.stringify({ error: "analysis_id é obrigatório" }), {
         status: 400,
@@ -99,13 +99,20 @@ serve(async (req) => {
       agents: agentOutputs,
       chat_history: chatHistory,
       requested_format: format,
+      user_prompt: user_prompt || null,
     };
 
     // ─── 2. Gemini Strategist ───
+    const userPromptSection = user_prompt
+      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt. O criativo deve refletir o pedido do usuário combinado com os insights da campanha.`
+      : "";
+
     const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto completo desta campanha e gere um briefing criativo estruturado para produzir um criativo de marketing.
 
 CONTEXTO DA CAMPANHA:
 ${JSON.stringify(creativeContext, null, 2)}
+
+${JSON.stringify(creativeContext, null, 2)}${userPromptSection}
 
 Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com este schema:
 {
