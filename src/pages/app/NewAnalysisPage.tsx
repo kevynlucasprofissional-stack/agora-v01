@@ -661,6 +661,22 @@ export default function NewAnalysisPage() {
             </Button>
           </div>
 
+          <div className="flex flex-wrap justify-center gap-2 mt-3">
+            {quickActions.map((a) => (
+              <button
+                key={a.label}
+                onClick={() => {
+                  setInput(a.label);
+                  textareaRef.current?.focus();
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-muted text-sm text-foreground transition-colors"
+              >
+                <span>{a.icon}</span>
+                <span>{a.label}</span>
+              </button>
+            ))}
+          </div>
+
           <p className="text-center text-xs text-muted-foreground mt-2">
             Pressione Enter para enviar · Shift+Enter para nova linha
           </p>
