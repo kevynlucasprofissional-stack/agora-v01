@@ -307,7 +307,7 @@ export default function NewAnalysisPage() {
   }, [messages, isGeneratingImage]);
 
   const handleSend = async () => {
-    if ((!input.trim() && files.length === 0) || isStreaming || isGeneratingImage) return;
+    if (isStreaming || isGeneratingImage) return;
 
     // Check if creative mode is active — intercept and generate image
     if (activeAction === "creative") {
