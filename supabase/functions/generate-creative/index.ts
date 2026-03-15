@@ -112,6 +112,8 @@ serve(async (req) => {
 CONTEXTO DA CAMPANHA:
 ${JSON.stringify(creativeContext, null, 2)}
 
+${JSON.stringify(creativeContext, null, 2)}${userPromptSection}
+
 Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com este schema:
 {
   "creative_objective": "objetivo do criativo baseado na campanha",
