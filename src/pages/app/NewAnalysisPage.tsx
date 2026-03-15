@@ -796,7 +796,11 @@ export default function NewAnalysisPage() {
                 {files.map((f, i) => {
                   const isImage = f.type.startsWith("image/");
                   return (
-                    <div key={f.name + i} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm">
+                    <div
+                      key={f.name + i}
+                      className={`flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm ${isImage ? "cursor-pointer hover:border-primary/50 transition-colors" : ""}`}
+                      onClick={() => isImage && setPreviewFile(f)}
+                    >
                       {isImage ? (
                         <img
                           src={URL.createObjectURL(f)}
@@ -808,7 +812,7 @@ export default function NewAnalysisPage() {
                       )}
                       <span className="truncate max-w-[140px]">{f.name}</span>
                       <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
-                      <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive ml-1">
+                      <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-muted-foreground hover:text-destructive ml-1">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
