@@ -3,19 +3,12 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles } from "lucide-react";
+import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
-
-// Mock generational audience feedback
-const syntheticAudience = [
-  { gen: "Gen Z", avatar: "🧑‍💻", comment: "Muita fricção no checkout. Parece marketing de 2015. Precisa ser mais direto e visual." },
-  { gen: "Millennials", avatar: "👩‍🎨", comment: "A proposta de valor não é clara em 3 segundos. Storytelling fraco. Falta prova social." },
-  { gen: "Gen X", avatar: "👨‍💼", comment: "Métricas de vaidade dominam o painel. Onde estão os KPIs reais? Precisa de mais dados." },
-  { gen: "Boomers", avatar: "👴", comment: "Sinais de confiança insuficientes. Sem depoimentos. Sem garantia visível. Risco percebido alto." },
-];
+import { Json } from "@/integrations/supabase/types";
 
 export default function AnalysisReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -125,66 +118,112 @@ export default function AnalysisReportPage() {
         ))}
       </div>
 
-      {/* Mock Diagnostic Summary */}
-      <div className="glass-card p-6">
-        <h3 className="section-label mb-4">Diagnóstico Resumido</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-sm mb-2">🔴 Gargalos Identificados</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Proposta de valor não é clara em 3 segundos</li>
-              <li>• Métricas de vaidade dominando o painel de KPIs</li>
-              <li>• Excesso de fricção no funil de conversão</li>
-              <li>• Tom de voz desalinhado com a geração do público</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-sm mb-2">🟢 Oportunidades</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Aplicar aversão à perda no criativo principal</li>
-              <li>• Migrar budget para canais com maior afinidade geracional</li>
-              <li>• Implementar prova social quantificável na dobra 1</li>
-              <li>• Reduzir passos do checkout de 4 para 2</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      {/* Diagnostic Summary - from AI */}
+      {(() => {
+        const payload = analysis.normalized_payload as Record<string, any> | null;
+        const summary = payload?.executive_summary as string | undefined;
+        const improvements = (payload?.improvements as string[] | undefined) || [];
+        const strengths = (payload?.strengths as string[] | undefined) || [];
+        const audienceInsights = (payload?.audience_insights as Array<{ generation: string; emoji: string; feedback: string }> | undefined) || [];
+        const marketRefs = (payload?.market_references as string[] | undefined) || [];
 
-      {/* Synthetic Audience */}
-      {canUseSyntheticAudience ? (
-        <div>
-          <h3 className="section-label mb-4">Audiência Sintética — Veredicto Geracional</h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {syntheticAudience.map((a, i) => (
-              <motion.div key={a.gen} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
-                className="glass-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">{a.avatar}</span>
-                  <span className="font-display font-semibold text-sm">{a.gen}</span>
-                </div>
-                <p className="text-sm text-muted-foreground italic">"{a.comment}"</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="glass-card p-8 text-center relative overflow-hidden">
-          <div className="absolute inset-0 backdrop-blur-md bg-card/80 flex flex-col items-center justify-center z-10">
-            <span className="section-label mb-2">Recurso Premium</span>
-            <p className="text-sm text-muted-foreground mb-4">A audiência sintética está disponível a partir do plano Standard.</p>
-            <Button variant="hero" size="sm" asChild>
-              <Link to="/app/settings">Fazer Upgrade</Link>
-            </Button>
-          </div>
-          <div className="opacity-30 grid md:grid-cols-2 gap-4">
-            {syntheticAudience.map((a) => (
-              <div key={a.gen} className="glass-card p-5">
-                <p className="text-sm">{a.comment}</p>
+        return (
+          <>
+            {/* Executive Summary */}
+            {summary && (
+              <div className="glass-card p-6">
+                <h3 className="section-label mb-3">Resumo Executivo</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{summary}</p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
+
+            {/* Improvements & Strengths */}
+            <div className="glass-card p-6">
+              <h3 className="section-label mb-4">Diagnóstico</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">🔴 Gargalos Identificados</h4>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {improvements.length > 0
+                      ? improvements.map((imp, i) => <li key={i}>• {imp}</li>)
+                      : <>
+                          <li>• Proposta de valor não é clara em 3 segundos</li>
+                          <li>• Métricas de vaidade dominando o painel de KPIs</li>
+                          <li>• Excesso de fricção no funil de conversão</li>
+                        </>
+                    }
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">🟢 Pontos Fortes</h4>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {strengths.length > 0
+                      ? strengths.map((s, i) => <li key={i}>• {s}</li>)
+                      : <>
+                          <li>• Boa segmentação inicial</li>
+                          <li>• Canal adequado ao público</li>
+                        </>
+                    }
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Market References */}
+            {marketRefs.length > 0 && (
+              <div className="glass-card p-6">
+                <h3 className="section-label mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4" /> Referências de Mercado
+                </h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {marketRefs.map((ref, i) => <li key={i}>• {ref}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {/* Synthetic Audience */}
+            {canUseSyntheticAudience ? (
+              <div>
+                <h3 className="section-label mb-4">Audiência Sintética — Veredicto Geracional</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {(audienceInsights.length > 0 ? audienceInsights : [
+                    { generation: "Gen Z", emoji: "🧑‍💻", feedback: "Análise pendente." },
+                    { generation: "Millennials", emoji: "👩‍🎨", feedback: "Análise pendente." },
+                    { generation: "Gen X", emoji: "👨‍💼", feedback: "Análise pendente." },
+                    { generation: "Boomers", emoji: "👴", feedback: "Análise pendente." },
+                  ]).map((a, i) => (
+                    <motion.div key={a.generation} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
+                      className="glass-card p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-2xl">{a.emoji}</span>
+                        <span className="font-display font-semibold text-sm">{a.generation}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground italic">"{a.feedback}"</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card p-8 text-center relative overflow-hidden">
+                <div className="absolute inset-0 backdrop-blur-md bg-card/80 flex flex-col items-center justify-center z-10">
+                  <span className="section-label mb-2">Recurso Premium</span>
+                  <p className="text-sm text-muted-foreground mb-4">A audiência sintética está disponível a partir do plano Standard.</p>
+                  <Button variant="hero" size="sm" asChild>
+                    <Link to="/app/settings">Fazer Upgrade</Link>
+                  </Button>
+                </div>
+                <div className="opacity-30 grid md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="glass-card p-5">
+                      <p className="text-sm">Conteúdo bloqueado</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Feedback */}
       <div className="glass-card p-6 flex items-center justify-between">

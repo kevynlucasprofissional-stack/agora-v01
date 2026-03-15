@@ -248,42 +248,98 @@ export default function NewAnalysisPage() {
       }
     }
 
-    await simulateProcessing(analysis.id);
+    await runRealAnalysis(analysis.id);
     setLoading(false);
   };
 
-  const simulateProcessing = async (analysisId: string) => {
+  const runRealAnalysis = async (analysisId: string) => {
     setStep("processing");
-    for (let i = 0; i < agentOrder.length; i++) {
-      setCurrentAgent(i);
-      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
+
+    // Animate through agents progressively
+    const agentTimers: NodeJS.Timeout[] = [];
+    let agentIdx = 0;
+    const advanceAgent = () => {
+      if (agentIdx < agentOrder.length - 1) {
+        agentIdx++;
+        setCurrentAgent(agentIdx);
+      }
+    };
+    // Advance agent every ~3s to show progress while AI works
+    for (let i = 1; i < agentOrder.length; i++) {
+      agentTimers.push(setTimeout(() => { setCurrentAgent(i); }, i * 3000));
     }
 
-    const scores = {
-      score_overall: 45 + Math.random() * 40,
-      score_sociobehavioral: 40 + Math.random() * 45,
-      score_offer: 35 + Math.random() * 50,
-      score_performance: 40 + Math.random() * 45,
-    };
+    try {
+      const fullPrompt = getFullPrompt();
+      const fileNames = files.map(f => f.name);
 
-    await supabase
-      .from("analysis_requests")
-      .update({
-        status: "completed",
-        ...scores,
-        completed_at: new Date().toISOString(),
-        normalized_payload: {
-          campanha_normalizada: {
-            oferta_principal: getFullPrompt().slice(0, 100),
-            publico_alvo_declarado: "A ser identificado",
-            canais_identificados: ["Instagram", "Meta Ads"],
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-campaign`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-        },
-      })
-      .eq("id", analysisId);
+          body: JSON.stringify({
+            rawPrompt: fullPrompt,
+            title: messages[0]?.content.slice(0, 60) || "Nova análise",
+            files: fileNames,
+          }),
+        }
+      );
 
-    setStep("completed");
-    setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
+      // Clear animation timers
+      agentTimers.forEach(clearTimeout);
+      setCurrentAgent(agentOrder.length - 1);
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || "Erro na análise");
+      }
+
+      const { analysis: result } = await resp.json();
+
+      // Update analysis_request with real AI results
+      await supabase
+        .from("analysis_requests")
+        .update({
+          status: "completed",
+          score_overall: result.score_overall,
+          score_sociobehavioral: result.score_sociobehavioral,
+          score_offer: result.score_offer,
+          score_performance: result.score_performance,
+          industry: result.industry,
+          primary_channel: result.primary_channel,
+          declared_target_audience: result.declared_target_audience,
+          region: result.region || null,
+          completed_at: new Date().toISOString(),
+          normalized_payload: {
+            executive_summary: result.executive_summary,
+            improvements: result.improvements,
+            strengths: result.strengths,
+            audience_insights: result.audience_insights,
+            market_references: result.market_references,
+          },
+        })
+        .eq("id", analysisId);
+
+      setStep("completed");
+      setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
+    } catch (e) {
+      agentTimers.forEach(clearTimeout);
+      console.error("Analysis error:", e);
+      toast.error(e instanceof Error ? e.message : "Erro ao analisar campanha.");
+
+      // Mark as failed
+      await supabase
+        .from("analysis_requests")
+        .update({ status: "failed" })
+        .eq("id", analysisId);
+
+      setStep("intake");
+      setMessages(messages);
+    }
   };
 
   // Processing / completed view

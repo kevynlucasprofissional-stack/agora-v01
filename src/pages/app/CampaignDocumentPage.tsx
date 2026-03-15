@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { streamChat } from "@/lib/streamChat";
 
-// Default improvements based on analysis mock data
-const DEFAULT_IMPROVEMENTS = [
+// Fallback improvements if analysis has no AI data
+const FALLBACK_IMPROVEMENTS = [
   "Reescrever proposta de valor para comunicar em 3 segundos",
   "Substituir métricas de vaidade por KPIs reais (CAC Payback Period)",
   "Reduzir fricção no funil de conversão (checkout de 4 para 2 passos)",
@@ -36,7 +36,7 @@ export default function CampaignDocumentPage() {
   const [loading, setLoading] = useState(true);
 
   // Step 1: Review improvements
-  const [selectedImprovements, setSelectedImprovements] = useState<string[]>(DEFAULT_IMPROVEMENTS);
+  const [selectedImprovements, setSelectedImprovements] = useState<string[]>(FALLBACK_IMPROVEMENTS);
   const [step, setStep] = useState<"review" | "generating" | "document">("review");
 
   // Document
@@ -67,7 +67,17 @@ export default function CampaignDocumentPage() {
           .limit(1)
           .maybeSingle(),
       ]);
-      setAnalysis(analysisRes.data);
+      const analysisData = analysisRes.data;
+      setAnalysis(analysisData);
+
+      // Load real improvements from analysis if available
+      if (analysisData?.normalized_payload) {
+        const payload = analysisData.normalized_payload as Record<string, any>;
+        const realImprovements = payload?.improvements as string[] | undefined;
+        if (realImprovements && realImprovements.length > 0) {
+          setSelectedImprovements(realImprovements);
+        }
+      }
 
       // If a campaign was previously saved, restore it
       if (outputRes.data?.content_markdown) {
@@ -275,7 +285,7 @@ export default function CampaignDocumentPage() {
         </div>
         <div className="glass-card p-6 space-y-4">
           <h3 className="section-label">Apontamentos de Melhoria</h3>
-          {DEFAULT_IMPROVEMENTS.map((imp) => (
+          {selectedImprovements.map((imp) => (
             <label key={imp} className="flex items-start gap-3 cursor-pointer group">
               <Checkbox
                 checked={selectedImprovements.includes(imp)}
