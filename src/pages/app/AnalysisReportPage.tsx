@@ -48,13 +48,13 @@ export default function AnalysisReportPage() {
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      const threshold = window.innerWidth - 80;
+      const threshold = window.innerWidth - 40;
       if (e.clientX >= threshold && !chatOpen) {
         setChatButtonVisible(true);
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-      } else if (e.clientX < threshold - 40 && !chatOpen) {
+      } else if (e.clientX < threshold - 20 && !chatOpen) {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 1500);
+        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 600);
       }
     };
 
