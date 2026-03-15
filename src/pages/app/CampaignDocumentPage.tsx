@@ -285,7 +285,7 @@ export default function CampaignDocumentPage() {
         </div>
         <div className="glass-card p-6 space-y-4">
           <h3 className="section-label">Apontamentos de Melhoria</h3>
-          {DEFAULT_IMPROVEMENTS.map((imp) => (
+          {selectedImprovements.map((imp) => (
             <label key={imp} className="flex items-start gap-3 cursor-pointer group">
               <Checkbox
                 checked={selectedImprovements.includes(imp)}
