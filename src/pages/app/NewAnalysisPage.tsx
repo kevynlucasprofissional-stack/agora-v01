@@ -701,8 +701,12 @@ export default function NewAnalysisPage() {
                 {msg.role === "assistant" ? (
                   streamingIdx === idx ? (
                     <div className="prose prose-sm max-w-none text-foreground">
-                      <span className="whitespace-pre-wrap">{msg.content.replace("##READY##", "").trim()}</span>
-                      <span className="inline-block w-[2px] h-[1em] bg-primary align-text-bottom ml-0.5 animate-pulse" />
+                      <ResponseStream
+                        textStream={msg.content.replace("##READY##", "").trim()}
+                        mode="fade"
+                        speed={75}
+                        as="span"
+                      />
                     </div>
                   ) : (
                     <div className="prose prose-sm max-w-none text-foreground">

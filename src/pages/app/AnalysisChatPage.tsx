@@ -7,6 +7,7 @@ import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import ReactMarkdown from "react-markdown";
+import { ResponseStream } from "@/components/ui/response-stream";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ChatMessage {
