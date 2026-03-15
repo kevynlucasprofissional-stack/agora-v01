@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { exportToDocx, exportToPptx } from "@/lib/exportUtils";
 import { StrategistChatPanel } from "@/components/StrategistChatPanel";
+import { ReportChatBlock } from "@/components/ReportChatBlock";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function AnalysisReportPage() {
@@ -47,13 +48,13 @@ export default function AnalysisReportPage() {
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      const threshold = window.innerWidth - 80;
+      const threshold = window.innerWidth - 40;
       if (e.clientX >= threshold && !chatOpen) {
         setChatButtonVisible(true);
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-      } else if (e.clientX < threshold - 40 && !chatOpen) {
+      } else if (e.clientX < threshold - 20 && !chatOpen) {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 1500);
+        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 600);
       }
     };
 
@@ -124,11 +125,6 @@ export default function AnalysisReportPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="hero" size="sm" asChild>
-              <Link to={`/app/analysis/${id}/campaign`}>
-                <Sparkles className="h-4 w-4 mr-2" /> Gerar Campanha
-              </Link>
-            </Button>
             <Button variant="outline" size="sm" onClick={handleExportDocx}>
               <FileText className="h-4 w-4 mr-2" /> DOCX
             </Button>
@@ -411,6 +407,9 @@ export default function AnalysisReportPage() {
           </div>
         )}
 
+        {/* Inline Chat Block */}
+        {analysis && <ReportChatBlock analysis={analysis} />}
+
         {/* Feedback */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
@@ -446,16 +445,16 @@ export default function AnalysisReportPage() {
       <AnimatePresence>
         {chatButtonVisible && !chatOpen && (
           <motion.button
-            initial={{ x: 80, opacity: 0 }}
+            initial={{ x: 100, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 80, opacity: 0 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            exit={{ x: 100, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200, mass: 0.8 }}
             onClick={() => setChatOpen(true)}
-            className="fixed right-4 bottom-6 z-30 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-            title="Chat com Estrategista"
+            className="fixed right-4 bottom-24 z-30 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-shadow"
+            title="Dúvidas?"
           >
             <MessageSquare className="h-5 w-5" />
-            <span className="text-sm font-medium hidden sm:inline">Estrategista</span>
+            <span className="text-sm font-medium hidden sm:inline">Dúvidas?</span>
           </motion.button>
         )}
       </AnimatePresence>
