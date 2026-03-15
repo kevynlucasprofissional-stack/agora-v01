@@ -8,6 +8,7 @@ import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { ResponseStream } from "@/components/ui/response-stream";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
