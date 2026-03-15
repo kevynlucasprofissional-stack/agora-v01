@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, ChangeEvent } from "react";
 import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
+import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
@@ -276,9 +276,11 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                 msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
               }`}>
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
+                  <TypewriterMarkdown
+                    content={msg.content}
+                    isStreaming={isStreaming && i === messages.length - 1}
+                    className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+                  />
                 ) : (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
                 )}
