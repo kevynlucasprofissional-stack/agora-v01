@@ -20,6 +20,7 @@ import NewAnalysisPage from "@/pages/app/NewAnalysisPage";
 import HistoryPage from "@/pages/app/HistoryPage";
 import AnalysisReportPage from "@/pages/app/AnalysisReportPage";
 import AnalysisChatPage from "@/pages/app/AnalysisChatPage";
+import CampaignDocumentPage from "@/pages/app/CampaignDocumentPage";
 import AssetsPage from "@/pages/app/AssetsPage";
 import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="history" element={<HistoryPage />} />
               <Route path="analysis/:id/report" element={<AnalysisReportPage />} />
               <Route path="analysis/:id/chat" element={<AnalysisChatPage />} />
+              <Route path="analysis/:id/campaign" element={<CampaignDocumentPage />} />
               <Route path="assets" element={<AssetsPage />} />
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
