@@ -44,7 +44,7 @@ export default function AnalysisResultsPage() {
         <h1 className="text-2xl font-bold">Resultados das Análises</h1>
         <Button variant="hero" size="sm" asChild>
           <Link to="/app/new-analysis">
-            <Plus className="h-4 w-4 mr-2" /> Nova Análise
+            <Plus className="h-4 w-4 mr-2" /> Novo chat
           </Link>
         </Button>
       </div>

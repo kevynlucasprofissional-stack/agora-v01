@@ -67,7 +67,7 @@ export default function HistoryPage() {
 
             // Use first user message as title if conversation title is generic
             const firstUserMsg = firstUserMsgRes.data?.[0]?.content;
-            const effectiveTitle = (!c.title || c.title === "Nova Análise")
+            const effectiveTitle = (!c.title || c.title === "Novo chat")
               ? (firstUserMsg?.replace(/📎.*$/, "").trim().slice(0, 80) || c.title)
               : c.title;
 
@@ -138,7 +138,7 @@ export default function HistoryPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Histórico</h1>
         <Button variant="hero" size="sm" asChild>
-          <Link to="/app/new-analysis"><Plus className="h-4 w-4 mr-2" /> Nova Análise</Link>
+          <Link to="/app/new-analysis"><Plus className="h-4 w-4 mr-2" /> Novo chat</Link>
         </Button>
       </div>
 
