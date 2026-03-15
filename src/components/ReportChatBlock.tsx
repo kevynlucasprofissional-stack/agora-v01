@@ -56,6 +56,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shouldAutoScrollRef = useRef(false);
 
   const saveMessage = async (convId: string, role: string, content: string) => {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
