@@ -1,1 +1,1 @@
-Trial system: 15 days of Standard plan for all new signups. Columns: profiles.trial_ends_at, profiles.original_plan_id. On signup trigger assigns standard plan + trial. useAuth checks expiration and reverts to freemium when trial ends.
+Trial system: 15 days of PRO plan for all new signups. Columns: profiles.trial_ends_at, profiles.original_plan_id. On signup trigger assigns pro plan + trial. useAuth checks expiration and reverts to freemium when trial ends.
