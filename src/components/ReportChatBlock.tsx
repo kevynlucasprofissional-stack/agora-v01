@@ -83,11 +83,15 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         .limit(1)
         .maybeSingle();
       if (data && (data as any).image_url && (data as any).status !== "pending") {
+        const row = data as any;
+        const isSavedSnapshot = row.status === "saved";
         setCreativeData({
-          strategist_output: (data as any).strategist_output || {},
-          image_url: (data as any).image_url,
-          editable_html: (data as any).editable_html || "",
-          creative_job_id: (data as any).id,
+          strategist_output: isSavedSnapshot
+            ? { ...(row.strategist_output || {}), editable_layers: [] }
+            : (row.strategist_output || {}),
+          image_url: row.image_url,
+          editable_html: row.editable_html || "",
+          creative_job_id: row.id,
         });
       }
     };
