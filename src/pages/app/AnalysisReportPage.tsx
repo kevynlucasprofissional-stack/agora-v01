@@ -60,7 +60,7 @@ export default function AnalysisReportPage() {
   const summary = payload?.executive_summary as string | undefined;
   const improvements = (payload?.improvements as string[] | undefined) || [];
   const strengths = (payload?.strengths as string[] | undefined) || [];
-  const audienceInsights = (payload?.audience_insights as Array<{ generation: string; emoji: string; feedback: string }> | undefined) || [];
+  const audienceBehavior = payload?.audience_behavior as { section: string; cards: Array<{ title: string; content: string }> } | undefined;
   const marketRefs = (payload?.market_references as string[] | undefined) || [];
   const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
   const cognitiveBiases = (payload?.cognitive_biases as Array<{ bias: string; status: string; application: string }> | undefined) || [];
