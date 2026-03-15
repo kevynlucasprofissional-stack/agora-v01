@@ -80,9 +80,13 @@ export default function CampaignDocumentPage() {
       // Load real improvements from analysis if available
       if (analysisData?.normalized_payload) {
         const payload = analysisData.normalized_payload as Record<string, any>;
-        const realImprovements = payload?.improvements as string[] | undefined;
-        if (realImprovements && realImprovements.length > 0) {
-          setSelectedImprovements(realImprovements);
+        const rawImp = payload?.improvements;
+        if (Array.isArray(rawImp) && rawImp.length > 0) {
+          // Support both flat strings and categorized objects
+          const flat = typeof rawImp[0] === "string"
+            ? (rawImp as string[])
+            : (rawImp as Array<{ category: string; items: string[] }>).flatMap(c => c.items);
+          if (flat.length > 0) setSelectedImprovements(flat);
         }
       }
 

@@ -372,13 +372,27 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
                   },
                   improvements: {
                     type: "array",
-                    items: { type: "string" },
-                    description: "Lista de 6-10 melhorias acionáveis",
+                    items: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string", description: "Nome da categoria do gargalo (ex: Estratégia de Oferta, Segmentação, Métricas, Canais, Criativo, Posicionamento)" },
+                        items: { type: "array", items: { type: "string" }, description: "Lista de gargalos específicos desta categoria" },
+                      },
+                      required: ["category", "items"],
+                    },
+                    description: "Lista de gargalos categorizados. Agrupe as melhorias em 3-6 categorias temáticas com subcategorias específicas.",
                   },
                   strengths: {
                     type: "array",
-                    items: { type: "string" },
-                    description: "Lista de 3-5 pontos fortes",
+                    items: {
+                      type: "object",
+                      properties: {
+                        category: { type: "string", description: "Nome da categoria do ponto forte (ex: Posicionamento, Canais, Público-Alvo, Criativo)" },
+                        items: { type: "array", items: { type: "string" }, description: "Lista de pontos fortes específicos desta categoria" },
+                      },
+                      required: ["category", "items"],
+                    },
+                    description: "Lista de pontos fortes categorizados. Agrupe em 2-4 categorias temáticas.",
                   },
                   audience_insights: {
                     type: "array",
