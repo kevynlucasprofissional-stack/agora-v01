@@ -6,21 +6,48 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Você é um auditor de marketing científico do Ágora. Sua missão é analisar campanhas de marketing com precisão, usando seu conhecimento profundo sobre:
-- Benchmarks de mercado por indústria (CTR, CPA, ROAS médios)
-- Estratégias de neuromarketing e vieses cognitivos
-- Tendências de comportamento de consumidor por geração
-- Melhores práticas de copy, oferta, funil e performance digital
-- Dados de mercado brasileiro e internacional
+const SYSTEM_PROMPT = `Você é um auditor de marketing científico do Ágora. Sua missão é analisar campanhas de marketing com precisão absoluta, usando frameworks consagrados:
 
-IMPORTANTE: Analise com base em dados reais de mercado que você conhece. Pesquise em sua base de conhecimento sobre:
-1. Benchmarks do setor/indústria mencionados
-2. Público-alvo e comportamento geracional
-3. Melhores práticas para os canais mencionados
-4. Concorrentes e referências do mercado
-5. Tendências atuais do setor
+## Frameworks de Análise
 
-Seja RIGOROSO e HONESTO nos scores. Campanhas medianas devem ter scores medianos (40-60). Scores acima de 80 são reservados para campanhas excepcionais.`;
+### Era do Marketing (Kotler)
+- Marketing 1.0: Foco no produto
+- Marketing 2.0: Foco no consumidor
+- Marketing 3.0: Foco em valores
+- Marketing 4.0: Digital + dados + personalização
+
+### Neuromarketing e Vieses Cognitivos
+Identifique quais vieses estão sendo usados (ou deveriam ser):
+- Ancoragem, Aversão à perda, Prova social, Escassez, Efeito de enquadramento
+- Paradoxo da escolha, Viés de confirmação, Efeito halo, Reciprocidade
+- Sistema 1 vs Sistema 2 (Kahneman)
+
+### Engenharia de Oferta (Hormozi)
+Valor = (Resultado Sonhado × Probabilidade Percebida) ÷ (Tempo de Atraso × Esforço Percebido)
+Avalie cada variável da fórmula na campanha.
+
+### Framework RICE para Priorização
+- Reach (Alcance), Impact (Impacto), Confidence (Confiança), Effort (Esforço)
+
+### KPIs e Métricas
+- Puna métricas de vaidade (curtidas, seguidores sem contexto)
+- Priorize: CAC Payback Period, LTV:CAC, ROAS, Taxa de conversão real
+- North Star Metric para o negócio
+
+### Timing e Tendências
+- Demand Momentum: a demanda está subindo ou caindo?
+- Context Shock: o conteúdo se destaca no feed?
+- Sazonalidade e timing de mercado
+
+### Benchmarks
+Use benchmarks reais por indústria quando possível.
+
+IMPORTANTE: 
+- Seja RIGOROSO nos scores. Campanhas medianas = scores 40-60. Acima de 80 = excepcional.
+- Classifique a era do marketing da campanha.
+- Identifique vieses cognitivos presentes e ausentes.
+- Avalie pela fórmula de Hormozi.
+- Analise sentimento geral da marca se dados disponíveis.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -41,7 +68,7 @@ ${rawPrompt}
 
 ${files?.length ? `\nARQUIVOS ANEXADOS: ${files.map((f: string) => f).join(", ")}` : ""}
 
-Use a ferramenta "analysis_result" para retornar sua análise estruturada.`;
+Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -62,79 +89,113 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada.`;
               type: "function",
               function: {
                 name: "analysis_result",
-                description: "Retorna o resultado completo da análise da campanha com scores, insights e recomendações.",
+                description: "Retorna o resultado completo da análise da campanha.",
                 parameters: {
                   type: "object",
                   properties: {
-                    score_overall: {
-                      type: "number",
-                      description: "Score geral da campanha (0-100). Média ponderada dos 3 sub-scores."
+                    score_overall: { type: "number", description: "Score geral (0-100)" },
+                    score_sociobehavioral: { type: "number", description: "Score sociocomportamental (0-100)" },
+                    score_offer: { type: "number", description: "Score da oferta (0-100)" },
+                    score_performance: { type: "number", description: "Score de performance (0-100)" },
+                    industry: { type: "string", description: "Indústria/setor identificado" },
+                    primary_channel: { type: "string", description: "Canal principal identificado" },
+                    declared_target_audience: { type: "string", description: "Público-alvo identificado" },
+                    region: { type: "string", description: "Região/mercado" },
+                    executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
+                    marketing_era: {
+                      type: "object",
+                      properties: {
+                        era: { type: "string", description: "1.0, 2.0, 3.0 ou 4.0" },
+                        description: { type: "string", description: "Por que esta campanha está nesta era" },
+                        recommendation: { type: "string", description: "O que fazer para evoluir para a próxima era" }
+                      },
+                      required: ["era", "description", "recommendation"]
                     },
-                    score_sociobehavioral: {
-                      type: "number",
-                      description: "Score sociocomportamental (0-100). Avalia alinhamento com público-alvo, gatilhos mentais, vieses cognitivos, tom de voz geracional."
+                    cognitive_biases: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          bias: { type: "string", description: "Nome do viés cognitivo" },
+                          status: { type: "string", description: "'presente', 'ausente' ou 'mal aplicado'" },
+                          application: { type: "string", description: "Como está sendo usado ou como deveria ser usado" }
+                        },
+                        required: ["bias", "status", "application"]
+                      },
+                      description: "Vieses cognitivos identificados na campanha"
                     },
-                    score_offer: {
-                      type: "number",
-                      description: "Score da oferta (0-100). Avalia proposta de valor, pricing, diferenciação, urgência, prova social."
+                    hormozi_analysis: {
+                      type: "object",
+                      properties: {
+                        dream_outcome: { type: "number", description: "Nota 1-5 para o resultado sonhado prometido" },
+                        perceived_likelihood: { type: "number", description: "Nota 1-5 para probabilidade percebida de alcançar" },
+                        time_delay: { type: "number", description: "Nota 1-5 para tempo de espera (5=rápido)" },
+                        effort_sacrifice: { type: "number", description: "Nota 1-5 para esforço percebido (5=fácil)" },
+                        overall_value: { type: "string", description: "Diagnóstico geral do valor percebido" }
+                      },
+                      required: ["dream_outcome", "perceived_likelihood", "time_delay", "effort_sacrifice", "overall_value"]
                     },
-                    score_performance: {
-                      type: "number",
-                      description: "Score de performance (0-100). Avalia KPIs, funil, canais, segmentação, otimização técnica."
+                    kpi_analysis: {
+                      type: "object",
+                      properties: {
+                        vanity_metrics: { type: "array", items: { type: "string" }, description: "Métricas de vaidade identificadas" },
+                        recommended_north_star: { type: "string", description: "North Star Metric recomendada" },
+                        recommended_kpis: { type: "array", items: { type: "string" }, description: "KPIs recomendados" }
+                      },
+                      required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"]
                     },
-                    industry: {
-                      type: "string",
-                      description: "Indústria/setor identificado (ex: 'E-commerce de Moda', 'SaaS B2B', 'Restaurante Local')"
-                    },
-                    primary_channel: {
-                      type: "string",
-                      description: "Canal principal identificado (ex: 'Meta Ads', 'Google Ads', 'Instagram Orgânico')"
-                    },
-                    declared_target_audience: {
-                      type: "string",
-                      description: "Público-alvo identificado ou inferido"
-                    },
-                    region: {
-                      type: "string",
-                      description: "Região/mercado identificado"
-                    },
-                    executive_summary: {
-                      type: "string",
-                      description: "Resumo executivo em 2-3 parágrafos com os principais achados da análise."
+                    timing_analysis: {
+                      type: "object",
+                      properties: {
+                        demand_momentum: { type: "string", description: "Subindo, estável ou caindo" },
+                        context_shock: { type: "string", description: "Avaliação de diferenciação no feed" },
+                        seasonality: { type: "string", description: "Observações sobre timing e sazonalidade" }
+                      },
+                      required: ["demand_momentum", "context_shock", "seasonality"]
                     },
                     improvements: {
                       type: "array",
                       items: { type: "string" },
-                      description: "Lista de 6-10 apontamentos de melhoria específicos e acionáveis."
+                      description: "Lista de 6-10 melhorias acionáveis"
                     },
                     strengths: {
                       type: "array",
                       items: { type: "string" },
-                      description: "Lista de 3-5 pontos fortes identificados na campanha."
+                      description: "Lista de 3-5 pontos fortes"
                     },
                     audience_insights: {
                       type: "array",
                       items: {
                         type: "object",
                         properties: {
-                          generation: { type: "string", description: "Geração (Gen Z, Millennials, Gen X, Boomers)" },
-                          emoji: { type: "string", description: "Emoji representativo" },
-                          feedback: { type: "string", description: "Feedback simulado dessa geração sobre a campanha" }
+                          generation: { type: "string" },
+                          emoji: { type: "string" },
+                          feedback: { type: "string" }
                         },
                         required: ["generation", "emoji", "feedback"]
                       },
-                      description: "Feedback simulado de audiência sintética por geração."
+                      description: "Feedback de audiência sintética por geração"
                     },
                     market_references: {
                       type: "array",
                       items: { type: "string" },
-                      description: "Referências de mercado, benchmarks e dados que fundamentam a análise."
+                      description: "Referências de mercado e benchmarks"
+                    },
+                    brand_sentiment: {
+                      type: "object",
+                      properties: {
+                        overall: { type: "string", description: "Positivo, Neutro ou Negativo" },
+                        analysis: { type: "string", description: "Análise do sentimento baseado nos dados disponíveis" }
+                      },
+                      required: ["overall", "analysis"]
                     }
                   },
                   required: [
                     "score_overall", "score_sociobehavioral", "score_offer", "score_performance",
                     "industry", "primary_channel", "declared_target_audience",
-                    "executive_summary", "improvements", "strengths", "audience_insights", "market_references"
+                    "executive_summary", "improvements", "strengths", "audience_insights",
+                    "market_references", "marketing_era", "cognitive_biases", "hormozi_analysis",
+                    "kpi_analysis", "timing_analysis", "brand_sentiment"
                   ],
                   additionalProperties: false
                 }
@@ -168,8 +229,6 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada.`;
     }
 
     const data = await response.json();
-    
-    // Extract tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "analysis_result") {
       console.error("Unexpected response format:", JSON.stringify(data));
