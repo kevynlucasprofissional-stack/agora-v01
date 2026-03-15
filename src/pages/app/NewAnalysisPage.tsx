@@ -22,11 +22,10 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
   chief_strategist: Target,
 };
 
-const suggestions = [
-  { icon: "🎯", label: "Auditar campanha de Meta Ads" },
-  { icon: "📊", label: "Analisar funil de vendas" },
-  { icon: "🧠", label: "Avaliar copy e oferta" },
-  { icon: "📈", label: "Otimizar performance de mídia" },
+const quickActions = [
+  { icon: "✨", label: "Gerar criativos" },
+  { icon: "🔍", label: "Pesquisa de mercado" },
+  { icon: "📊", label: "Gerar campanha" },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
@@ -539,22 +538,6 @@ export default function NewAnalysisPage() {
               <p className="text-muted-foreground text-sm sm:text-base text-center mb-8">
                 Descreva sua campanha e nossos agentes farão uma auditoria completa.
               </p>
-
-              <div className="flex flex-wrap justify-center gap-2 max-w-xl">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.label}
-                    onClick={() => {
-                      setInput(s.label);
-                      textareaRef.current?.focus();
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-muted text-sm text-foreground transition-colors"
-                  >
-                    <span>{s.icon}</span>
-                    <span>{s.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -676,6 +659,22 @@ export default function NewAnalysisPage() {
             >
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mt-3">
+            {quickActions.map((a) => (
+              <button
+                key={a.label}
+                onClick={() => {
+                  setInput(a.label);
+                  textareaRef.current?.focus();
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-muted text-sm text-foreground transition-colors"
+              >
+                <span>{a.icon}</span>
+                <span>{a.label}</span>
+              </button>
+            ))}
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-2">
