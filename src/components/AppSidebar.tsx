@@ -27,11 +27,16 @@ const accountNav = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut, profile } = useAuth();
   const { isEnterprise } = usePlanAccess();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  const closeMobileMenu = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
