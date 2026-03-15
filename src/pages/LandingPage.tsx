@@ -69,7 +69,7 @@ export default function LandingPage() {
           </motion.h1>
           <motion.p variants={fadeUp} custom={2} initial="hidden" animate="visible"
             className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            A Ágora usa inteligência artificial multiagente, neuromarketing e dados reais para diagnosticar, pontuar e otimizar suas campanhas com precisão científica.
+            Saiba se sua campanha vai funcionar — antes de gastar R$ 1 em mídia.
           </motion.p>
           <motion.div variants={fadeUp} custom={3} initial="hidden" animate="visible" className="mt-10 flex justify-center gap-4">
             <Button variant="hero" size="lg" asChild>
