@@ -179,6 +179,7 @@ export default function AnalysisChatPage() {
         },
         onDone: async () => {
           setIsStreaming(false);
+          setStreamingIdx(null);
           // Save assistant message to DB
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
