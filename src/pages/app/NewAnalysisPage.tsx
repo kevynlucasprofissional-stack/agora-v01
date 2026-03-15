@@ -274,9 +274,10 @@ export default function NewAnalysisPage() {
     // Persist user message
     persistMessage(convId, "user", userDisplayContent);
 
-    // Update conversation title from first message
+    // Update conversation title from first user message (use raw input, not file-appended)
     if (messages.length === 0) {
-      supabase.from("conversations").update({ title: userDisplayContent.slice(0, 80) }).eq("id", convId);
+      const titleText = input.trim() || userDisplayContent;
+      supabase.from("conversations").update({ title: titleText.slice(0, 80) }).eq("id", convId);
     }
 
     if (textareaRef.current) {

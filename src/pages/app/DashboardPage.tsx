@@ -5,19 +5,28 @@ import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Plus, BarChart3, History, FolderOpen, Zap, ArrowRight } from "lucide-react";
+import { Plus, BarChart3, History, FolderOpen, Zap, ArrowRight, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
+
+type ConversationPreview = {
+  id: string;
+  title: string | null;
+  context_type: string;
+  analysis_request_id: string | null;
+  updated_at: string;
+};
 
 export default function DashboardPage() {
   const { profile } = useAuth();
   const { planCode, uploadsLimit } = usePlanAccess();
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisRequest[]>([]);
+  const [recentConversations, setRecentConversations] = useState<ConversationPreview[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [recentRes, countRes] = await Promise.all([
+      const [recentRes, countRes, convsRes] = await Promise.all([
         supabase
           .from("analysis_requests")
           .select("*")
@@ -26,9 +35,15 @@ export default function DashboardPage() {
         supabase
           .from("analysis_requests")
           .select("id", { count: "exact", head: true }),
+        supabase
+          .from("conversations")
+          .select("id, title, context_type, analysis_request_id, updated_at")
+          .order("updated_at", { ascending: false })
+          .limit(5),
       ]);
       setRecentAnalyses(recentRes.data ?? []);
       setTotalCount(countRes.count ?? 0);
+      setRecentConversations(convsRes.data ?? []);
       setLoading(false);
     };
     fetchData();
@@ -44,6 +59,15 @@ export default function DashboardPage() {
   };
 
   const todayCount = recentAnalyses.filter(a => new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+
+  const getConversationLink = (c: ConversationPreview) => {
+    if (c.context_type === "intake") return `/app/new-analysis?c=${c.id}`;
+    if (c.context_type === "strategist" && c.analysis_request_id)
+      return `/app/analysis/${c.analysis_request_id}/chat`;
+    if (c.context_type === "campaign" && c.analysis_request_id)
+      return `/app/analysis/${c.analysis_request_id}/campaign`;
+    return `/app/new-analysis?c=${c.id}`;
+  };
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -95,6 +119,34 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Recent conversations */}
+      {recentConversations.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Conversas Recentes</h2>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/app/history">Ver todas</Link>
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {recentConversations.map((c) => (
+              <Link key={c.id} to={getConversationLink(c)}
+                className="glass-card p-4 flex items-center gap-4 hover:border-primary/30 transition-colors block">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{c.title || "Conversa sem título"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(c.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent analyses */}
       <div>
