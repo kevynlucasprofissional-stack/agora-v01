@@ -335,18 +335,41 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
       {/* Action chips */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {ACTION_OPTIONS.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => handleActionClick(action)}
-            disabled={isStreaming || isGeneratingCreative || !conversationId}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border/50 bg-accent/30 hover:bg-accent/60 text-foreground transition-colors disabled:opacity-50"
-          >
-            <action.icon className="h-3.5 w-3.5" />
-            {action.label}
-          </button>
-        ))}
+        {ACTION_OPTIONS.map((action) => {
+          const isActive = action.action === "creative" && creativeMode;
+          return (
+            <button
+              key={action.label}
+              onClick={() => handleActionClick(action)}
+              disabled={isStreaming || isGeneratingCreative || !conversationId}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 ${
+                isActive
+                  ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
+                  : "border-border/50 bg-accent/30 hover:bg-accent/60 text-foreground"
+              }`}
+            >
+              <action.icon className="h-3.5 w-3.5" />
+              {action.label}
+              {isActive && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Creative mode hint */}
+      <AnimatePresence>
+        {creativeMode && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-xs text-primary flex items-center gap-2"
+          >
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span>Modo criativo ativado — descreva como quer o criativo e envie</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Attachment previews */}
       <AnimatePresence>
