@@ -27,6 +27,8 @@ export default function AnalysisReportPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
   const [expandedBiases, setExpandedBiases] = useState(false);
+  const [audienceInsights, setAudienceInsights] = useState<{ consumption_behavior: string; target_generation: string } | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -35,6 +37,29 @@ export default function AnalysisReportPage() {
       setLoading(false);
     });
   }, [id]);
+
+  // Fetch audience insights when analysis is loaded and completed
+  useEffect(() => {
+    if (!analysis || analysis.status !== "completed") return;
+    setInsightsLoading(true);
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audience-insights`;
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ analysis }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.consumption_behavior && data.target_generation) {
+          setAudienceInsights(data);
+        }
+      })
+      .catch((e) => console.error("Audience insights error:", e))
+      .finally(() => setInsightsLoading(false));
+  }, [analysis]);
 
 
 
@@ -349,13 +374,19 @@ export default function AnalysisReportPage() {
             Comportamento e perfil público-alvo
           </span>
           <div className="grid sm:grid-cols-2 gap-4">
-            {(audienceBehavior?.cards && audienceBehavior.cards.length > 0
-              ? audienceBehavior.cards
-              : [
-                  { title: "Comportamento de Consumo", content: "Dados não disponíveis. Execute a análise para gerar insights." },
-                  { title: "Geração Alvo Real", content: "Dados não disponíveis. Execute a análise para gerar insights." },
-                ]
-            ).map((card, i) => (
+            {(() => {
+              const cards = audienceInsights
+                ? [
+                    { title: "Comportamento de Consumo", content: audienceInsights.consumption_behavior },
+                    { title: "Geração Alvo Real", content: audienceInsights.target_generation },
+                  ]
+                : audienceBehavior?.cards && audienceBehavior.cards.length > 0
+                ? audienceBehavior.cards
+                : [
+                    { title: "Comportamento de Consumo", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
+                    { title: "Geração Alvo Real", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
+                  ];
+              return cards.map((card, i) => (
               <motion.div
                 key={card.title}
                 initial={{ opacity: 0, y: 10 }}
@@ -366,7 +397,8 @@ export default function AnalysisReportPage() {
                 <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
               </motion.div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
         {/* Inline Chat Block */}
