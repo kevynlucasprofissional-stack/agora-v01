@@ -269,6 +269,10 @@ export default function NewAnalysisPage() {
     }
 
     const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
+    // Prepend action mode prefix for the AI but show clean message to user
+    const messagesForAI = activeMode
+      ? [...messages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
+      : [...messages, userMsg];
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
