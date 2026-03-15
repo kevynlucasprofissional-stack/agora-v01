@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface TypewriterMarkdownProps {
   content: string;
@@ -57,8 +58,8 @@ export function TypewriterMarkdown({
   const visibleText = isComplete ? content : content.slice(0, displayedLength);
 
   return (
-    <div className={className}>
-      <ReactMarkdown>{visibleText}</ReactMarkdown>
+    <div className={`${className} markdown-prose`}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{visibleText}</ReactMarkdown>
       {!isComplete && displayedLength < content.length && (
         <span className="inline-block w-[2px] h-[1em] bg-primary animate-pulse ml-0.5 align-text-bottom" />
       )}
