@@ -225,7 +225,7 @@ export default function AnalysisChatPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto py-6 space-y-4">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto py-6 space-y-4">
         {messages.map((msg, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
