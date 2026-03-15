@@ -112,7 +112,7 @@ export default function AnalysisReportPage() {
             className="glass-card p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
-                <s.icon className={`h-5 w-5 ${s.color}`} />
+                <s.icon className="h-5 w-5 text-foreground/70" />
               </div>
               <span className="section-label">{s.label}</span>
             </div>
