@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, ChangeEvent } from "react";
-import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target } from "lucide-react";
+import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
