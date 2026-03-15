@@ -688,6 +688,36 @@ export default function NewAnalysisPage() {
             </motion.div>
           )}
 
+          {/* Creative Editor */}
+          {creativeData && !isGeneratingImage && (
+            <div className="mb-4 relative">
+              <button
+                onClick={() => setCreativeData(null)}
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                title="Fechar criativo"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <CreativeEditor
+                strategistOutput={creativeData.strategist_output}
+                imageUrl={creativeData.image_url}
+                editableHtml={creativeData.editable_html}
+                creativeJobId={null}
+                onRegenerate={() => generateImage(input)}
+                isRegenerating={isGeneratingImage}
+              />
+            </div>
+          )}
+
+          {isGeneratingImage && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 gap-3 mb-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Gerando imagem com IA...</p>
+              <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
+            </motion.div>
+          )}
+
           <div ref={chatEndRef} />
         </div>
       </div>
