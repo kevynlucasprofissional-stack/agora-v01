@@ -240,8 +240,73 @@ export default function NewAnalysisPage() {
       }
     });
   };
+  const generateImage = useCallback(async (userPrompt: string) => {
+    if (isGeneratingImage) return;
+    setIsGeneratingImage(true);
+    setCreativeData(null);
 
-  const handleSend = async () => {
+    // Show generating message in chat
+    const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando imagem com IA... Isso pode levar alguns segundos." };
+    setMessages((prev) => [...prev, genMsg]);
+
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            user_prompt: userPrompt,
+            format: "1080x1080",
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Erro ao gerar imagem");
+      }
+
+      const data = await resp.json();
+
+      if (data?.editable_html) {
+        setCreativeData({
+          strategist_output: data.strategist_output,
+          image_url: data.image_url,
+          editable_html: data.editable_html,
+        });
+        // Replace the generating message
+        setMessages((prev) =>
+          prev.map((m, i) =>
+            i === prev.length - 1 && m.content.includes("Gerando imagem")
+              ? { ...m, content: "✅ Imagem gerada! Clique nos textos para editar." }
+              : m
+          )
+        );
+        toast.success("Imagem gerada! Edite os textos clicando neles.");
+      } else {
+        throw new Error("Não foi possível gerar a imagem.");
+      }
+    } catch (err) {
+      console.error("Image generation error:", err);
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar imagem.");
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando imagem")
+            ? { ...m, content: "❌ Erro ao gerar imagem. Tente novamente." }
+            : m
+        )
+      );
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }, [messages, isGeneratingImage]);
+
+
     if ((!input.trim() && files.length === 0) || isStreaming) return;
 
     // Ensure conversation exists
