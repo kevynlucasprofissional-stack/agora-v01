@@ -24,7 +24,9 @@ export default function AnalysisChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isUserNearBottomRef = useRef(true);
 
   // Load analysis + conversation + messages
   useEffect(() => {
@@ -115,8 +117,19 @@ export default function AnalysisChatPage() {
     } as any);
   };
 
+  // Track if user is near bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // Only auto-scroll if user is near bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isUserNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -212,7 +225,7 @@ export default function AnalysisChatPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto py-6 space-y-4">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto py-6 space-y-4">
         {messages.map((msg, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>

@@ -144,6 +144,8 @@ export default function NewAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef(true);
   const [chatTitle, setChatTitle] = useState("Novo chat");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
@@ -186,8 +188,16 @@ export default function NewAnalysisPage() {
     }
   }, [user]);
 
+  const handleChatScroll = useCallback(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }, []);
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isUserNearBottomRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleRenameChat = useCallback(async (newTitle: string) => {
@@ -727,7 +737,7 @@ export default function NewAnalysisPage() {
       )}
 
       {/* Scrollable chat area */}
-      <div className="flex-1 overflow-y-auto px-4">
+      <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto px-4">
         <div className="max-w-2xl mx-auto py-6">
           {!hasMessages && !loadingHistory && (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">

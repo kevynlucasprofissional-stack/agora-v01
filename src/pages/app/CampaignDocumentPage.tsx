@@ -52,6 +52,8 @@ export default function CampaignDocumentPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef(true);
   const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const documentRef = useRef<string>("");
 
@@ -139,8 +141,16 @@ export default function CampaignDocumentPage() {
     loadData();
   }, [id, user]);
 
+  const handleChatScroll = useCallback(() => {
+    const el = chatScrollContainerRef.current;
+    if (!el) return;
+    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }, []);
+
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isUserNearBottomRef.current) {
+      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [chatMessages]);
 
   const handleToggleImprovement = (imp: string) => {
@@ -444,7 +454,7 @@ export default function CampaignDocumentPage() {
             <p className="text-xs text-muted-foreground">Peça alterações e a IA reescreve o documento.</p>
           </div>
 
-          <div className="flex-1 overflow-auto py-4 space-y-3">
+          <div ref={chatScrollContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-auto py-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-xs text-muted-foreground">
