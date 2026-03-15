@@ -56,6 +56,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shouldAutoScrollRef = useRef(false);
 
   const saveMessage = async (convId: string, role: string, content: string) => {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
@@ -82,11 +83,15 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         .limit(1)
         .maybeSingle();
       if (data && (data as any).image_url && (data as any).status !== "pending") {
+        const row = data as any;
+        const isSavedSnapshot = row.status === "saved";
         setCreativeData({
-          strategist_output: (data as any).strategist_output || {},
-          image_url: (data as any).image_url,
-          editable_html: (data as any).editable_html || "",
-          creative_job_id: (data as any).id,
+          strategist_output: isSavedSnapshot
+            ? { ...(row.strategist_output || {}), editable_layers: [] }
+            : (row.strategist_output || {}),
+          image_url: row.image_url,
+          editable_html: row.editable_html || "",
+          creative_job_id: row.id,
         });
       }
     };
@@ -142,6 +147,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, [user, analysis, loaded]);
 
   useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -168,6 +174,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   // Generate creative via edge function
   const generateCreative = useCallback(async (userPrompt?: string) => {
     if (isGeneratingCreative) return;
+    shouldAutoScrollRef.current = true;
     setIsGeneratingCreative(true);
     setCreativeData(null);
 
@@ -215,6 +222,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       toast.error("Erro ao gerar criativo. Tente novamente.");
     } finally {
       setIsGeneratingCreative(false);
+      shouldAutoScrollRef.current = false;
     }
   }, [analysis, isGeneratingCreative, conversationId]);
 
@@ -227,7 +235,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, [generateCreative, input]);
 
   const sendMessage = useCallback(async (text: string) => {
-    if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
+    if ((!text.trim() && attachments.length === 0) || isStreaming || isGeneratingCreative || !conversationId) return;
 
     let userMsg = text.trim();
     if (attachments.length > 0) {
@@ -239,6 +247,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    shouldAutoScrollRef.current = true;
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
     setMessages(newMessages);
     setIsStreaming(true);
@@ -276,6 +285,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         },
         onDone: async () => {
           setIsStreaming(false);
+          shouldAutoScrollRef.current = false;
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
           }
@@ -283,11 +293,12 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       });
     } catch (e) {
       setIsStreaming(false);
+      shouldAutoScrollRef.current = false;
       const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA."}`;
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
     }
-  }, [input, isStreaming, messages, analysis, conversationId, attachments]);
+  }, [isStreaming, isGeneratingCreative, messages, analysis, conversationId, attachments]);
 
   return (
     <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
