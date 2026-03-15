@@ -103,6 +103,10 @@ serve(async (req) => {
     };
 
     // ─── 2. Gemini Strategist ───
+    const userPromptSection = user_prompt
+      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt. O criativo deve refletir o pedido do usuário combinado com os insights da campanha.`
+      : "";
+
     const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto completo desta campanha e gere um briefing criativo estruturado para produzir um criativo de marketing.
 
 CONTEXTO DA CAMPANHA:
