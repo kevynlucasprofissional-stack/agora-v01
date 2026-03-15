@@ -691,11 +691,11 @@ export default function NewAnalysisPage() {
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none text-foreground">
-                    <ReactMarkdown>
-                      {msg.content.replace("##READY##", "").trim()}
-                    </ReactMarkdown>
-                  </div>
+                  <TypewriterMarkdown
+                    content={msg.content.replace("##READY##", "").trim()}
+                    isStreaming={isStreaming && idx === messages.length - 1}
+                    className="prose prose-sm max-w-none text-foreground"
+                  />
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}
