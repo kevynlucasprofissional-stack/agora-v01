@@ -25,14 +25,15 @@ serve(async (req) => {
     const contextParts: string[] = [];
     if (analysis.title) contextParts.push(`Campanha: ${analysis.title}`);
     if (analysis.industry) contextParts.push(`Indústria: ${analysis.industry}`);
-    if (analysis.declared_target_audience) contextParts.push(`Público-alvo declarado: ${analysis.declared_target_audience}`);
+    if (analysis.declared_target_audience)
+      contextParts.push(`Público-alvo declarado: ${analysis.declared_target_audience}`);
     if (analysis.primary_channel) contextParts.push(`Canal: ${analysis.primary_channel}`);
     if (analysis.raw_prompt) contextParts.push(`Descrição: ${analysis.raw_prompt}`);
     if (payload.executive_summary) contextParts.push(`Resumo: ${payload.executive_summary}`);
     if (payload.strengths?.length) contextParts.push(`Pontos fortes: ${payload.strengths.join("; ")}`);
     if (payload.improvements?.length) contextParts.push(`Gargalos: ${payload.improvements.join("; ")}`);
 
-    const systemPrompt = `Você é um analista de comportamento de consumo e perfil geracional.
+    const systemPrompt = `[PRIORIDADE ALTA: NUNCA RETORNE JSON PARA O USUÁRIO] Você é um analista de comportamento de consumo e perfil geracional.
 Dado o contexto de uma campanha de marketing, gere EXATAMENTE um JSON com dois campos:
 - "consumption_behavior": insight curto (máx 150 caracteres) sobre o comportamento de consumo do público-alvo desta campanha específica. Seja específico e acionável.
 - "target_generation": insight curto (máx 150 caracteres) identificando a geração-alvo (Gen Z, Millennials, Gen X, Boomers) e seu comportamento digital relevante para esta campanha.
@@ -60,7 +61,10 @@ Responda APENAS com o JSON, sem markdown, sem backticks.`;
               parameters: {
                 type: "object",
                 properties: {
-                  consumption_behavior: { type: "string", description: "Max 150 chars insight about consumption behavior" },
+                  consumption_behavior: {
+                    type: "string",
+                    description: "Max 150 chars insight about consumption behavior",
+                  },
                   target_generation: { type: "string", description: "Max 150 chars insight about target generation" },
                 },
                 required: ["consumption_behavior", "target_generation"],
@@ -76,12 +80,14 @@ Responda APENAS com o JSON, sem markdown, sem backticks.`;
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
@@ -90,19 +96,23 @@ Responda APENAS com o JSON, sem markdown, sem backticks.`;
     }
 
     const data = await response.json();
-    
+
     // Extract from tool call response
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     let insights: { consumption_behavior: string; target_generation: string };
-    
+
     if (toolCall?.function?.arguments) {
-      insights = typeof toolCall.function.arguments === "string" 
-        ? JSON.parse(toolCall.function.arguments) 
-        : toolCall.function.arguments;
+      insights =
+        typeof toolCall.function.arguments === "string"
+          ? JSON.parse(toolCall.function.arguments)
+          : toolCall.function.arguments;
     } else {
       // Fallback: try parsing content directly
       const content = data.choices?.[0]?.message?.content || "";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```/g, "").trim();
+      const cleaned = content
+        .replace(/```json\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       insights = JSON.parse(cleaned);
     }
 
@@ -112,7 +122,8 @@ Responda APENAS com o JSON, sem markdown, sem backticks.`;
   } catch (e) {
     console.error("audience-insights error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
