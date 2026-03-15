@@ -67,7 +67,7 @@ export default function HistoryPage() {
 
             // Use first user message as title if conversation title is generic
             const firstUserMsg = firstUserMsgRes.data?.[0]?.content;
-            const effectiveTitle = (!c.title || c.title === "Nova Análise")
+            const effectiveTitle = (!c.title || c.title === "Novo chat")
               ? (firstUserMsg?.replace(/📎.*$/, "").trim().slice(0, 80) || c.title)
               : c.title;
 
