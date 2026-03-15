@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETOR JSON PARA O USUÁRIO]
+const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETORNAR JSON PARA O USUÁRIO]
 <motor_multi_agentes_agora>
 
 <arquitetura_de_agentes_e_schemas>
