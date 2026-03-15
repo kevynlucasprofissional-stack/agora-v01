@@ -1,73 +1,217 @@
-# Welcome to your Lovable project
+# 🏛️ Ágora — Plataforma de Inteligência de Marketing
 
-## Project info
+> Simule, diagnostique e otimize campanhas de marketing **antes** de investir em mídia — com um motor multi-agente de IA.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+🔗 **Aplicação publicada:** [agora-mkt-ai.lovable.app](https://agora-mkt-ai.lovable.app)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 📋 Sobre o Projeto
 
-**Use Lovable**
+A **Ágora** é uma plataforma SaaS de inteligência de marketing que utiliza quatro agentes especializados de IA para analisar campanhas sob diferentes perspectivas — comportamental, oferta, performance e estratégia — gerando um diagnóstico consolidado com scores, insights acionáveis e recomendações de otimização.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+O fluxo principal permite que o usuário descreva sua campanha em linguagem natural, receba uma análise multi-dimensional com pontuação de 0 a 100, e então gere campanhas otimizadas, documentos estratégicos e peças criativas — tudo dentro da mesma plataforma.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 👥 Membros da Equipe
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+| Nome | Papel |
+|------|-------|
+| **Henrique Fernandes Silvestre** | Membro |
+| **Ricael Menezes Durand** | Membro |
+| **Kevyn Lucas** | Membro |
+| **Yuki Tanaka** | Membro |
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## 🛠️ Stack Tecnológica
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Frontend
+| Tecnologia | Uso |
+|------------|-----|
+| **React 18** | Biblioteca de UI |
+| **Vite 5** | Build tool e dev server |
+| **TypeScript** | Tipagem estática |
+| **Tailwind CSS 3** | Estilização utility-first |
+| **shadcn/ui** | Componentes acessíveis (Radix UI) |
+| **Framer Motion** | Animações e transições |
+| **TanStack Query** | Gerenciamento de estado assíncrono |
+| **React Router 6** | Roteamento SPA |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Backend & Infraestrutura
+| Tecnologia | Uso |
+|------------|-----|
+| **Lovable Cloud** | Banco de dados PostgreSQL com RLS |
+| **Edge Functions (Deno)** | Lógica de servidor serverless |
+| **Row Level Security** | Segurança por linha no banco |
+| **Auth integrado** | Autenticação com email/senha |
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Motor de IA
+| Modelo | Uso |
+|--------|-----|
+| **Gemini 2.5 Pro** | Análise profunda multi-agente |
+| **GPT-5** | Geração de conteúdo e campanhas |
+| **Gemini 2.5 Flash** | Chat conversacional e intake |
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Bibliotecas Auxiliares
+| Biblioteca | Uso |
+|------------|-----|
+| **Recharts** | Gráficos e visualização de dados |
+| **docx** | Exportação de documentos Word |
+| **pptxgenjs** | Geração de apresentações PowerPoint |
+| **html2canvas** | Exportação de criativos em PNG |
+| **react-markdown** | Renderização de Markdown |
+
+---
+
+## 🏗️ Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        USUÁRIO (Browser)                        │
+│              React + Vite + Tailwind + shadcn/ui                │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │   Chat de Intake (IA)  │
+              │  Coleta de briefing    │
+              │  em linguagem natural  │
+              └───────────┬────────────┘
+                          │
+                          ▼
+         ┌────────────────────────────────────┐
+         │     MOTOR MULTI-AGENTE (Edge Fn)   │
+         │                                    │
+         │  ┌──────────┐  ┌────────────────┐  │
+         │  │ Socio-   │  │ Engenharia de  │  │
+         │  │ comporta-│  │ Oferta         │  │
+         │  │ mental   │  │                │  │
+         │  └──────────┘  └────────────────┘  │
+         │  ┌──────────┐  ┌────────────────┐  │
+         │  │ Ciência  │  │ Estratégia     │  │
+         │  │ de Perf. │  │ Consolidada    │  │
+         │  └──────────┘  └────────────────┘  │
+         └───────────────┬────────────────────┘
+                         │
+                         ▼
+         ┌───────────────────────────────┐
+         │   RELATÓRIO DIAGNÓSTICO       │
+         │   Scores (0-100) + Insights   │
+         │   Radar Chart + Bottlenecks   │
+         └──────────────┬────────────────┘
+                        │
+              ┌─────────┼─────────┐
+              ▼         ▼         ▼
+         ┌────────┐ ┌───────┐ ┌────────┐
+         │Campanha│ │Export │ │Criativos│
+         │Otimiz. │ │DOCX/  │ │Visuais │
+         │        │ │PPTX   │ │        │
+         └────────┘ └───────┘ └────────┘
+```
+
+---
+
+## ✨ Funcionalidades Principais
+
+- **Análise Multi-Agente** — 4 agentes de IA analisam a campanha em paralelo
+- **Relatório Diagnóstico** — Scores por dimensão, radar chart, gargalos categorizados
+- **Chat Estrategista** — Conversa contextualizada com IA sobre os resultados
+- **Geração de Campanha** — Campanha otimizada gerada automaticamente
+- **Editor de Criativos** — Editor visual inline para peças de marketing
+- **Exportação Multi-formato** — DOCX, PPTX e PNG
+- **Dashboard** — Evolução de scores ao longo do tempo
+- **Sistema de Planos** — Freemium, Standard, Pro e Enterprise
+- **Integrações** — Meta Ads, GA4 (Enterprise)
+
+---
+
+## ⚙️ Pré-requisitos e Configuração
+
+### Pré-requisitos
+
+- **Node.js** ≥ 18
+- **npm** ou **bun**
+
+### Instalação
+
+```bash
+# 1. Clone o repositório
+git clone <URL_DO_REPOSITORIO>
+
+# 2. Acesse o diretório
+cd agora
+
+# 3. Instale as dependências
+npm install
+
+# 4. Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O app estará disponível em `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Variáveis de Ambiente
 
-**Use GitHub Codespaces**
+O arquivo `.env` é configurado automaticamente pelo Lovable Cloud. As variáveis disponíveis são:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Variável | Descrição |
+|----------|-----------|
+| `VITE_SUPABASE_URL` | URL do backend |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública do backend |
+| `VITE_SUPABASE_PROJECT_ID` | ID do projeto |
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 📦 Scripts Disponíveis
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Script | Comando | Descrição |
+|--------|---------|-----------|
+| **dev** | `npm run dev` | Servidor de desenvolvimento com HMR |
+| **build** | `npm run build` | Build de produção |
+| **lint** | `npm run lint` | Verificação de código (ESLint) |
+| **test** | `npm run test` | Execução de testes (Vitest) |
+| **preview** | `npm run preview` | Preview do build de produção |
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 📁 Estrutura de Pastas
 
-## Can I connect a custom domain to my Lovable project?
+```
+├── public/                  # Assets estáticos
+├── src/
+│   ├── components/          # Componentes React reutilizáveis
+│   │   └── ui/              # Componentes shadcn/ui
+│   ├── hooks/               # Custom hooks (auth, plan access, etc.)
+│   ├── integrations/        # Configuração do backend (auto-gerado)
+│   ├── lib/                 # Utilitários (export, streaming, helpers)
+│   ├── pages/
+│   │   ├── app/             # Páginas autenticadas do app
+│   │   └── *.tsx            # Páginas públicas (landing, login, pricing)
+│   └── types/               # Tipos TypeScript
+├── supabase/
+│   └── functions/           # Edge Functions (Deno)
+│       ├── analyze-campaign/
+│       ├── campaign-chat/
+│       ├── generate-campaign/
+│       ├── generate-creative/
+│       ├── intake-chat/
+│       ├── optimize-campaign/
+│       └── strategist-chat/
+├── tailwind.config.ts       # Configuração do design system
+└── vite.config.ts           # Configuração do Vite
+```
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📄 Licença
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Este projeto é de uso acadêmico/interno. Todos os direitos reservados.
+
+---
+
+<p align="center">
+  <strong>Ágora</strong> — Inteligência de Marketing com IA Multi-Agente<br/>
+  Feito com 🧠 por Henrique, Ricael, Kevyn e Yuki
+</p>
