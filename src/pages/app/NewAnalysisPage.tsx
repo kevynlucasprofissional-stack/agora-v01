@@ -144,7 +144,7 @@ export default function NewAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const [chatTitle, setChatTitle] = useState("Nova Análise");
+  const [chatTitle, setChatTitle] = useState("Novo chat");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
   const titleInputRef = useRef<HTMLInputElement>(null);
