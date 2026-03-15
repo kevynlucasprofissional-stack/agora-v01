@@ -138,6 +138,20 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
+    // Build image generation message content (multimodal if reference images exist)
+    const imageMessageContent: any[] = [{ type: "text", text: imagePrompt }];
+    if (hasRefImages) {
+      for (const img of reference_images) {
+        const dataUrl = img.content.startsWith("data:")
+          ? img.content
+          : `data:${img.type || "image/png"};base64,${img.content}`;
+        imageMessageContent.push({
+          type: "image_url",
+          image_url: { url: dataUrl },
+        });
+      }
+    }
+
     const imageRes = await fetch(GATEWAY, {
       method: "POST",
       headers: {
@@ -146,7 +160,7 @@ IMPORTANT RULES:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: imagePrompt }],
+        messages: [{ role: "user", content: hasRefImages ? imageMessageContent : imagePrompt }],
         modalities: ["image", "text"],
       }),
     });
