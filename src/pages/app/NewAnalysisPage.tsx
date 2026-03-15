@@ -4,11 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
+import { CreativeEditor } from "@/components/CreativeEditor";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -25,7 +26,7 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
 type ActionMode = "creative" | "research" | "campaign" | null;
 
 const ACTION_MODES = [
-  { key: "creative" as const, label: "Gerar criativos", icon: Sparkles, prefix: "[MODO: GERAR CRIATIVOS] " },
+  { key: "creative" as const, label: "Gerar imagem", icon: ImageIcon, prefix: "[MODO: GERAR IMAGEM] " },
   { key: "research" as const, label: "Pesquisa de mercado", icon: Search, prefix: "[MODO: PESQUISA DE MERCADO] " },
   { key: "campaign" as const, label: "Gerar campanha", icon: BarChart3, prefix: "[MODO: GERAR CAMPANHA] " },
 ];
@@ -132,6 +133,12 @@ export default function NewAnalysisPage() {
   const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeAction, setActiveAction] = useState<ActionMode>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [creativeData, setCreativeData] = useState<{
+    strategist_output: any;
+    image_url: string;
+    editable_html: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -233,9 +240,88 @@ export default function NewAnalysisPage() {
       }
     });
   };
+  const generateImage = useCallback(async (userPrompt: string) => {
+    if (isGeneratingImage) return;
+    setIsGeneratingImage(true);
+    setCreativeData(null);
+
+    // Show generating message in chat
+    const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando imagem com IA... Isso pode levar alguns segundos." };
+    setMessages((prev) => [...prev, genMsg]);
+
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            user_prompt: userPrompt,
+            format: "1080x1080",
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Erro ao gerar imagem");
+      }
+
+      const data = await resp.json();
+
+      if (data?.editable_html) {
+        setCreativeData({
+          strategist_output: data.strategist_output,
+          image_url: data.image_url,
+          editable_html: data.editable_html,
+        });
+        // Replace the generating message
+        setMessages((prev) =>
+          prev.map((m, i) =>
+            i === prev.length - 1 && m.content.includes("Gerando imagem")
+              ? { ...m, content: "✅ Imagem gerada! Clique nos textos para editar." }
+              : m
+          )
+        );
+        toast.success("Imagem gerada! Edite os textos clicando neles.");
+      } else {
+        throw new Error("Não foi possível gerar a imagem.");
+      }
+    } catch (err) {
+      console.error("Image generation error:", err);
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar imagem.");
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando imagem")
+            ? { ...m, content: "❌ Erro ao gerar imagem. Tente novamente." }
+            : m
+        )
+      );
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }, [messages, isGeneratingImage]);
 
   const handleSend = async () => {
-    if ((!input.trim() && files.length === 0) || isStreaming) return;
+    if (isStreaming || isGeneratingImage) return;
+
+    // Check if creative mode is active — intercept and generate image
+    if (activeAction === "creative") {
+      const userPrompt = input.trim();
+      const userMsg: ChatMessage = { role: "user", content: userPrompt || "Gerar imagem" };
+      setMessages((prev) => [...prev, userMsg]);
+      setInput("");
+      setActiveAction(null);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      await generateImage(userPrompt);
+      return;
+    }
+
+    if (!input.trim() && files.length === 0) return;
 
     // Ensure conversation exists
     let convId: string;
@@ -603,6 +689,36 @@ export default function NewAnalysisPage() {
             </motion.div>
           )}
 
+          {/* Creative Editor */}
+          {creativeData && !isGeneratingImage && (
+            <div className="mb-4 relative">
+              <button
+                onClick={() => setCreativeData(null)}
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                title="Fechar criativo"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <CreativeEditor
+                strategistOutput={creativeData.strategist_output}
+                imageUrl={creativeData.image_url}
+                editableHtml={creativeData.editable_html}
+                creativeJobId={null}
+                onRegenerate={() => generateImage(input)}
+                isRegenerating={isGeneratingImage}
+              />
+            </div>
+          )}
+
+          {isGeneratingImage && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 gap-3 mb-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Gerando imagem com IA...</p>
+              <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
+            </motion.div>
+          )}
+
           <div ref={chatEndRef} />
         </div>
       </div>
@@ -655,7 +771,12 @@ export default function NewAnalysisPage() {
               value={input}
               onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
-              placeholder={hasMessages ? "Responda aqui..." : "Descreva sua campanha, produto, público-alvo..."}
+              placeholder={
+                activeAction === "creative" ? "Descreva a imagem que deseja gerar..." :
+                activeAction === "research" ? "O que deseja pesquisar?" :
+                activeAction === "campaign" ? "Descreva a campanha que deseja gerar..." :
+                hasMessages ? "Responda aqui..." : "Descreva sua campanha, produto, público-alvo..."
+              }
               rows={1}
               className="flex-1 bg-transparent border-none outline-none resize-none text-sm sm:text-base text-foreground placeholder:text-muted-foreground max-h-[200px]"
             />
@@ -663,27 +784,28 @@ export default function NewAnalysisPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={isStreaming || (!input.trim() && files.length === 0)}
+              disabled={(isStreaming || isGeneratingImage) || (!input.trim() && files.length === 0 && activeAction !== "creative")}
               className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
             >
-              {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {(isStreaming || isGeneratingImage) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
 
-          <div className="flex flex-nowrap justify-center gap-2 mt-3">
+          <div className="flex justify-center gap-1.5 sm:gap-2 mt-3">
             {ACTION_MODES.map((a) => {
               const isActive = activeAction === a.key;
               return (
                 <button
                   key={a.key}
                   onClick={() => setActiveAction(isActive ? null : a.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${
+                  disabled={isStreaming || isGeneratingImage}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-all whitespace-nowrap disabled:opacity-50 ${
                     isActive
-                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
+                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30 scale-[1.02]"
                       : "border-border bg-card hover:bg-muted text-foreground"
                   }`}
                 >
-                  <a.icon className="h-3.5 w-3.5" />
+                  <a.icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                   <span>{a.label}</span>
                 </button>
               );
