@@ -29,22 +29,22 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="fixed top-0 z-50 w-full border-b border-border/30 bg-background/80 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Zap className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-display text-xl font-bold">Ágora</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
               <Link to="/pricing">Planos</Link>
             </Button>
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" size="sm" asChild>
               <Link to="/login">Entrar</Link>
             </Button>
-            <Button variant="hero" asChild>
-              <Link to="/login?tab=signup">Começar Agora</Link>
+            <Button variant="hero" size="sm" asChild>
+              <Link to="/login?tab=signup">Começar</Link>
             </Button>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function LandingPage() {
             </span>
           </motion.div>
           <motion.h1 variants={fadeUp} custom={1} initial="hidden" animate="visible"
-            className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.1] md:text-7xl">
+            className="mx-auto max-w-4xl text-3xl font-extrabold leading-[1.1] sm:text-5xl md:text-7xl px-2">
             Simule suas campanhas. Otimize sua estratégia. Aumente suas vendas.
           </motion.h1>
           <motion.p variants={fadeUp} custom={2} initial="hidden" animate="visible"

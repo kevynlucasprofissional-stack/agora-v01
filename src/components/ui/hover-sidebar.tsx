@@ -115,11 +115,17 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-card border-b border-border/50 w-full"
+          "h-14 px-4 flex flex-row md:hidden items-center justify-between bg-card border-b border-border/50 w-full shrink-0"
         )}
         {...props}
       >
-        <div className="flex justify-end z-20 w-full">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <span className="text-primary-foreground font-bold text-sm">Á</span>
+          </div>
+          <span className="font-display text-lg font-bold">Ágora</span>
+        </div>
+        <div className="z-20">
           <Menu
             className="h-5 w-5 text-foreground cursor-pointer"
             onClick={() => setOpen(!open)}
