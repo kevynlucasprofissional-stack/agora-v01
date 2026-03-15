@@ -11,24 +11,40 @@ const IBGE_BASE = "https://servicodados.ibge.gov.br/api/v1";
 const SIDRA_BASE = "https://apisidra.ibge.gov.br";
 
 const ufMap: Record<string, string> = {
-  "sp": "35", "são paulo": "35", "sao paulo": "35",
-  "rj": "33", "rio de janeiro": "33",
-  "mg": "31", "minas gerais": "31",
-  "ba": "29", "bahia": "29",
-  "pr": "41", "paraná": "41", "parana": "41",
-  "rs": "43", "rio grande do sul": "43",
-  "pe": "26", "pernambuco": "26",
-  "ce": "23", "ceará": "23", "ceara": "23",
-  "sc": "42", "santa catarina": "42",
-  "go": "52", "goiás": "52", "goias": "52",
-  "df": "53", "distrito federal": "53", "brasília": "53",
+  sp: "35",
+  "são paulo": "35",
+  "sao paulo": "35",
+  rj: "33",
+  "rio de janeiro": "33",
+  mg: "31",
+  "minas gerais": "31",
+  ba: "29",
+  bahia: "29",
+  pr: "41",
+  paraná: "41",
+  parana: "41",
+  rs: "43",
+  "rio grande do sul": "43",
+  pe: "26",
+  pernambuco: "26",
+  ce: "23",
+  ceará: "23",
+  ceara: "23",
+  sc: "42",
+  "santa catarina": "42",
+  go: "52",
+  goiás: "52",
+  goias: "52",
+  df: "53",
+  "distrito federal": "53",
+  brasília: "53",
 };
 
 async function fetchIbgeData(region: string) {
   try {
     const normalized = region.trim().toLowerCase();
     let ufCode = ufMap[normalized] || null;
-    
+
     if (!ufCode) {
       for (const [key, code] of Object.entries(ufMap)) {
         if (normalized.includes(key) && key.length > 2) {
@@ -44,7 +60,9 @@ async function fetchIbgeData(region: string) {
 
     let populacao = "N/D";
     try {
-      const popResp = await fetch(`${SIDRA_BASE}/values/t/6579/n3/${ufCode}/v/9324/p/last%201/d/v9324%200`, { signal: AbortSignal.timeout(8000) });
+      const popResp = await fetch(`${SIDRA_BASE}/values/t/6579/n3/${ufCode}/v/9324/p/last%201/d/v9324%200`, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (popResp.ok) {
         const popData = await popResp.json();
         if (popData?.[1]?.V) populacao = parseInt(popData[1].V).toLocaleString("pt-BR") + " habitantes";
@@ -52,11 +70,13 @@ async function fetchIbgeData(region: string) {
     } catch {}
 
     return { uf: ufData?.nome || ufCode, populacao };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // ── Ágora Knowledge Base (embedded) ──────────────────────────
-const AGORA_KB = `
+const AGORA_KB = `[PRIORIDADE ALTA: NÃO RETORNE JSON PARA O USUÁRIO]
 # ÁGORA KNOWLEDGE BASE — Marketing Intelligence
 
 ## Framework Hormozi (Equação de Valor)
@@ -161,9 +181,7 @@ serve(async (req) => {
 
     // ── IBGE Enrichment ──
     let ibgeSection = "";
-    const regionPatterns = [
-      /(?:em|de|para|no|na|do|da)\s+([\wÀ-ÿ\s]+?)(?:\.|,|$|\n)/gi,
-    ];
+    const regionPatterns = [/(?:em|de|para|no|na|do|da)\s+([\wÀ-ÿ\s]+?)(?:\.|,|$|\n)/gi];
     for (const pattern of regionPatterns) {
       const matches = rawPrompt.matchAll(pattern);
       for (const match of matches) {
@@ -207,274 +225,339 @@ INSTRUÇÕES:
 
 Use a ferramenta "optimization_result" para retornar TUDO estruturado.`;
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-2.5-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "optimization_result",
-                description: "Retorna o resultado completo da otimização da campanha.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    // Scores
-                    score_overall: { type: "number", description: "Score geral 0-100" },
-                    score_sociobehavioral: { type: "number", description: "Score sociocomportamental 0-100" },
-                    score_offer: { type: "number", description: "Score da oferta 0-100" },
-                    score_performance: { type: "number", description: "Score de performance 0-100" },
-                    // Context
-                    industry: { type: "string" },
-                    primary_channel: { type: "string" },
-                    declared_target_audience: { type: "string" },
-                    region: { type: "string" },
-                    executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
-                    // Marketing Era
-                    marketing_era: {
-                      type: "object",
-                      properties: {
-                        era: { type: "string" },
-                        description: { type: "string" },
-                        recommendation: { type: "string" }
-                      },
-                      required: ["era", "description", "recommendation"]
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "optimization_result",
+              description: "Retorna o resultado completo da otimização da campanha.",
+              parameters: {
+                type: "object",
+                properties: {
+                  // Scores
+                  score_overall: { type: "number", description: "Score geral 0-100" },
+                  score_sociobehavioral: { type: "number", description: "Score sociocomportamental 0-100" },
+                  score_offer: { type: "number", description: "Score da oferta 0-100" },
+                  score_performance: { type: "number", description: "Score de performance 0-100" },
+                  // Context
+                  industry: { type: "string" },
+                  primary_channel: { type: "string" },
+                  declared_target_audience: { type: "string" },
+                  region: { type: "string" },
+                  executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
+                  // Marketing Era
+                  marketing_era: {
+                    type: "object",
+                    properties: {
+                      era: { type: "string" },
+                      description: { type: "string" },
+                      recommendation: { type: "string" },
                     },
-                    // Web Context (simulated)
-                    web_context: {
-                      type: "object",
-                      properties: {
-                        brand_detected: { type: "string", description: "Marca detectada" },
-                        product_category: { type: "string", description: "Categoria do produto" },
-                        commercial_event: { type: "string", description: "Evento comercial (ex: Black Friday)" },
-                        market_trends: { type: "array", items: { type: "string" }, description: "Tendências de mercado relevantes" },
-                        competitor_insights: { type: "array", items: { type: "string" }, description: "Insights de concorrentes" }
-                      },
-                      required: ["brand_detected", "product_category"]
-                    },
-                    // Structured Diagnostics by Category
-                    diagnostics: {
-                      type: "object",
-                      properties: {
-                        kpis: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number", description: "Score 0-100 para KPIs" },
-                            issues: { type: "array", items: { type: "string" } },
-                            recommendations: { type: "array", items: { type: "string" } }
-                          },
-                          required: ["score", "issues", "recommendations"]
-                        },
-                        segmentation: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number" },
-                            issues: { type: "array", items: { type: "string" } },
-                            recommendations: { type: "array", items: { type: "string" } }
-                          },
-                          required: ["score", "issues", "recommendations"]
-                        },
-                        interface_ux: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number" },
-                            issues: { type: "array", items: { type: "string" } },
-                            recommendations: { type: "array", items: { type: "string" } }
-                          },
-                          required: ["score", "issues", "recommendations"]
-                        },
-                        creative: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number" },
-                            issues: { type: "array", items: { type: "string" } },
-                            recommendations: { type: "array", items: { type: "string" } }
-                          },
-                          required: ["score", "issues", "recommendations"]
-                        },
-                        social_proof: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number" },
-                            issues: { type: "array", items: { type: "string" } },
-                            recommendations: { type: "array", items: { type: "string" } }
-                          },
-                          required: ["score", "issues", "recommendations"]
-                        }
-                      },
-                      required: ["kpis", "segmentation", "interface_ux", "creative", "social_proof"]
-                    },
-                    // Hormozi
-                    hormozi_analysis: {
-                      type: "object",
-                      properties: {
-                        dream_outcome: { type: "number" },
-                        perceived_likelihood: { type: "number" },
-                        time_delay: { type: "number" },
-                        effort_sacrifice: { type: "number" },
-                        overall_value: { type: "string" }
-                      },
-                      required: ["dream_outcome", "perceived_likelihood", "time_delay", "effort_sacrifice", "overall_value"]
-                    },
-                    // Cognitive Biases
-                    cognitive_biases: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          bias: { type: "string" },
-                          status: { type: "string" },
-                          application: { type: "string" }
-                        },
-                        required: ["bias", "status", "application"]
-                      }
-                    },
-                    // KPI Analysis
-                    kpi_analysis: {
-                      type: "object",
-                      properties: {
-                        vanity_metrics: { type: "array", items: { type: "string" } },
-                        recommended_north_star: { type: "string" },
-                        recommended_kpis: { type: "array", items: { type: "string" } }
-                      },
-                      required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"]
-                    },
-                    // Timing
-                    timing_analysis: {
-                      type: "object",
-                      properties: {
-                        demand_momentum: { type: "string" },
-                        context_shock: { type: "string" },
-                        seasonality: { type: "string" }
-                      },
-                      required: ["demand_momentum", "context_shock", "seasonality"]
-                    },
-                    // Generational Verdict
-                    audience_insights: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          generation: { type: "string" },
-                          emoji: { type: "string" },
-                          feedback: { type: "string", description: "Feedback na voz real da geração, como se fosse um membro dessa geração falando. Use gírias e linguagem natural." }
-                        },
-                        required: ["generation", "emoji", "feedback"]
-                      },
-                      description: "OBRIGATÓRIO: 4 feedbacks, um para cada geração (Gen Z, Millennials, Gen X, Boomers)"
-                    },
-                    // Brand Sentiment
-                    brand_sentiment: {
-                      type: "object",
-                      properties: {
-                        overall: { type: "string" },
-                        analysis: { type: "string" }
-                      },
-                      required: ["overall", "analysis"]
-                    },
-                    // Market References
-                    market_references: { type: "array", items: { type: "string" } },
-                    // Strengths
-                    strengths: { type: "array", items: { type: "string" } },
-                    // Optimized Campaign
-                    optimized_campaign: {
-                      type: "object",
-                      properties: {
-                        headline: { type: "string", description: "Headline principal otimizada" },
-                        subheadline: { type: "string", description: "Subheadline de suporte" },
-                        value_proposition: { type: "string", description: "Proposta de valor clara e concisa" },
-                        offer: { type: "string", description: "Oferta estruturada" },
-                        cta_primary: { type: "string", description: "Call-to-action principal" },
-                        cta_secondary: { type: "string", description: "Call-to-action secundário" },
-                        target_channels: { type: "array", items: { type: "string" }, description: "Canais recomendados em ordem de prioridade" },
-                        tone_of_voice: { type: "string", description: "Tom de voz recomendado" },
-                        landing_page_structure: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              section: { type: "string" },
-                              content: { type: "string" },
-                              purpose: { type: "string" }
-                            },
-                            required: ["section", "content", "purpose"]
-                          },
-                          description: "Estrutura da landing page seção por seção"
-                        }
-                      },
-                      required: ["headline", "value_proposition", "offer", "cta_primary", "target_channels", "tone_of_voice", "landing_page_structure"]
-                    },
-                    // Creative Briefs
-                    creative_briefs: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          type: { type: "string", description: "banner, social_ad, video_script, email, headline_variations" },
-                          title: { type: "string", description: "Título do criativo" },
-                          headline: { type: "string" },
-                          body_copy: { type: "string" },
-                          cta: { type: "string" },
-                          visual_direction: { type: "string", description: "Descrição visual detalhada para geração de imagem" },
-                          format: { type: "string", description: "Formato recomendado (ex: 1080x1080, 1200x628, 9:16)" }
-                        },
-                        required: ["type", "title", "headline", "body_copy", "cta", "visual_direction"]
-                      },
-                      description: "3-5 briefs de criativos prontos para produção"
-                    }
+                    required: ["era", "description", "recommendation"],
                   },
-                  required: [
-                    "score_overall", "score_sociobehavioral", "score_offer", "score_performance",
-                    "industry", "primary_channel", "declared_target_audience",
-                    "executive_summary", "web_context", "diagnostics",
-                    "hormozi_analysis", "cognitive_biases", "kpi_analysis", "timing_analysis",
-                    "audience_insights", "brand_sentiment", "market_references", "strengths",
-                    "optimized_campaign", "creative_briefs", "marketing_era"
-                  ],
-                  additionalProperties: false
-                }
-              }
-            }
-          ],
-          tool_choice: { type: "function", function: { name: "optimization_result" } },
-        }),
-      }
-    );
+                  // Web Context (simulated)
+                  web_context: {
+                    type: "object",
+                    properties: {
+                      brand_detected: { type: "string", description: "Marca detectada" },
+                      product_category: { type: "string", description: "Categoria do produto" },
+                      commercial_event: { type: "string", description: "Evento comercial (ex: Black Friday)" },
+                      market_trends: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Tendências de mercado relevantes",
+                      },
+                      competitor_insights: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Insights de concorrentes",
+                      },
+                    },
+                    required: ["brand_detected", "product_category"],
+                  },
+                  // Structured Diagnostics by Category
+                  diagnostics: {
+                    type: "object",
+                    properties: {
+                      kpis: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number", description: "Score 0-100 para KPIs" },
+                          issues: { type: "array", items: { type: "string" } },
+                          recommendations: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["score", "issues", "recommendations"],
+                      },
+                      segmentation: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          issues: { type: "array", items: { type: "string" } },
+                          recommendations: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["score", "issues", "recommendations"],
+                      },
+                      interface_ux: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          issues: { type: "array", items: { type: "string" } },
+                          recommendations: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["score", "issues", "recommendations"],
+                      },
+                      creative: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          issues: { type: "array", items: { type: "string" } },
+                          recommendations: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["score", "issues", "recommendations"],
+                      },
+                      social_proof: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          issues: { type: "array", items: { type: "string" } },
+                          recommendations: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["score", "issues", "recommendations"],
+                      },
+                    },
+                    required: ["kpis", "segmentation", "interface_ux", "creative", "social_proof"],
+                  },
+                  // Hormozi
+                  hormozi_analysis: {
+                    type: "object",
+                    properties: {
+                      dream_outcome: { type: "number" },
+                      perceived_likelihood: { type: "number" },
+                      time_delay: { type: "number" },
+                      effort_sacrifice: { type: "number" },
+                      overall_value: { type: "string" },
+                    },
+                    required: [
+                      "dream_outcome",
+                      "perceived_likelihood",
+                      "time_delay",
+                      "effort_sacrifice",
+                      "overall_value",
+                    ],
+                  },
+                  // Cognitive Biases
+                  cognitive_biases: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        bias: { type: "string" },
+                        status: { type: "string" },
+                        application: { type: "string" },
+                      },
+                      required: ["bias", "status", "application"],
+                    },
+                  },
+                  // KPI Analysis
+                  kpi_analysis: {
+                    type: "object",
+                    properties: {
+                      vanity_metrics: { type: "array", items: { type: "string" } },
+                      recommended_north_star: { type: "string" },
+                      recommended_kpis: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"],
+                  },
+                  // Timing
+                  timing_analysis: {
+                    type: "object",
+                    properties: {
+                      demand_momentum: { type: "string" },
+                      context_shock: { type: "string" },
+                      seasonality: { type: "string" },
+                    },
+                    required: ["demand_momentum", "context_shock", "seasonality"],
+                  },
+                  // Generational Verdict
+                  audience_insights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        generation: { type: "string" },
+                        emoji: { type: "string" },
+                        feedback: {
+                          type: "string",
+                          description:
+                            "Feedback na voz real da geração, como se fosse um membro dessa geração falando. Use gírias e linguagem natural.",
+                        },
+                      },
+                      required: ["generation", "emoji", "feedback"],
+                    },
+                    description: "OBRIGATÓRIO: 4 feedbacks, um para cada geração (Gen Z, Millennials, Gen X, Boomers)",
+                  },
+                  // Brand Sentiment
+                  brand_sentiment: {
+                    type: "object",
+                    properties: {
+                      overall: { type: "string" },
+                      analysis: { type: "string" },
+                    },
+                    required: ["overall", "analysis"],
+                  },
+                  // Market References
+                  market_references: { type: "array", items: { type: "string" } },
+                  // Strengths
+                  strengths: { type: "array", items: { type: "string" } },
+                  // Optimized Campaign
+                  optimized_campaign: {
+                    type: "object",
+                    properties: {
+                      headline: { type: "string", description: "Headline principal otimizada" },
+                      subheadline: { type: "string", description: "Subheadline de suporte" },
+                      value_proposition: { type: "string", description: "Proposta de valor clara e concisa" },
+                      offer: { type: "string", description: "Oferta estruturada" },
+                      cta_primary: { type: "string", description: "Call-to-action principal" },
+                      cta_secondary: { type: "string", description: "Call-to-action secundário" },
+                      target_channels: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Canais recomendados em ordem de prioridade",
+                      },
+                      tone_of_voice: { type: "string", description: "Tom de voz recomendado" },
+                      landing_page_structure: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            section: { type: "string" },
+                            content: { type: "string" },
+                            purpose: { type: "string" },
+                          },
+                          required: ["section", "content", "purpose"],
+                        },
+                        description: "Estrutura da landing page seção por seção",
+                      },
+                    },
+                    required: [
+                      "headline",
+                      "value_proposition",
+                      "offer",
+                      "cta_primary",
+                      "target_channels",
+                      "tone_of_voice",
+                      "landing_page_structure",
+                    ],
+                  },
+                  // Creative Briefs
+                  creative_briefs: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        type: {
+                          type: "string",
+                          description: "banner, social_ad, video_script, email, headline_variations",
+                        },
+                        title: { type: "string", description: "Título do criativo" },
+                        headline: { type: "string" },
+                        body_copy: { type: "string" },
+                        cta: { type: "string" },
+                        visual_direction: {
+                          type: "string",
+                          description: "Descrição visual detalhada para geração de imagem",
+                        },
+                        format: { type: "string", description: "Formato recomendado (ex: 1080x1080, 1200x628, 9:16)" },
+                      },
+                      required: ["type", "title", "headline", "body_copy", "cta", "visual_direction"],
+                    },
+                    description: "3-5 briefs de criativos prontos para produção",
+                  },
+                },
+                required: [
+                  "score_overall",
+                  "score_sociobehavioral",
+                  "score_offer",
+                  "score_performance",
+                  "industry",
+                  "primary_channel",
+                  "declared_target_audience",
+                  "executive_summary",
+                  "web_context",
+                  "diagnostics",
+                  "hormozi_analysis",
+                  "cognitive_biases",
+                  "kpi_analysis",
+                  "timing_analysis",
+                  "audience_insights",
+                  "brand_sentiment",
+                  "market_references",
+                  "strengths",
+                  "optimized_campaign",
+                  "creative_briefs",
+                  "marketing_era",
+                ],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "optimization_result" } },
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "optimization_result") {
       console.error("Unexpected format:", JSON.stringify(data).slice(0, 500));
-      return new Response(JSON.stringify({ error: "Formato inesperado da IA" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Formato inesperado da IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const analysis = JSON.parse(toolCall.function.arguments);
-    return new Response(JSON.stringify({ analysis }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ analysis }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("optimize-campaign error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
