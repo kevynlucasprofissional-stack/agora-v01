@@ -96,9 +96,7 @@ function Logo() {
   const { open, animate } = useSidebar();
   return (
     <div className="flex items-center gap-3 px-1 py-1">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-        <Zap className="h-4 w-4 text-primary-foreground" />
-      </div>
+      <AgoraIcon size={32} className="shrink-0 rounded-lg" />
       <motion.span
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
