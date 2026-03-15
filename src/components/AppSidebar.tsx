@@ -61,7 +61,7 @@ export function AppSidebar() {
               {mainNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === "/app"} onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-accent text-primary font-medium">
+                    <NavLink to={item.url} end={item.url === "/app"} onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-secondary text-foreground font-medium">
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
