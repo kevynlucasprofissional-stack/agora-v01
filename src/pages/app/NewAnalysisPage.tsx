@@ -4,12 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search, ImageIcon } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search, ImageIcon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
+import { ChatMessageActions } from "@/components/ChatMessageActions";
+import { AgoraIcon } from "@/components/AgoraIcon";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -142,6 +144,10 @@ export default function NewAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [chatTitle, setChatTitle] = useState("Nova Análise");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const hasMessages = messages.length > 0;
 
@@ -151,6 +157,17 @@ export default function NewAnalysisPage() {
     if (convId && user) {
       setConversationId(convId);
       setLoadingHistory(true);
+      
+      // Load title
+      supabase
+        .from("conversations")
+        .select("title")
+        .eq("id", convId)
+        .single()
+        .then(({ data }) => {
+          if (data?.title) setChatTitle(data.title);
+        });
+
       supabase
         .from("chat_messages")
         .select("role, content")
@@ -160,7 +177,6 @@ export default function NewAnalysisPage() {
           if (data && data.length > 0) {
             const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
             setMessages(restored);
-            // Check if AI already signaled readiness
             if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
               setIsReady(true);
             }
@@ -174,7 +190,22 @@ export default function NewAnalysisPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Helper: ensure a conversation exists, create if needed
+  const handleRenameChat = useCallback(async (newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || !conversationId) return;
+    setChatTitle(trimmed);
+    setIsEditingTitle(false);
+    await supabase.from("conversations").update({ title: trimmed }).eq("id", conversationId);
+  }, [conversationId]);
+
+  const handleFeedback = useCallback((index: number, type: "like" | "dislike") => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [index]: prev[index] === type ? undefined! : type,
+    }));
+  }, []);
+
+
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) return conversationId;
     if (!user) throw new Error("Not authenticated");
@@ -666,11 +697,41 @@ export default function NewAnalysisPage() {
   // Chat-style intake view
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Chat title bar */}
+      {hasMessages && conversationId && (
+        <div className="shrink-0 px-4 py-2 border-b border-border/40 flex items-center gap-2">
+          <AgoraIcon size={24} className="shrink-0 rounded-md" />
+          {isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              defaultValue={chatTitle}
+              autoFocus
+              onBlur={(e) => handleRenameChat(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRenameChat((e.target as HTMLInputElement).value);
+                if (e.key === "Escape") setIsEditingTitle(false);
+              }}
+              className="text-sm font-medium bg-transparent border-b border-primary/40 outline-none text-foreground px-1 py-0.5 max-w-[300px]"
+            />
+          ) : (
+            <button
+              onClick={() => setIsEditingTitle(true)}
+              className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors group"
+              title="Renomear conversa"
+            >
+              <span className="truncate max-w-[300px]">{chatTitle}</span>
+              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Scrollable chat area */}
       <div className="flex-1 overflow-y-auto px-4">
         <div className="max-w-2xl mx-auto py-6">
           {!hasMessages && !loadingHistory && (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
+              <AgoraIcon size={64} className="mb-6 rounded-2xl" />
               <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2 text-center">
                 O que você quer analisar?
               </h1>
@@ -682,23 +743,34 @@ export default function NewAnalysisPage() {
 
           {/* Messages */}
           {messages.map((msg, idx) => (
-            <div key={idx} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm sm:text-base ${
-                  msg.role === "user"
-                    ? "bg-secondary text-secondary-foreground rounded-br-md"
-                    : "bg-card border border-border text-foreground rounded-bl-md"
-                }`}
-              >
-                {msg.role === "assistant" ? (
-                  <TypewriterMarkdown
+            <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className="flex flex-col gap-1 max-w-[85%]">
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm sm:text-base ${
+                    msg.role === "user"
+                      ? "bg-secondary text-secondary-foreground rounded-br-md"
+                      : "bg-card border border-border text-foreground rounded-bl-md"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <TypewriterMarkdown
+                      content={msg.content.replace("##READY##", "").trim()}
+                      isStreaming={isStreaming && idx === messages.length - 1}
+                      className="prose prose-sm max-w-none text-foreground"
+                    />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                </div>
+                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <ChatMessageActions
                     content={msg.content.replace("##READY##", "").trim()}
-                    isStreaming={isStreaming && idx === messages.length - 1}
-                    className="prose prose-sm max-w-none text-foreground"
+                    messageIndex={idx}
+                    role={msg.role}
+                    onFeedback={handleFeedback}
+                    feedback={feedbacks[idx] || null}
                   />
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
+                </div>
               </div>
             </div>
           ))}
