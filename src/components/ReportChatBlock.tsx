@@ -180,11 +180,11 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
   const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
     if (action.action === "creative") {
-      generateCreative();
+      generateCreative(input);
     } else if (action.prompt) {
       sendMessage(action.prompt);
     }
-  }, [generateCreative]);
+  }, [generateCreative, input]);
 
   const sendMessage = useCallback(async (text: string) => {
     if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
