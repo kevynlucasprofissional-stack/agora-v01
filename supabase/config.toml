@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.campaign-chat]
 verify_jwt = false
+
+[functions.optimize-campaign]
+verify_jwt = false
+
+[functions.generate-creative]
+verify_jwt = false
