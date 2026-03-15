@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { streamChat } from "@/lib/streamChat";
 
-// Default improvements based on analysis mock data
-const DEFAULT_IMPROVEMENTS = [
+// Fallback improvements if analysis has no AI data
+const FALLBACK_IMPROVEMENTS = [
   "Reescrever proposta de valor para comunicar em 3 segundos",
   "Substituir métricas de vaidade por KPIs reais (CAC Payback Period)",
   "Reduzir fricção no funil de conversão (checkout de 4 para 2 passos)",
