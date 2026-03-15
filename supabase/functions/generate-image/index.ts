@@ -17,7 +17,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { messages = [], user_prompt, format = "1080x1080" } = await req.json();
+    const { messages = [], user_prompt, format = "1080x1080", reference_images = [] } = await req.json();
 
     // Build effective messages: combine chat history + user prompt
     const effectiveMessages = [...(Array.isArray(messages) ? messages : [])];
