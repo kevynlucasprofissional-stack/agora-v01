@@ -351,22 +351,38 @@ export default function AnalysisReportPage() {
           <h3 className="section-label mb-4">Diagnóstico</h3>
           <div className="grid sm:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-semibold text-sm mb-2">🔴 Gargalos Identificados</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {improvements.length > 0
-                  ? improvements.map((imp, i) => <li key={i}>• {imp}</li>)
-                  : <li>• Dados de melhoria não disponíveis</li>
-                }
-              </ul>
+              <h4 className="font-semibold text-sm mb-3">🔴 Gargalos Identificados</h4>
+              {improvements.length > 0 ? (
+                <div className="space-y-4">
+                  {improvements.map((cat, ci) => (
+                    <div key={ci}>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-destructive/80 mb-1.5">{cat.category}</p>
+                      <ul className="space-y-1.5 text-sm text-muted-foreground pl-1">
+                        {cat.items.map((item, ii) => <li key={ii}>• {item}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">• Dados de melhoria não disponíveis</p>
+              )}
             </div>
             <div>
-              <h4 className="font-semibold text-sm mb-2">🟢 Pontos Fortes</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {strengths.length > 0
-                  ? strengths.map((s, i) => <li key={i}>• {s}</li>)
-                  : <li>• Dados de pontos fortes não disponíveis</li>
-                }
-              </ul>
+              <h4 className="font-semibold text-sm mb-3">🟢 Pontos Fortes</h4>
+              {strengths.length > 0 ? (
+                <div className="space-y-4">
+                  {strengths.map((cat, ci) => (
+                    <div key={ci}>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-success/80 mb-1.5">{cat.category}</p>
+                      <ul className="space-y-1.5 text-sm text-muted-foreground pl-1">
+                        {cat.items.map((item, ii) => <li key={ii}>• {item}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">• Dados de pontos fortes não disponíveis</p>
+              )}
             </div>
           </div>
         </div>
