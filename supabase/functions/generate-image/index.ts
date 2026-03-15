@@ -17,10 +17,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { messages, user_prompt, format = "1080x1080" } = await req.json();
+    const { messages = [], user_prompt, format = "1080x1080" } = await req.json();
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: "messages é obrigatório" }), {
+    // Build effective messages: combine chat history + user prompt
+    const effectiveMessages = [...(Array.isArray(messages) ? messages : [])];
+    if (user_prompt?.trim()) {
+      effectiveMessages.push({ role: "user", content: user_prompt.trim() });
+    }
+
+    if (effectiveMessages.length === 0) {
+      return new Response(JSON.stringify({ error: "Forneça um prompt ou histórico de chat" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
