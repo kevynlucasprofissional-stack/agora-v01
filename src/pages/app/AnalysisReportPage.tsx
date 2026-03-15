@@ -71,13 +71,15 @@ export default function AnalysisReportPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="hero" size="sm" asChild>
+            <Link to={`/app/analysis/${id}/campaign`}>
+              <Sparkles className="h-4 w-4 mr-2" /> Gerar Campanha
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/app/analysis/${id}/chat`}>
               <MessageSquare className="h-4 w-4 mr-2" /> Chat com Estrategista
             </Link>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => toast.info("Exportação em breve!")}>
-            <Download className="h-4 w-4 mr-2" /> Exportar
           </Button>
         </div>
       </div>

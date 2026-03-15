@@ -1,1 +1,10 @@
 project_id = "aqrcjvtidgxpjhjozwct"
+
+[functions.intake-chat]
+verify_jwt = false
+
+[functions.generate-campaign]
+verify_jwt = false
+
+[functions.campaign-chat]
+verify_jwt = false
