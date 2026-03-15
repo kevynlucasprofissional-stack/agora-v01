@@ -131,6 +131,7 @@ export default function NewAnalysisPage() {
   const [isReady, setIsReady] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeAction, setActiveAction] = useState<ActionMode>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
