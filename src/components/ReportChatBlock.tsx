@@ -58,6 +58,44 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
   };
 
+  // Persist creative snapshot as a chat message with special prefix
+  const persistCreative = useCallback(async (dataUrl: string) => {
+    if (!conversationId) return;
+    // Save a marker message so creative appears in history
+    const marker = `[creative-image]\n${dataUrl.substring(0, 200)}...`;
+    await saveMessage(conversationId, "assistant", marker);
+    // Also update the creative_job with the captured image
+    if (creativeData?.creative_job_id) {
+      await supabase.from("creative_jobs" as any)
+        .update({ image_url: dataUrl, status: "saved" } as any)
+        .eq("id", creativeData.creative_job_id);
+    }
+    toast.success("Criativo salvo no histórico!");
+  }, [conversationId, creativeData]);
+
+  // Load existing creative for this conversation on mount
+  useEffect(() => {
+    if (!conversationId || !loaded) return;
+    const loadCreative = async () => {
+      const { data } = await supabase
+        .from("creative_jobs" as any)
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && (data as any).image_url && (data as any).status !== "pending") {
+        setCreativeData({
+          strategist_output: (data as any).strategist_output || {},
+          image_url: (data as any).image_url,
+          editable_html: (data as any).editable_html || "",
+          creative_job_id: (data as any).id,
+        });
+      }
+    };
+    loadCreative();
+  }, [conversationId, loaded]);
+
   useEffect(() => {
     if (!user || loaded) return;
     const load = async () => {
@@ -324,6 +362,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
               creativeJobId={creativeData.creative_job_id}
               onRegenerate={() => generateCreative(input)}
               isRegenerating={isGeneratingCreative}
+              onCapture={persistCreative}
             />
           </div>
         )}
