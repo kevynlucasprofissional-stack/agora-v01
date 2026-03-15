@@ -39,14 +39,14 @@ export function InfiniteGrid({ className, children }: InfiniteGridProps) {
       onMouseMove={handleMouseMove}
       className={`absolute inset-0 overflow-hidden ${className ?? ""}`}
     >
-      {/* Base grid layer - subtle */}
+      {/* Base grid layer */}
       <div className="absolute inset-0">
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--primary) / 0.12)" />
+        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--foreground) / 0.15)" />
       </div>
 
       {/* Mouse-reveal layer - brighter */}
       <motion.div className="absolute inset-0" style={{ WebkitMaskImage: maskImage, maskImage }}>
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--primary) / 0.35)" />
+        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--foreground) / 0.35)" />
       </motion.div>
 
       {children}
