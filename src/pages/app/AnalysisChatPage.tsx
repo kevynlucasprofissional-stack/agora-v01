@@ -188,6 +188,7 @@ export default function AnalysisChatPage() {
       });
     } catch (e) {
       setIsStreaming(false);
+      setStreamingIdx(null);
       const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`;
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
