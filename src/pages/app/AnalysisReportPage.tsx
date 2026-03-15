@@ -85,7 +85,7 @@ export default function AnalysisReportPage() {
       {/* Overall Score */}
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center">
         <span className="section-label">Score Geral da Campanha</span>
-        <div className="mt-4 relative inline-flex items-center justify-center">
+        <div className="mt-4 relative flex items-center justify-center mx-auto w-32 h-32">
           <svg className="h-32 w-32" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--border))" strokeWidth="8" />
             <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
