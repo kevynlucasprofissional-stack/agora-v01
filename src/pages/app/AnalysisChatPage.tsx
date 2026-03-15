@@ -117,8 +117,19 @@ export default function AnalysisChatPage() {
     } as any);
   };
 
+  // Track if user is near bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // Only auto-scroll if user is near bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isUserNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
