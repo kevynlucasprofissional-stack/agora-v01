@@ -454,9 +454,70 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, fileContents } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+
+    // Build messages array, injecting file contents into the conversation
+    const processedMessages: any[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+    ];
+
+    for (const msg of messages) {
+      processedMessages.push({ role: msg.role, content: msg.content });
+    }
+
+    // If there are file contents, inject them as a system-level context message
+    if (fileContents && Array.isArray(fileContents) && fileContents.length > 0) {
+      const fileParts: string[] = [];
+      const imageParts: any[] = [];
+
+      for (const file of fileContents) {
+        if (file.isBase64 && file.type.startsWith("image/")) {
+          // For images, we'll describe them as attached and include via multimodal
+          imageParts.push({
+            type: "image_url",
+            image_url: { url: `data:${file.type};base64,${file.content}` },
+          });
+        } else if (file.isBase64) {
+          // For binary non-image files (PDF, docx, etc.), send as inline_data
+          // Gemini supports PDF natively via the OpenAI-compatible endpoint
+          imageParts.push({
+            type: "image_url",
+            image_url: { url: `data:${file.type};base64,${file.content}` },
+          });
+        } else {
+          // Text file - include content directly
+          fileParts.push(`--- CONTEÚDO DO ARQUIVO: ${file.name} ---\n${file.content}\n--- FIM DO ARQUIVO ---`);
+        }
+      }
+
+      // Build multimodal user message with files
+      if (fileParts.length > 0 || imageParts.length > 0) {
+        const fileContextContent: any[] = [];
+        
+        if (fileParts.length > 0) {
+          fileContextContent.push({
+            type: "text",
+            text: `O usuário anexou os seguintes documentos. Analise-os com atenção:\n\n${fileParts.join('\n\n')}`,
+          });
+        }
+
+        if (imageParts.length > 0) {
+          const fileNames = fileContents.filter(f => f.isBase64).map(f => f.name).join(', ');
+          fileContextContent.push({
+            type: "text",
+            text: `O usuário anexou os seguintes arquivos: ${fileNames}. Analise o conteúdo com atenção:`,
+          });
+          fileContextContent.push(...imageParts);
+        }
+
+        // Insert file context before the last user message
+        const lastMsg = processedMessages.pop();
+        processedMessages.push({ role: "user", content: fileContextContent });
+        processedMessages.push(lastMsg);
+      }
+    }
 
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -468,10 +529,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "gemini-2.5-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...messages,
-          ],
+          messages: processedMessages,
           stream: true,
         }),
       }

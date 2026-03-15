@@ -31,14 +31,18 @@ const suggestions = [
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
 
+type FileContent = { name: string; type: string; content: string; isBase64: boolean };
+
 async function streamChat({
   messages,
   onDelta,
   onDone,
+  fileContents,
 }: {
   messages: ChatMessage[];
   onDelta: (delta: string) => void;
   onDone: () => void;
+  fileContents?: FileContent[];
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -46,7 +50,7 @@ async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, fileContents }),
   });
 
   if (!resp.ok || !resp.body) {
@@ -156,16 +160,58 @@ export default function NewAnalysisPage() {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+  const readFileContent = async (file: File): Promise<{ name: string; type: string; content: string; isBase64: boolean }> => {
+    const textTypes = ['.txt', '.csv', '.md', '.json', '.xml', '.html', '.css', '.js', '.ts', '.tsx'];
+    const isText = textTypes.some(ext => file.name.toLowerCase().endsWith(ext)) || file.type.startsWith('text/');
 
-    const userMsg: ChatMessage = { role: "user", content: input };
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      if (isText) {
+        reader.onload = () => resolve({ name: file.name, type: file.type || 'text/plain', content: reader.result as string, isBase64: false });
+        reader.onerror = reject;
+        reader.readAsText(file);
+      } else {
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve({ name: file.name, type: file.type || 'application/octet-stream', content: base64, isBase64: true });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handleSend = async () => {
+    if ((!input.trim() && files.length === 0) || isStreaming) return;
+
+    // Build user message content with files
+    let userDisplayContent = input.trim();
+    const pendingFiles = [...files];
+    const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
+
+    if (pendingFiles.length > 0) {
+      // Read all file contents
+      try {
+        const results = await Promise.all(pendingFiles.map(readFileContent));
+        fileContents.push(...results);
+        const fileNames = pendingFiles.map(f => f.name).join(', ');
+        userDisplayContent = userDisplayContent
+          ? `${userDisplayContent}\n\n📎 Arquivos anexados: ${fileNames}`
+          : `📎 Arquivos anexados: ${fileNames}`;
+      } catch (err) {
+        console.error("Error reading files:", err);
+        toast.error("Erro ao ler arquivo(s). Tente novamente.");
+        return;
+      }
+    }
+
+    const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
+    setFiles([]);
     setIsStreaming(true);
 
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -181,7 +227,6 @@ export default function NewAnalysisPage() {
         return [...prev, { role: "assistant", content: assistantSoFar }];
       });
 
-      // Check if AI signals readiness
       if (assistantSoFar.includes("##READY##")) {
         setIsReady(true);
       }
@@ -192,6 +237,7 @@ export default function NewAnalysisPage() {
         messages: updatedMessages,
         onDelta: upsertAssistant,
         onDone: () => setIsStreaming(false),
+        fileContents: fileContents.length > 0 ? fileContents : undefined,
       });
     } catch (e) {
       console.error(e);
@@ -551,7 +597,7 @@ export default function NewAnalysisPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={isStreaming || !input.trim()}
+              disabled={isStreaming || (!input.trim() && files.length === 0)}
               className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
             >
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
