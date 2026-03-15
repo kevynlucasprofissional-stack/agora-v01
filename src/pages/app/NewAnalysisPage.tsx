@@ -321,6 +321,7 @@ export default function NewAnalysisPage() {
       return;
     }
 
+    if (!input.trim() && files.length === 0) return;
 
     // Ensure conversation exists
     let convId: string;
