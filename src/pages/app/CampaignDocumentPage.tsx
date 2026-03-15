@@ -36,7 +36,7 @@ export default function CampaignDocumentPage() {
   const [loading, setLoading] = useState(true);
 
   // Step 1: Review improvements
-  const [selectedImprovements, setSelectedImprovements] = useState<string[]>(DEFAULT_IMPROVEMENTS);
+  const [selectedImprovements, setSelectedImprovements] = useState<string[]>(FALLBACK_IMPROVEMENTS);
   const [step, setStep] = useState<"review" | "generating" | "document">("review");
 
   // Document
