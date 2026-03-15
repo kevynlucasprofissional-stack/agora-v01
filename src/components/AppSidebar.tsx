@@ -1,6 +1,6 @@
 import {
   LayoutGrid, History, FolderOpen, Settings, User,
-  Zap, LogOut, Plus, Link2,
+  Zap, LogOut, Plus, Link2, BarChart3, MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 const mainNav = [
   { label: "Dashboard", href: "/app", icon: <LayoutGrid className="h-5 w-5 shrink-0" /> },
   { label: "Nova Análise", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
-  { label: "Histórico", href: "/app/history", icon: <History className="h-5 w-5 shrink-0" /> },
+  { label: "Análises", href: "/app/analyses", icon: <BarChart3 className="h-5 w-5 shrink-0" /> },
+  { label: "Conversas", href: "/app/conversations", icon: <MessageSquare className="h-5 w-5 shrink-0" /> },
   { label: "Biblioteca", href: "/app/assets", icon: <FolderOpen className="h-5 w-5 shrink-0" /> },
 ];
 

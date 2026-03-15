@@ -17,6 +17,8 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 // App pages
 import DashboardPage from "@/pages/app/DashboardPage";
 import NewAnalysisPage from "@/pages/app/NewAnalysisPage";
+import AnalysisResultsPage from "@/pages/app/AnalysisResultsPage";
+import ConversationHistoryPage from "@/pages/app/ConversationHistoryPage";
 import HistoryPage from "@/pages/app/HistoryPage";
 import AnalysisReportPage from "@/pages/app/AnalysisReportPage";
 import AnalysisChatPage from "@/pages/app/AnalysisChatPage";
