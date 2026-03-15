@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, ChangeEvent } from "react";
 import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
+import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
