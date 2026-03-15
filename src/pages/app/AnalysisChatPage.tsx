@@ -26,6 +26,7 @@ export default function AnalysisChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
 
   // Load analysis + conversation + messages
   useEffect(() => {
