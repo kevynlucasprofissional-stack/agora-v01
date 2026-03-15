@@ -262,7 +262,7 @@ export default function NewAnalysisPage() {
       }
     });
   };
-  const generateImage = useCallback(async (userPrompt: string) => {
+  const generateImage = useCallback(async (userPrompt: string, referenceImages?: { name: string; type: string; content: string }[]) => {
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     setCreativeData(null);
@@ -284,6 +284,7 @@ export default function NewAnalysisPage() {
             messages: messages.map((m) => ({ role: m.role, content: m.content })),
             user_prompt: userPrompt,
             format: "1080x1080",
+            reference_images: referenceImages || [],
           }),
         }
       );
