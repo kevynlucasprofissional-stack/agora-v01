@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Download, Loader2, RefreshCw, Palette, Type, Eye, Move, Layers, SunDim, ALargeSmall, RotateCcw } from "lucide-react";
+import { Download, Loader2, RefreshCw, Palette, Type, Eye, Move, Layers, SunDim, ALargeSmall, RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
