@@ -27,6 +27,8 @@ interface CreativeData {
   creative_job_id: string | null;
 }
 
+const CREATIVE_MARKER = "[creative-editor]";
+
 const ACTION_OPTIONS = [
   { label: "Gerar criativos", icon: Sparkles, action: "creative" as const },
   { label: "Pesquisa de mercado", icon: Search, action: "chat" as const, prompt: "Faça uma pesquisa de mercado detalhada com base nos dados desta campanha." },
@@ -58,19 +60,13 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
   };
 
-  // Persist creative snapshot as a chat message with special prefix
+  // Persist creative snapshot
   const persistCreative = useCallback(async (dataUrl: string) => {
-    if (!conversationId) return;
-    // Save a marker message so creative appears in history
-    const marker = `[creative-image]\n${dataUrl.substring(0, 200)}...`;
-    await saveMessage(conversationId, "assistant", marker);
-    // Also update the creative_job with the captured image
-    if (creativeData?.creative_job_id) {
-      await supabase.from("creative_jobs" as any)
-        .update({ image_url: dataUrl, status: "saved" } as any)
-        .eq("id", creativeData.creative_job_id);
-    }
-    toast.success("Criativo salvo no histórico!");
+    if (!conversationId || !creativeData?.creative_job_id) return;
+    await supabase.from("creative_jobs" as any)
+      .update({ image_url: dataUrl, status: "saved" } as any)
+      .eq("id", creativeData.creative_job_id);
+    toast.success("Criativo salvo!");
   }, [conversationId, creativeData]);
 
   // Load existing creative for this conversation on mount
@@ -198,13 +194,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       }
 
       if (data?.editable_html) {
-        setCreativeData({
+        const cd: CreativeData = {
           strategist_output: data.strategist_output,
           image_url: data.image_url,
           editable_html: data.editable_html,
           creative_job_id: data.creative_job_id,
-        });
-        toast.success("Criativo gerado com base na sua campanha! Edite os textos clicando neles.");
+        };
+        setCreativeData(cd);
+        // Add a marker message so creative renders inline in chat flow
+        const markerMsg: ChatMessage = { role: "assistant", content: CREATIVE_MARKER };
+        setMessages(prev => [...prev, markerMsg]);
+        if (conversationId) await saveMessage(conversationId, "assistant", CREATIVE_MARKER);
+        toast.success("Criativo gerado! Edite os textos clicando neles.");
       } else {
         toast.error("Não foi possível gerar o criativo. Tente novamente.");
       }
@@ -307,24 +308,45 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          messages.map((msg, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
-              }`}>
-                {msg.role === "assistant" ? (
-                  <TypewriterMarkdown
-                    content={msg.content}
-                    isStreaming={isStreaming && i === messages.length - 1}
-                    className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+          messages.map((msg, i) => {
+            // Render creative editor inline at marker position
+            if (msg.content === CREATIVE_MARKER && creativeData && !isGeneratingCreative) {
+              return (
+                <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+                  <CreativeEditor
+                    strategistOutput={creativeData.strategist_output}
+                    imageUrl={creativeData.image_url}
+                    editableHtml={creativeData.editable_html}
+                    creativeJobId={creativeData.creative_job_id}
+                    onRegenerate={() => generateCreative(input)}
+                    isRegenerating={isGeneratingCreative}
+                    onCapture={persistCreative}
                   />
-                ) : (
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                )}
-              </div>
-            </motion.div>
-          ))
+                </motion.div>
+              );
+            }
+            // Skip rendering the marker as text
+            if (msg.content === CREATIVE_MARKER) return null;
+
+            return (
+              <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
+                }`}>
+                  {msg.role === "assistant" ? (
+                    <TypewriterMarkdown
+                      content={msg.content}
+                      isStreaming={isStreaming && i === messages.length - 1}
+                      className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })
         )}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
@@ -334,7 +356,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           </div>
         )}
 
-        {/* Creative Editor - inside scroll area */}
+        {/* Creative generation loading */}
         <AnimatePresence>
           {isGeneratingCreative && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -345,27 +367,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {creativeData && !isGeneratingCreative && (
-          <div className="relative">
-            <button
-              onClick={() => setCreativeData(null)}
-              className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-              title="Fechar criativo"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <CreativeEditor
-              strategistOutput={creativeData.strategist_output}
-              imageUrl={creativeData.image_url}
-              editableHtml={creativeData.editable_html}
-              creativeJobId={creativeData.creative_job_id}
-              onRegenerate={() => generateCreative(input)}
-              isRegenerating={isGeneratingCreative}
-              onCapture={persistCreative}
-            />
-          </div>
-        )}
 
         <div ref={bottomRef} />
       </div>
