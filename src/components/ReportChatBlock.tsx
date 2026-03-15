@@ -308,24 +308,45 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          messages.map((msg, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
-              }`}>
-                {msg.role === "assistant" ? (
-                  <TypewriterMarkdown
-                    content={msg.content}
-                    isStreaming={isStreaming && i === messages.length - 1}
-                    className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+          messages.map((msg, i) => {
+            // Render creative editor inline at marker position
+            if (msg.content === CREATIVE_MARKER && creativeData && !isGeneratingCreative) {
+              return (
+                <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+                  <CreativeEditor
+                    strategistOutput={creativeData.strategist_output}
+                    imageUrl={creativeData.image_url}
+                    editableHtml={creativeData.editable_html}
+                    creativeJobId={creativeData.creative_job_id}
+                    onRegenerate={() => generateCreative(input)}
+                    isRegenerating={isGeneratingCreative}
+                    onCapture={persistCreative}
                   />
-                ) : (
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                )}
-              </div>
-            </motion.div>
-          ))
+                </motion.div>
+              );
+            }
+            // Skip rendering the marker as text
+            if (msg.content === CREATIVE_MARKER) return null;
+
+            return (
+              <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
+                }`}>
+                  {msg.role === "assistant" ? (
+                    <TypewriterMarkdown
+                      content={msg.content}
+                      isStreaming={isStreaming && i === messages.length - 1}
+                      className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })
         )}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
@@ -335,7 +356,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           </div>
         )}
 
-        {/* Creative Editor - inside scroll area */}
+        {/* Creative generation loading */}
         <AnimatePresence>
           {isGeneratingCreative && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -346,27 +367,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {creativeData && !isGeneratingCreative && (
-          <div className="relative">
-            <button
-              onClick={() => setCreativeData(null)}
-              className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-              title="Fechar criativo"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <CreativeEditor
-              strategistOutput={creativeData.strategist_output}
-              imageUrl={creativeData.image_url}
-              editableHtml={creativeData.editable_html}
-              creativeJobId={creativeData.creative_job_id}
-              onRegenerate={() => generateCreative(input)}
-              isRegenerating={isGeneratingCreative}
-              onCapture={persistCreative}
-            />
-          </div>
-        )}
 
         <div ref={bottomRef} />
       </div>
