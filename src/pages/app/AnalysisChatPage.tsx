@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
-import ReactMarkdown from "react-markdown";
+import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ChatMessage {
