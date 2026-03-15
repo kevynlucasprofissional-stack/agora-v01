@@ -248,6 +248,8 @@ export default function NewAnalysisPage() {
 
     // Build user message content with files
     let userDisplayContent = input.trim();
+    const activeMode = ACTION_MODES.find(m => m.key === activeAction);
+    setActiveAction(null); // Reset action after sending
     const pendingFiles = [...files];
     const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
 
