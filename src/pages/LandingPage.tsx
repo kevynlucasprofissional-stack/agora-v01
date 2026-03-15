@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Zap, BarChart3, Users, Target, Shield, ArrowRight, Check } from "lucide-react";
+import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
 import { PLAN_FEATURES } from "@/types/database";
 
 const features = [
@@ -51,7 +52,8 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative pt-32 pb-20 overflow-hidden">
-        <div className="absolute inset-0 opacity-30">
+        <InfiniteGrid />
+        <div className="absolute inset-0 opacity-30 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary/20 blur-[120px]" />
           <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-primary/10 blur-[100px]" />
         </div>
