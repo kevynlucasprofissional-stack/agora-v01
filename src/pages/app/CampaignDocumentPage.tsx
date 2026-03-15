@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ArrowLeft, Download, FileText, Send, Loader2, Sparkles, FileDown,
+  ArrowLeft, Download, FileText, Send, Loader2, Sparkles, FileDown, Palette,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ export default function CampaignDocumentPage() {
   // Document
   const [document, setDocument] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [savedOutputId, setSavedOutputId] = useState<string | null>(null);
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -51,12 +52,34 @@ export default function CampaignDocumentPage() {
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<string>("");
 
+  // Load analysis + check for existing campaign
   useEffect(() => {
     if (!id) return;
-    supabase.from("analysis_requests").select("*").eq("id", id).single().then(({ data }) => {
-      setAnalysis(data);
+    const loadData = async () => {
+      const [analysisRes, outputRes] = await Promise.all([
+        supabase.from("analysis_requests").select("*").eq("id", id).single(),
+        supabase
+          .from("generated_outputs")
+          .select("*")
+          .eq("analysis_request_id", id)
+          .eq("output_type", "campaign")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      setAnalysis(analysisRes.data);
+
+      // If a campaign was previously saved, restore it
+      if (outputRes.data?.content_markdown) {
+        setDocument(outputRes.data.content_markdown);
+        documentRef.current = outputRes.data.content_markdown;
+        setSavedOutputId(outputRes.data.id);
+        setStep("document");
+      }
+
       setLoading(false);
-    });
+    };
+    loadData();
   }, [id]);
 
   useEffect(() => {
@@ -68,6 +91,35 @@ export default function CampaignDocumentPage() {
       prev.includes(imp) ? prev.filter((i) => i !== imp) : [...prev, imp]
     );
   };
+
+  // Save or update campaign in the database
+  const saveCampaignToDb = useCallback(async (markdown: string) => {
+    if (!id) return;
+    try {
+      if (savedOutputId) {
+        // Update existing
+        await supabase
+          .from("generated_outputs")
+          .update({ content_markdown: markdown })
+          .eq("id", savedOutputId);
+      } else {
+        // Insert new
+        const { data } = await supabase
+          .from("generated_outputs")
+          .insert({
+            analysis_request_id: id,
+            output_type: "campaign",
+            title: "Campanha Melhorada",
+            content_markdown: markdown,
+          })
+          .select("id")
+          .single();
+        if (data) setSavedOutputId(data.id);
+      }
+    } catch (e) {
+      console.error("Error saving campaign:", e);
+    }
+  }, [id, savedOutputId]);
 
   const handleGenerate = useCallback(async () => {
     if (!analysis || selectedImprovements.length === 0) {
@@ -102,9 +154,12 @@ export default function CampaignDocumentPage() {
           documentRef.current += chunk;
           setDocument(documentRef.current);
         },
-        onDone: () => {
+        onDone: async () => {
           setGenerating(false);
           setStep("document");
+          // Save the generated campaign to the database
+          await saveCampaignToDb(documentRef.current);
+          toast.success("Campanha salva automaticamente!");
         },
       });
     } catch (e) {
@@ -112,7 +167,7 @@ export default function CampaignDocumentPage() {
       setGenerating(false);
       setStep("review");
     }
-  }, [analysis, selectedImprovements]);
+  }, [analysis, selectedImprovements, saveCampaignToDb]);
 
   const handleChatSend = useCallback(async () => {
     if (!chatInput.trim() || chatLoading) return;
@@ -131,20 +186,21 @@ export default function CampaignDocumentPage() {
         extraBody: { currentDocument: documentRef.current },
         onDelta: (chunk) => {
           assistantContent += chunk;
-          // Update the document in real-time
           documentRef.current = assistantContent;
           setDocument(assistantContent);
         },
-        onDone: () => {
+        onDone: async () => {
           setChatMessages((prev) => [...prev, { role: "assistant", content: "✅ Documento atualizado com sucesso!" }]);
           setChatLoading(false);
+          // Save updated campaign to the database
+          await saveCampaignToDb(documentRef.current);
         },
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao editar documento.");
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading]);
+  }, [chatInput, chatMessages, chatLoading, saveCampaignToDb]);
 
   const handleDownloadMarkdown = () => {
     const blob = new Blob([document], { type: "text/markdown" });
@@ -157,7 +213,6 @@ export default function CampaignDocumentPage() {
   };
 
   const handleDownloadPDF = () => {
-    // Print-to-PDF approach
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Popup bloqueado. Permita popups para exportar."); return; }
     printWindow.document.write(`
@@ -179,7 +234,6 @@ export default function CampaignDocumentPage() {
         </style>
       </head><body id="content"></body></html>
     `);
-    // Simple markdown to HTML (basic conversion for print)
     const html = document
       .replace(/^### (.*$)/gm, "<h3>$1</h3>")
       .replace(/^## (.*$)/gm, "<h2>$1</h2>")
@@ -193,6 +247,14 @@ export default function CampaignDocumentPage() {
     printWindow.document.getElementById("content")!.innerHTML = html;
     printWindow.document.close();
     setTimeout(() => { printWindow.print(); }, 500);
+  };
+
+  const handleOpenCanva = () => {
+    // Open Canva with pre-filled content context
+    const campaignTitle = analysis?.title || "Campanha Melhorada";
+    const canvaUrl = `https://www.canva.com/design?create&type=TAB7AVEOUWQ&text=${encodeURIComponent(campaignTitle)}`;
+    window.open(canvaUrl, "_blank");
+    toast.info("Abrindo o Canva. Use o conteúdo da campanha como referência para criar seus designs.");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
@@ -261,6 +323,14 @@ export default function CampaignDocumentPage() {
               </Button>
               <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                 <FileDown className="h-4 w-4 mr-2" /> PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenCanva}
+                className="border-[hsl(var(--accent))] text-accent hover:bg-accent/10"
+              >
+                <Palette className="h-4 w-4 mr-2" /> Criar no Canva
               </Button>
             </div>
           )}
