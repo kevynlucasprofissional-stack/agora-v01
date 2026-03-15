@@ -138,3 +138,39 @@
   .text-sage { color: hsl(155 35% 55%); }
   .text-amber { color: hsl(35 80% 55%); }
 }
+
+/* Markdown table styles */
+.markdown-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  overflow-x: auto;
+  display: block;
+}
+
+.markdown-prose thead {
+  background-color: hsl(var(--muted));
+}
+
+.markdown-prose th,
+.markdown-prose td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.markdown-prose th {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.markdown-prose tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.markdown-prose tr:hover {
+  background-color: hsl(var(--accent) / 0.5);
+}
