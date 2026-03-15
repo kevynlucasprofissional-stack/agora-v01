@@ -83,8 +83,21 @@ export default function AnalysisReportPage() {
 
   const payload = analysis.normalized_payload as Record<string, any> | null;
   const summary = payload?.executive_summary as string | undefined;
-  const improvements = (payload?.improvements as string[] | undefined) || [];
-  const strengths = (payload?.strengths as string[] | undefined) || [];
+  const rawImprovements = payload?.improvements;
+  const rawStrengths = payload?.strengths;
+
+  // Support both old (string[]) and new (categorized) formats
+  type CategorizedItem = { category: string; items: string[] };
+  const improvements: CategorizedItem[] = Array.isArray(rawImprovements)
+    ? rawImprovements.length > 0 && typeof rawImprovements[0] === "string"
+      ? [{ category: "Geral", items: rawImprovements as string[] }]
+      : (rawImprovements as CategorizedItem[])
+    : [];
+  const strengths: CategorizedItem[] = Array.isArray(rawStrengths)
+    ? rawStrengths.length > 0 && typeof rawStrengths[0] === "string"
+      ? [{ category: "Geral", items: rawStrengths as string[] }]
+      : (rawStrengths as CategorizedItem[])
+    : [];
   const audienceBehavior = payload?.audience_behavior as { section: string; cards: Array<{ title: string; content: string }> } | undefined;
   const marketRefs = (payload?.market_references as string[] | undefined) || [];
   const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
