@@ -1,7 +1,8 @@
 import {
-  LayoutGrid, History, FolderOpen, Settings, User,
-  Zap, LogOut, Plus, Link2, BarChart3, MessageSquare,
+  LayoutGrid, FolderOpen, Settings, User,
+  LogOut, Plus, Link2, BarChart3, MessageSquare,
 } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { useLocation } from "react-router-dom";
