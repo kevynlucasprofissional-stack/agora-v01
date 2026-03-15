@@ -420,7 +420,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={isStreaming}
+          disabled={isBusy}
           className="shrink-0 p-2.5 rounded-xl border border-input bg-card text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50"
           title="Anexar arquivo"
         >
@@ -429,17 +429,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         <textarea
           ref={textareaRef}
           value={input}
+          disabled={isBusy}
           onChange={(e) => {
             setInput(e.target.value);
             e.target.style.height = "auto";
             e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
           }}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage(input))}
-          placeholder="Pergunte qualquer coisa sobre a análise..."
+          placeholder={isBusy ? "Aguarde..." : "Pergunte qualquer coisa sobre a análise..."}
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex-1 resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
-        <Button variant="hero" size="icon" onClick={() => sendMessage(input)} disabled={(isStreaming || (!input.trim() && attachments.length === 0)) || !conversationId} className="shrink-0 h-auto">
+        <Button variant="hero" size="icon" onClick={() => sendMessage(input)} disabled={isBusy || (!input.trim() && attachments.length === 0) || !conversationId} className="shrink-0 h-10 w-10">
           <Send className="h-4 w-4" />
         </Button>
       </div>
