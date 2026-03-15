@@ -6,60 +6,86 @@
 
 @layer base {
   :root {
-    /* Ágora: Matte Ceramic Dark */
-    --background: 230 20% 7%;
-    --foreground: 220 15% 90%;
+    /* Ágora: Light Warm Theme
+     * Fundo: f2f1ef (creme)
+     * 60%: 9bd1ba (sálvia/mint)
+     * 30%: f6b561 (âmbar)
+     * 10%: ea534c (coral)
+     */
+    
+    /* Base - Fundo creme */
+    --background: 40 12% 94%;
+    --foreground: 220 15% 20%;
 
-    --card: 230 18% 10%;
-    --card-foreground: 220 15% 90%;
+    /* Cards - levemente mais escuro que o fundo */
+    --card: 40 12% 92%;
+    --card-foreground: 220 15% 20%;
 
-    --popover: 230 18% 10%;
-    --popover-foreground: 220 15% 90%;
+    --popover: 40 12% 96%;
+    --popover-foreground: 220 15% 20%;
 
-    --primary: 220 80% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Sálvia/Mint (60%) */
+    --primary: 155 42% 71%;
+    --primary-foreground: 220 20% 18%;
 
-    --secondary: 230 15% 15%;
-    --secondary-foreground: 220 15% 85%;
+    /* Secondary - Amber (30%) */
+    --secondary: 35 90% 67%;
+    --secondary-foreground: 35 50% 15%;
 
-    --muted: 230 12% 14%;
-    --muted-foreground: 220 10% 55%;
+    /* Muted - creme escurecido */
+    --muted: 40 10% 88%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 230 15% 18%;
-    --accent-foreground: 220 15% 90%;
+    /* Accent - Coral (10%) */
+    --accent: 4 79% 61%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    /* Destructive - Coral mais escuro */
+    --destructive: 4 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 155 50% 55%;
-    --success-foreground: 0 0% 100%;
+    /* Success - Verde sálvia */
+    --success: 155 42% 65%;
+    --success-foreground: 220 20% 18%;
 
-    --warning: 40 80% 60%;
-    --warning-foreground: 0 0% 10%;
+    /* Warning - Amber */
+    --warning: 35 90% 67%;
+    --warning-foreground: 35 50% 15%;
 
-    --border: 230 15% 16%;
-    --input: 230 15% 16%;
-    --ring: 220 80% 55%;
+    /* Borders - creme escurecido */
+    --border: 40 10% 85%;
+    --input: 40 10% 85%;
+    --ring: 155 42% 71%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 230 20% 8%;
-    --sidebar-foreground: 220 10% 65%;
-    --sidebar-primary: 220 80% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 15% 14%;
-    --sidebar-accent-foreground: 220 15% 90%;
-    --sidebar-border: 230 15% 14%;
-    --sidebar-ring: 220 80% 55%;
+    /* Sidebar */
+    --sidebar-background: 40 12% 92%;
+    --sidebar-foreground: 220 10% 40%;
+    --sidebar-primary: 155 42% 71%;
+    --sidebar-primary-foreground: 220 20% 18%;
+    --sidebar-accent: 40 10% 88%;
+    --sidebar-accent-foreground: 220 15% 20%;
+    --sidebar-border: 40 10% 85%;
+    --sidebar-ring: 155 42% 71%;
 
     /* Custom tokens */
-    --glow-primary: 0 0 20px hsl(220 80% 55% / 0.3);
-    --shadow-card: 0 0 0 1px hsl(0 0% 100% / 0.05), 0 10px 30px -10px hsl(0 0% 0% / 0.5);
-    --gradient-primary: linear-gradient(135deg, hsl(220 80% 55%), hsl(250 70% 60%));
+    --glow-primary: 0 0 20px hsl(155 42% 71% / 0.4);
+    --shadow-card: 0 0 0 1px hsl(40 10% 80% / 0.5), 0 10px 30px -10px hsl(40 10% 50% / 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(155 42% 71%), hsl(155 35% 65%));
   }
 
   .dark {
-    /* Already dark by default */
+    /* Keep same palette, just slightly adjusted for dark mode preference */
+    --background: 40 10% 12%;
+    --foreground: 40 12% 94%;
+    --card: 40 10% 15%;
+    --card-foreground: 40 12% 94%;
+    --primary: 155 42% 60%;
+    --secondary: 35 90% 60%;
+    --muted: 40 10% 20%;
+    --accent: 4 79% 65%;
+    --border: 40 10% 25%;
   }
 }
 
@@ -102,4 +128,13 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  
+  .bg-creme { background-color: hsl(40 12% 94%); }
+  .bg-sage { background-color: hsl(155 42% 71%); }
+  .bg-amber { background-color: hsl(35 90% 67%); }
+  .bg-coral { background-color: hsl(4 79% 61%); }
+  
+  .text-sage { color: hsl(155 35% 55%); }
+  .text-amber { color: hsl(35 80% 55%); }
+  .text-coral { color: hsl(4 70% 55%); }
 }
