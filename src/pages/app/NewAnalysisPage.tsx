@@ -31,14 +31,18 @@ const suggestions = [
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
 
+type FileContent = { name: string; type: string; content: string; isBase64: boolean };
+
 async function streamChat({
   messages,
   onDelta,
   onDone,
+  fileContents,
 }: {
   messages: ChatMessage[];
   onDelta: (delta: string) => void;
   onDone: () => void;
+  fileContents?: FileContent[];
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -46,7 +50,7 @@ async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, fileContents }),
   });
 
   if (!resp.ok || !resp.body) {
