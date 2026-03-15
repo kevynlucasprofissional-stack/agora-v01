@@ -33,6 +33,7 @@ interface ChatMessage {
 
 export default function CampaignDocumentPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [analysis, setAnalysis] = useState<AnalysisRequest | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +52,7 @@ export default function CampaignDocumentPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const documentRef = useRef<string>("");
 
   // Load analysis + check for existing campaign
