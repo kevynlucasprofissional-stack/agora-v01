@@ -99,6 +99,7 @@ serve(async (req) => {
       agents: agentOutputs,
       chat_history: chatHistory,
       requested_format: format,
+      user_prompt: user_prompt || null,
     };
 
     // ─── 2. Gemini Strategist ───
