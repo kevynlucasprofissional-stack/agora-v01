@@ -3,19 +3,12 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles } from "lucide-react";
+import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
-
-// Mock generational audience feedback
-const syntheticAudience = [
-  { gen: "Gen Z", avatar: "🧑‍💻", comment: "Muita fricção no checkout. Parece marketing de 2015. Precisa ser mais direto e visual." },
-  { gen: "Millennials", avatar: "👩‍🎨", comment: "A proposta de valor não é clara em 3 segundos. Storytelling fraco. Falta prova social." },
-  { gen: "Gen X", avatar: "👨‍💼", comment: "Métricas de vaidade dominam o painel. Onde estão os KPIs reais? Precisa de mais dados." },
-  { gen: "Boomers", avatar: "👴", comment: "Sinais de confiança insuficientes. Sem depoimentos. Sem garantia visível. Risco percebido alto." },
-];
+import { Json } from "@/integrations/supabase/types";
 
 export default function AnalysisReportPage() {
   const { id } = useParams<{ id: string }>();
