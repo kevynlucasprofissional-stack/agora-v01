@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Download, Loader2, RefreshCw, Palette, Type, Eye, Move, Layers, SunDim, ALargeSmall, RotateCcw } from "lucide-react";
+import { Download, Loader2, RefreshCw, Palette, Type, Eye, Move, Layers, SunDim, ALargeSmall, RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -69,7 +69,7 @@ function parseLayers(strategistOutput: StrategistOutput): LayerState[] {
     x: 50, // percent
     y: layer.type === "headline" ? 40 : layer.type === "subheadline" ? 55 : 70,
     color: layer.type === "cta" ? "#FFFFFF" : "#FFFFFF",
-    fontSize: layer.type === "headline" ? 32 : layer.type === "cta" ? 14 : 16,
+    fontSize: layer.type === "headline" ? 22 : layer.type === "cta" ? 14 : 15,
     shadowEnabled: true,
     shadowBlur: 8,
     shadowColor: "rgba(0,0,0,0.6)",
@@ -166,6 +166,24 @@ export function CreativeEditor({
     setSelectedLayer(null);
     toast.success("Posições resetadas!");
   }, [strategistOutput]);
+
+  const addNewLayer = useCallback(() => {
+    const newLayer: LayerState = {
+      type: `texto-${layers.length + 1}`,
+      content: "Novo texto",
+      x: 50,
+      y: 30 + (layers.length * 12) % 60,
+      color: "#FFFFFF",
+      fontSize: 16,
+      shadowEnabled: true,
+      shadowBlur: 8,
+      shadowColor: "rgba(0,0,0,0.6)",
+    };
+    setLayers(prev => [...prev, newLayer]);
+    setSelectedLayer(layers.length);
+    setActivePanel(null);
+    toast.success("Nova camada adicionada!");
+  }, [layers.length]);
 
   const sel = selectedLayer !== null ? layers[selectedLayer] : null;
 
@@ -355,7 +373,7 @@ export function CreativeEditor({
       )}
 
       {/* Layer chips */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {layers.map((layer, i) => (
           <button
             key={i}
@@ -370,6 +388,14 @@ export function CreativeEditor({
             {layer.type === "headline" ? "Título" : layer.type === "subheadline" ? "Subtítulo" : layer.type === "cta" ? "CTA" : layer.type}
           </button>
         ))}
+        <button
+          onClick={addNewLayer}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+          title="Adicionar nova camada de texto"
+        >
+          <Plus className="h-3 w-3" />
+          Texto
+        </button>
       </div>
 
       {/* Creative Canvas */}

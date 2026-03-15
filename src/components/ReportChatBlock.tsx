@@ -250,9 +250,9 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, [input, isStreaming, messages, analysis, conversationId, attachments]);
 
   return (
-    <div className="glass-card p-6">
+    <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-4 shrink-0">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
           <Target className="h-4 w-4 text-primary" />
         </div>
@@ -263,7 +263,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       </div>
 
       {/* Messages */}
-      <div className="max-h-[500px] overflow-auto space-y-3 mb-4 pr-1">
+      <div className="flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
         {!loaded ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -295,40 +295,41 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             </div>
           </div>
         )}
+
+        {/* Creative Editor - inside scroll area */}
+        <AnimatePresence>
+          {isGeneratingCreative && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Gerando criativo com IA...</p>
+              <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {creativeData && !isGeneratingCreative && (
+          <div className="relative">
+            <button
+              onClick={() => setCreativeData(null)}
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+              title="Fechar criativo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <CreativeEditor
+              strategistOutput={creativeData.strategist_output}
+              imageUrl={creativeData.image_url}
+              editableHtml={creativeData.editable_html}
+              creativeJobId={creativeData.creative_job_id}
+              onRegenerate={() => generateCreative(input)}
+              isRegenerating={isGeneratingCreative}
+            />
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
-
-      {/* Creative Editor - shown when creative is generated */}
-      <AnimatePresence>
-        {isGeneratingCreative && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-12 gap-3 mb-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Gerando criativo com IA...</p>
-            <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {creativeData && !isGeneratingCreative && (
-        <div className="mb-4 relative">
-          <button
-            onClick={() => setCreativeData(null)}
-            className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-            title="Fechar criativo"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <CreativeEditor
-            strategistOutput={creativeData.strategist_output}
-            imageUrl={creativeData.image_url}
-            editableHtml={creativeData.editable_html}
-            creativeJobId={creativeData.creative_job_id}
-            onRegenerate={() => generateCreative(input)}
-            isRegenerating={isGeneratingCreative}
-          />
-        </div>
-      )}
 
       {/* Action chips */}
       <div className="flex flex-wrap gap-2 mb-3">
