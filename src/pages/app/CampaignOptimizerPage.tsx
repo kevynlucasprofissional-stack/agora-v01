@@ -390,7 +390,7 @@ export default function CampaignOptimizerPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleNewAnalysis}>
-              <Plus className="h-4 w-4 mr-2" /> Nova Análise
+              <Plus className="h-4 w-4 mr-2" /> Novo chat
             </Button>
           </div>
         </div>
