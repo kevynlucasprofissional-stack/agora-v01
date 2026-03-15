@@ -530,7 +530,7 @@ export default function NewAnalysisPage() {
       {/* Scrollable chat area */}
       <div className="flex-1 overflow-y-auto px-4">
         <div className="max-w-2xl mx-auto py-6">
-          {!hasMessages && (
+          {!hasMessages && !loadingHistory && (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
               <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2 text-center">
                 O que você quer analisar?
