@@ -796,7 +796,7 @@ export default function NewAnalysisPage() {
               multiple
               className="hidden"
               onChange={handleFileAdd}
-              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.pptx,.docx,.csv,.txt"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.xlsx,.xls,.pptx,.docx,.csv,.txt,image/*"
             />
 
             <textarea
