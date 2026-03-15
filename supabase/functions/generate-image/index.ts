@@ -39,9 +39,14 @@ serve(async (req) => {
       .slice(0, 4000);
 
     // ─── 1. Strategist: generate creative brief from chat context ───
-    const userPromptSection = user_prompt
-      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt.`
+    const hasRefImages = Array.isArray(reference_images) && reference_images.length > 0;
+    const refImageNote = hasRefImages
+      ? `\n\nO USUÁRIO ANEXOU ${reference_images.length} IMAGEM(NS) DE REFERÊNCIA. Leve em conta que o visual da imagem gerada deve se inspirar ou incorporar elementos dessas referências.`
       : "";
+
+    const userPromptSection = user_prompt
+      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt.${refImageNote}`
+      : refImageNote ? `\n${refImageNote}` : "";
 
     const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto do chat abaixo e gere um briefing criativo para produzir um criativo de marketing visual.
 
