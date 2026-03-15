@@ -60,7 +60,7 @@ export default function AnalysisReportPage() {
   const summary = payload?.executive_summary as string | undefined;
   const improvements = (payload?.improvements as string[] | undefined) || [];
   const strengths = (payload?.strengths as string[] | undefined) || [];
-  const audienceInsights = (payload?.audience_insights as Array<{ generation: string; emoji: string; feedback: string }> | undefined) || [];
+  const audienceBehavior = payload?.audience_behavior as { section: string; cards: Array<{ title: string; content: string }> } | undefined;
   const marketRefs = (payload?.market_references as string[] | undefined) || [];
   const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
   const cognitiveBiases = (payload?.cognitive_biases as Array<{ bias: string; status: string; application: string }> | undefined) || [];
@@ -343,44 +343,32 @@ export default function AnalysisReportPage() {
         )}
 
         {/* Synthetic Audience */}
-        {canUseSyntheticAudience ? (
-          <div>
-            <h3 className="section-label mb-4">Audiência Sintética — Veredicto Geracional</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {(audienceInsights.length > 0 ? audienceInsights : [
-                { generation: "Gen Z", emoji: "🧑‍💻", feedback: "Análise pendente." },
-                { generation: "Millennials", emoji: "👩‍🎨", feedback: "Análise pendente." },
-                { generation: "Gen X", emoji: "👨‍💼", feedback: "Análise pendente." },
-                { generation: "Boomers", emoji: "👴", feedback: "Análise pendente." },
-              ]).map((a, i) => (
-                <motion.div key={a.generation} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
-                  className="glass-card p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">{a.emoji}</span>
-                    <span className="font-display font-semibold text-sm">{a.generation}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground italic">"{a.feedback}"</p>
-                </motion.div>
-              ))}
-            </div>
+        {/* Comportamento e Perfil do Público-Alvo */}
+        <div className="glass-card p-6">
+          <span className="inline-block px-3 py-1 rounded-md bg-destructive/15 text-destructive text-sm font-medium mb-4">
+            Comportamento e perfil público-alvo
+          </span>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {(audienceBehavior?.cards && audienceBehavior.cards.length > 0
+              ? audienceBehavior.cards
+              : [
+                  { title: "Comportamento de Consumo", content: "Dados não disponíveis. Execute a análise para gerar insights." },
+                  { title: "Geração Alvo Real", content: "Dados não disponíveis. Execute a análise para gerar insights." },
+                ]
+            ).map((card, i) => (
+              <motion.div
+                key={card.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+                className="rounded-xl bg-primary/10 p-5 shadow-sm"
+              >
+                <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
+              </motion.div>
+            ))}
           </div>
-        ) : (
-          <div className="glass-card p-8 text-center relative overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-md bg-card/80 flex flex-col items-center justify-center z-10">
-              <span className="section-label mb-2">Recurso Premium</span>
-              <p className="text-sm text-muted-foreground mb-4">A audiência sintética está disponível a partir do plano Standard.</p>
-              <Button variant="hero" size="sm" asChild>
-                <Link to="/app/settings">Fazer Upgrade</Link>
-              </Button>
-            </div>
-            <div className="opacity-30 grid sm:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="glass-card p-5"><p className="text-sm">Conteúdo bloqueado</p></div>
-              ))}
-            </div>
-          </div>
-        )}
-
+        </div>
         {/* Inline Chat Block */}
         {analysis && <ReportChatBlock analysis={analysis} />}
 
