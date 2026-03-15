@@ -252,7 +252,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   return (
     <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-4 shrink-0">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
           <Target className="h-4 w-4 text-primary" />
         </div>
