@@ -5,6 +5,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
