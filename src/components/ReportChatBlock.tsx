@@ -21,8 +21,10 @@ interface FileAttachment {
 }
 
 interface CreativeData {
-  imageUrl: string;
-  suggestedText: { headline: string; subheadline: string; cta: string };
+  strategist_output: any;
+  image_url: string;
+  editable_html: string;
+  creative_job_id: string | null;
 }
 
 const ACTION_OPTIONS = [
@@ -134,18 +136,12 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     setIsGeneratingCreative(true);
     setCreativeData(null);
 
-    const payload = analysis.normalized_payload as Record<string, any> | null;
-
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
         body: {
-          brief: {
-            context: `Campanha: ${analysis.title}. ${analysis.raw_prompt}. Score: ${analysis.score_overall}/100.`,
-            industry: analysis.industry || "Marketing digital",
-            target_audience: analysis.declared_target_audience || "Público geral",
-            visual_direction: payload?.executive_summary ? `Baseado na análise: ${String(payload.executive_summary).slice(0, 200)}` : "Moderno, profissional, impactante",
-            format: "1080x1080 square social media post",
-          },
+          analysis_id: analysis.id,
+          conversation_id: conversationId,
+          format: "1080x1080",
         },
       });
 
@@ -156,12 +152,14 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         return;
       }
 
-      if (data?.image && data?.suggestedText) {
+      if (data?.editable_html) {
         setCreativeData({
-          imageUrl: data.image,
-          suggestedText: data.suggestedText,
+          strategist_output: data.strategist_output,
+          image_url: data.image_url,
+          editable_html: data.editable_html,
+          creative_job_id: data.creative_job_id,
         });
-        toast.success("Criativo gerado! Edite os textos clicando neles.");
+        toast.success("Criativo gerado com base na sua campanha! Edite os textos clicando neles.");
       } else {
         toast.error("Não foi possível gerar o criativo. Tente novamente.");
       }
@@ -171,7 +169,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     } finally {
       setIsGeneratingCreative(false);
     }
-  }, [analysis, isGeneratingCreative]);
+  }, [analysis, isGeneratingCreative, conversationId]);
 
   const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
     if (action.action === "creative") {
@@ -306,8 +304,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       {creativeData && !isGeneratingCreative && (
         <div className="mb-4">
           <CreativeEditor
-            imageUrl={creativeData.imageUrl}
-            suggestedText={creativeData.suggestedText}
+            strategistOutput={creativeData.strategist_output}
+            imageUrl={creativeData.image_url}
+            editableHtml={creativeData.editable_html}
+            creativeJobId={creativeData.creative_job_id}
             onRegenerate={generateCreative}
             isRegenerating={isGeneratingCreative}
           />
