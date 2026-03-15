@@ -223,12 +223,15 @@ export default function CampaignDocumentPage() {
   }, [analysis, selectedImprovements, saveCampaignToDb]);
 
   const handleChatSend = useCallback(async () => {
-    if (!chatInput.trim() || chatLoading) return;
+    if (!chatInput.trim() || chatLoading || !chatConversationId) return;
     const userMsg = chatInput.trim();
     setChatInput("");
     const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: userMsg }];
     setChatMessages(newMessages);
     setChatLoading(true);
+
+    // Save user message to DB
+    await saveChatMsg(chatConversationId, "user", userMsg);
 
     let assistantContent = "";
 
@@ -243,10 +246,15 @@ export default function CampaignDocumentPage() {
           setDocument(assistantContent);
         },
         onDone: async () => {
-          setChatMessages((prev) => [...prev, { role: "assistant", content: "✅ Documento atualizado com sucesso!" }]);
+          const confirmMsg = "✅ Documento atualizado com sucesso!";
+          setChatMessages((prev) => [...prev, { role: "assistant", content: confirmMsg }]);
           setChatLoading(false);
           // Save updated campaign to the database
           await saveCampaignToDb(documentRef.current);
+          // Save assistant confirmation to chat DB
+          if (chatConversationId) {
+            await saveChatMsg(chatConversationId, "assistant", confirmMsg);
+          }
         },
       });
     } catch (e) {
