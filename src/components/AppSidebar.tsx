@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const mainNav = [
   { label: "Dashboard", href: "/app", icon: <LayoutGrid className="h-5 w-5 shrink-0" /> },
-  { label: "Nova Análise", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
+  { label: "Novo chat", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
   { label: "Análises", href: "/app/analyses", icon: <BarChart3 className="h-5 w-5 shrink-0" /> },
   { label: "Conversas", href: "/app/conversations", icon: <MessageSquare className="h-5 w-5 shrink-0" /> },
   { label: "Biblioteca", href: "/app/assets", icon: <FolderOpen className="h-5 w-5 shrink-0" /> },
