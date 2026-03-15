@@ -50,20 +50,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Plus, label: "Nova Análise", to: "/app/new-analysis", primary: true },
+          { icon: Plus, label: "Nova\nAnálise", to: "/app/new-analysis", primary: true },
           { icon: History, label: "Histórico", to: "/app/history" },
           { icon: FolderOpen, label: "Biblioteca", to: "/app/assets" },
           { icon: BarChart3, label: "Conta", to: "/app/account" },
         ].map((a, i) => (
           <motion.div key={a.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Link to={a.to} className={`glass-card p-5 flex items-center gap-4 hover:border-primary/30 transition-all group block ${a.primary ? "border-primary/30 bg-primary/5" : ""}`}>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${a.primary ? "bg-primary text-primary-foreground" : "bg-accent text-muted-foreground group-hover:text-primary"} transition-colors`}>
+            <Link to={a.to} className={`glass-card p-5 flex items-center gap-4 hover:border-primary/30 transition-all group block aspect-[2/1] ${a.primary ? "border-primary/30 bg-primary/5" : ""}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${a.primary ? "bg-primary text-primary-foreground" : "bg-warning text-warning-foreground"} transition-colors shrink-0`}>
                 <a.icon className="h-5 w-5" />
               </div>
-              <span className="font-medium">{a.label}</span>
-              <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="font-medium whitespace-pre-line">{a.label}</span>
+              {a.primary && <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
             </Link>
           </motion.div>
         ))}
