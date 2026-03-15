@@ -80,7 +80,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <NavLink to="/app/integrations" className="hover:bg-accent/50" activeClassName="bg-accent text-primary font-medium">
+                    <NavLink to="/app/integrations" onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-accent text-primary font-medium">
                       <Link2 className="mr-2 h-4 w-4" />
                       {!collapsed && <span>Integrações</span>}
                     </NavLink>
