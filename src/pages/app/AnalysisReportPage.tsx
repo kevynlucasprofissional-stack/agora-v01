@@ -374,13 +374,19 @@ export default function AnalysisReportPage() {
             Comportamento e perfil público-alvo
           </span>
           <div className="grid sm:grid-cols-2 gap-4">
-            {(audienceBehavior?.cards && audienceBehavior.cards.length > 0
-              ? audienceBehavior.cards
-              : [
-                  { title: "Comportamento de Consumo", content: "Dados não disponíveis. Execute a análise para gerar insights." },
-                  { title: "Geração Alvo Real", content: "Dados não disponíveis. Execute a análise para gerar insights." },
-                ]
-            ).map((card, i) => (
+            {(() => {
+              const cards = audienceInsights
+                ? [
+                    { title: "Comportamento de Consumo", content: audienceInsights.consumption_behavior },
+                    { title: "Geração Alvo Real", content: audienceInsights.target_generation },
+                  ]
+                : audienceBehavior?.cards && audienceBehavior.cards.length > 0
+                ? audienceBehavior.cards
+                : [
+                    { title: "Comportamento de Consumo", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
+                    { title: "Geração Alvo Real", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
+                  ];
+              return cards.map((card, i) => (
               <motion.div
                 key={card.title}
                 initial={{ opacity: 0, y: 10 }}
