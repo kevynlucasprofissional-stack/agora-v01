@@ -112,17 +112,22 @@ function useTextStream({
   const updateSegments = useCallback((text: string) => {
     if (modeRef.current === "fade") {
       try {
-        const segmenter = new Intl.Segmenter(navigator.language, {
-          granularity: "word",
-        })
-        const segmentIterator = segmenter.segment(text)
-        const newSegments = Array.from(segmentIterator).map(
-          (segment, index) => ({
-            text: segment.segment,
-            index,
+        const SegmenterCtor = (Intl as any).Segmenter
+        if (SegmenterCtor) {
+          const segmenter = new SegmenterCtor(navigator.language, {
+            granularity: "word",
           })
-        )
-        setSegments(newSegments)
+          const segmentIterator = segmenter.segment(text)
+          const newSegments = Array.from(segmentIterator).map(
+            (segment: any, index: number) => ({
+              text: segment.segment as string,
+              index,
+            })
+          )
+          setSegments(newSegments)
+        } else {
+          throw new Error("Intl.Segmenter not available")
+        }
       } catch (error) {
         const newSegments = text
           .split(/(\s+)/)
