@@ -64,7 +64,7 @@ export default function LandingPage() {
             </span>
           </motion.div>
           <motion.h1 variants={fadeUp} custom={1} initial="hidden" animate="visible"
-            className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.1] md:text-7xl">
+            className="mx-auto max-w-4xl text-3xl font-extrabold leading-[1.1] sm:text-5xl md:text-7xl px-2">
             Simule suas campanhas. Otimize sua estratégia. Aumente suas vendas.
           </motion.h1>
           <motion.p variants={fadeUp} custom={2} initial="hidden" animate="visible"
