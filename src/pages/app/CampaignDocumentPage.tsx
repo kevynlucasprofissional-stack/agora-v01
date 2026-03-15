@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ interface ChatMessage {
 
 export default function CampaignDocumentPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [analysis, setAnalysis] = useState<AnalysisRequest | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,11 +52,16 @@ export default function CampaignDocumentPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const documentRef = useRef<string>("");
 
-  // Load analysis + check for existing campaign
+  const saveChatMsg = useCallback(async (convId: string, role: string, content: string) => {
+    await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
+  }, []);
+
+  // Load analysis + check for existing campaign + load chat history
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     const loadData = async () => {
       const [analysisRes, outputRes] = await Promise.all([
         supabase.from("analysis_requests").select("*").eq("id", id).single(),
@@ -87,10 +94,46 @@ export default function CampaignDocumentPage() {
         setStep("document");
       }
 
+      // Load or create chat conversation for campaign editing
+      const { data: existingConv } = await supabase
+        .from("conversations" as any)
+        .select("*")
+        .eq("analysis_request_id", id)
+        .eq("context_type", "campaign")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingConv) {
+        const convId = (existingConv as any).id;
+        setChatConversationId(convId);
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages" as any)
+          .select("*")
+          .eq("conversation_id", convId)
+          .order("created_at", { ascending: true });
+        if (dbMsgs && dbMsgs.length > 0) {
+          setChatMessages((dbMsgs as any[]).map((m: any) => ({ role: m.role, content: m.content })));
+        }
+      } else {
+        const { data: newConv } = await supabase
+          .from("conversations" as any)
+          .insert({
+            user_id: user.id,
+            analysis_request_id: id,
+            context_type: "campaign",
+            title: analysisData?.title || "Editor de Campanha",
+          } as any)
+          .select("id")
+          .single();
+        if (newConv) setChatConversationId((newConv as any).id);
+      }
+
       setLoading(false);
     };
     loadData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -180,12 +223,15 @@ export default function CampaignDocumentPage() {
   }, [analysis, selectedImprovements, saveCampaignToDb]);
 
   const handleChatSend = useCallback(async () => {
-    if (!chatInput.trim() || chatLoading) return;
+    if (!chatInput.trim() || chatLoading || !chatConversationId) return;
     const userMsg = chatInput.trim();
     setChatInput("");
     const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: userMsg }];
     setChatMessages(newMessages);
     setChatLoading(true);
+
+    // Save user message to DB
+    await saveChatMsg(chatConversationId, "user", userMsg);
 
     let assistantContent = "";
 
@@ -200,17 +246,22 @@ export default function CampaignDocumentPage() {
           setDocument(assistantContent);
         },
         onDone: async () => {
-          setChatMessages((prev) => [...prev, { role: "assistant", content: "✅ Documento atualizado com sucesso!" }]);
+          const confirmMsg = "✅ Documento atualizado com sucesso!";
+          setChatMessages((prev) => [...prev, { role: "assistant", content: confirmMsg }]);
           setChatLoading(false);
           // Save updated campaign to the database
           await saveCampaignToDb(documentRef.current);
+          // Save assistant confirmation to chat DB
+          if (chatConversationId) {
+            await saveChatMsg(chatConversationId, "assistant", confirmMsg);
+          }
         },
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao editar documento.");
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading, saveCampaignToDb]);
+  }, [chatInput, chatMessages, chatLoading, saveCampaignToDb, chatConversationId, saveChatMsg]);
 
   const handleDownloadMarkdown = () => {
     const blob = new Blob([document], { type: "text/markdown" });
