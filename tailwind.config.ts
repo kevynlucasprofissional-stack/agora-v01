@@ -69,6 +69,27 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        /* Custom brand colors */
+        creme: {
+          DEFAULT: "hsl(40 12% 94%)",
+          dark: "hsl(40 10% 88%)",
+          light: "hsl(40 12% 96%)",
+        },
+        sage: {
+          DEFAULT: "hsl(155 42% 71%)",
+          dark: "hsl(155 35% 55%)",
+          light: "hsl(155 42% 80%)",
+        },
+        amber: {
+          DEFAULT: "hsl(35 90% 67%)",
+          dark: "hsl(35 80% 55%)",
+          light: "hsl(35 90% 80%)",
+        },
+        coral: {
+          DEFAULT: "hsl(4 79% 61%)",
+          dark: "hsl(4 70% 55%)",
+          light: "hsl(4 79% 70%)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,8 +108,8 @@ export default {
           to: { height: "0" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 10px hsl(220 80% 55% / 0.3)" },
-          "50%": { boxShadow: "0 0 25px hsl(220 80% 55% / 0.6)" },
+          "0%, 100%": { boxShadow: "0 0 10px hsl(155 42% 71% / 0.3)" },
+          "50%": { boxShadow: "0 0 25px hsl(155 42% 71% / 0.5)" },
         },
         "fade-in": {
           from: { opacity: "0", transform: "translateY(8px)" },
