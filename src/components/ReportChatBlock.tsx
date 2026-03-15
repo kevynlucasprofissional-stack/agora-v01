@@ -132,10 +132,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, []);
 
   // Generate creative via edge function
-  const generateCreative = useCallback(async () => {
+  const generateCreative = useCallback(async (userPrompt?: string) => {
     if (isGeneratingCreative) return;
     setIsGeneratingCreative(true);
     setCreativeData(null);
+    setCreativeMode(false);
+
+    // Add user message to chat if there's a prompt
+    if (userPrompt && conversationId) {
+      const creativeMsg = `🎨 *Gerar criativo:* ${userPrompt}`;
+      setMessages(prev => [...prev, { role: "user", content: creativeMsg }]);
+      await saveMessage(conversationId, "user", creativeMsg);
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
@@ -143,6 +151,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           analysis_id: analysis.id,
           conversation_id: conversationId,
           format: "1080x1080",
+          user_prompt: userPrompt || "",
         },
       });
 
@@ -170,7 +179,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     } finally {
       setIsGeneratingCreative(false);
     }
-  }, [analysis, isGeneratingCreative, conversationId]);
+  }, [analysis, isGeneratingCreative, conversationId, messages]);
 
   const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
     if (action.action === "creative") {
