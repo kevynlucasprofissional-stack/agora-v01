@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, ChangeEvent } from "react";
-import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target } from "lucide-react";
+import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
@@ -55,8 +55,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const isBusy = isStreaming || isGeneratingCreative;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const shouldAutoScrollRef = useRef(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
 
   const saveMessage = async (convId: string, role: string, content: string) => {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
@@ -142,14 +144,31 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         }
       }
       setLoaded(true);
+      // Scroll to bottom after initial load
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      }, 100);
     };
     load();
   }, [user, analysis, loaded]);
 
+  // Auto-scroll only during active streaming/generation
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Track scroll position to show/hide "scroll to bottom" button
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(distanceFromBottom > 150);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -314,7 +333,17 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
+        {/* Scroll to bottom button */}
+        {showScrollDown && (
+          <button
+            onClick={scrollToBottom}
+            className="sticky top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/95 backdrop-blur-sm border border-border/60 shadow-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowDown className="h-3 w-3" />
+            Mais recente
+          </button>
+        )}
         {!loaded ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
