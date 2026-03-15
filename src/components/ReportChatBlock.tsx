@@ -21,8 +21,10 @@ interface FileAttachment {
 }
 
 interface CreativeData {
-  imageUrl: string;
-  suggestedText: { headline: string; subheadline: string; cta: string };
+  strategist_output: any;
+  image_url: string;
+  editable_html: string;
+  creative_job_id: string | null;
 }
 
 const ACTION_OPTIONS = [
