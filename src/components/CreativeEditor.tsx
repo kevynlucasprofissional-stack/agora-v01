@@ -27,7 +27,12 @@ const TEXT_COLORS = [
 ];
 
 export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegenerating }: CreativeEditorProps) {
-  const [texts, setTexts] = useState<CreativeTexts>(suggestedText);
+  const safeText = {
+    headline: suggestedText?.headline || "Seu Título Aqui",
+    subheadline: suggestedText?.subheadline || "Subtítulo do seu criativo",
+    cta: suggestedText?.cta || "Saiba Mais",
+  };
+  const [texts, setTexts] = useState<CreativeTexts>(safeText);
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [isDownloading, setIsDownloading] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
