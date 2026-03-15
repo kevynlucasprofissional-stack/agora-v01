@@ -310,7 +310,7 @@ export default function NewAnalysisPage() {
 
     try {
       await streamChat({
-        messages: updatedMessages,
+        messages: messagesForAI,
         onDelta: upsertAssistant,
         onDone: () => {
           setIsStreaming(false);
