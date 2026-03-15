@@ -3,12 +3,17 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles, Globe } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
+  Sparkles, Globe, Brain, TrendingUp, AlertTriangle, Target, Clock, Eye, Plus,
+  FileText, Presentation, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
-import { Json } from "@/integrations/supabase/types";
+import { exportToDocx, exportToPptx } from "@/lib/exportUtils";
 
 export default function AnalysisReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,19 +21,16 @@ export default function AnalysisReportPage() {
   const { canUseSyntheticAudience } = usePlanAccess();
   const [analysis, setAnalysis] = useState<AnalysisRequest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
+  const [expandedBiases, setExpandedBiases] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("analysis_requests")
-        .select("*")
-        .eq("id", id)
-        .single();
+    supabase.from("analysis_requests").select("*").eq("id", id).single().then(({ data }) => {
       setAnalysis(data);
       setLoading(false);
-    };
-    fetch();
+    });
   }, [id]);
 
   const handleFeedback = async (type: "like" | "dislike") => {
@@ -37,23 +39,49 @@ export default function AnalysisReportPage() {
       analysis_request_id: analysis.id,
       user_id: user.id,
       feedback: type,
+      comment: feedbackComment || null,
     }, { onConflict: "analysis_request_id,user_id" });
-    if (!error) toast.success(type === "like" ? "Obrigado pelo feedback positivo!" : "Agradecemos o feedback. Vamos melhorar.");
+    if (!error) {
+      setFeedbackSent(type);
+      toast.success(type === "like" ? "Obrigado pelo feedback positivo!" : "Agradecemos o feedback. Vamos melhorar.");
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando relatório...</div>;
   if (!analysis) return <div className="text-center py-20 text-muted-foreground">Análise não encontrada.</div>;
 
+  const payload = analysis.normalized_payload as Record<string, any> | null;
+  const summary = payload?.executive_summary as string | undefined;
+  const improvements = (payload?.improvements as string[] | undefined) || [];
+  const strengths = (payload?.strengths as string[] | undefined) || [];
+  const audienceInsights = (payload?.audience_insights as Array<{ generation: string; emoji: string; feedback: string }> | undefined) || [];
+  const marketRefs = (payload?.market_references as string[] | undefined) || [];
+  const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
+  const cognitiveBiases = (payload?.cognitive_biases as Array<{ bias: string; status: string; application: string }> | undefined) || [];
+  const hormoziAnalysis = payload?.hormozi_analysis as { dream_outcome: number; perceived_likelihood: number; time_delay: number; effort_sacrifice: number; overall_value: string } | undefined;
+  const kpiAnalysis = payload?.kpi_analysis as { vanity_metrics: string[]; recommended_north_star: string; recommended_kpis: string[] } | undefined;
+  const timingAnalysis = payload?.timing_analysis as { demand_momentum: string; context_shock: string; seasonality: string } | undefined;
+  const brandSentiment = payload?.brand_sentiment as { overall: string; analysis: string } | undefined;
+
   const scores = [
-    { label: "Sociocomportamental", value: analysis.score_sociobehavioral, icon: Users, color: "text-success" },
-    { label: "Oferta", value: analysis.score_offer, icon: Zap, color: "text-warning" },
-    { label: "Performance", value: analysis.score_performance, icon: BarChart3, color: "text-primary" },
+    { label: "Sociocomportamental", value: analysis.score_sociobehavioral, icon: Users, color: "bg-success" },
+    { label: "Oferta", value: analysis.score_offer, icon: Zap, color: "bg-warning" },
+    { label: "Performance", value: analysis.score_performance, icon: BarChart3, color: "bg-primary" },
   ];
+
+  const handleExportDocx = () => {
+    exportToDocx(analysis, payload);
+    toast.success("Exportando DOCX...");
+  };
+  const handleExportPptx = () => {
+    exportToPptx(analysis, payload);
+    toast.success("Exportando PPTX...");
+  };
 
   return (
     <div className="max-w-5xl space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <Link to="/app/history" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
             <ArrowLeft className="h-4 w-4" /> Voltar ao histórico
@@ -63,7 +91,7 @@ export default function AnalysisReportPage() {
             {new Date(analysis.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="hero" size="sm" asChild>
             <Link to={`/app/analysis/${id}/campaign`}>
               <Sparkles className="h-4 w-4 mr-2" /> Gerar Campanha
@@ -72,6 +100,17 @@ export default function AnalysisReportPage() {
           <Button variant="outline" size="sm" asChild>
             <Link to={`/app/analysis/${id}/chat`}>
               <MessageSquare className="h-4 w-4 mr-2" /> Chat com Estrategista
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportDocx}>
+            <FileText className="h-4 w-4 mr-2" /> DOCX
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPptx}>
+            <Presentation className="h-4 w-4 mr-2" /> PPTX
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/app/new-analysis">
+              <Plus className="h-4 w-4 mr-2" /> Nova Análise
             </Link>
           </Button>
         </div>
@@ -93,10 +132,10 @@ export default function AnalysisReportPage() {
         </div>
         <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-sm">
           {Number(analysis.score_overall ?? 0) < 50
-            ? "Campanha com alta fricção e problemas estruturais significativos. Recomenda-se revisão completa."
+            ? "Campanha com alta fricção e problemas estruturais significativos."
             : Number(analysis.score_overall ?? 0) < 75
-            ? "Campanha com potencial, mas com gargalos que precisam ser resolvidos para escalar."
-            : "Campanha bem estruturada com boas práticas. Ajustes finos podem otimizar ainda mais."}
+            ? "Campanha com potencial, mas com gargalos que precisam ser resolvidos."
+            : "Campanha bem estruturada. Ajustes finos podem otimizar ainda mais."}
         </p>
       </motion.div>
 
@@ -112,133 +151,267 @@ export default function AnalysisReportPage() {
             <div className="mt-3 text-3xl font-display font-bold text-tabular">{Number(s.value ?? 0).toFixed(0)}<span className="text-lg text-muted-foreground">/100</span></div>
             <div className="mt-3 h-2 rounded-full bg-border overflow-hidden">
               <motion.div initial={{ width: 0 }} animate={{ width: `${Number(s.value ?? 0)}%` }} transition={{ duration: 1, delay: 0.3 + i * 0.1 }}
-                className={`h-full rounded-full ${s.label === "Sociocomportamental" ? "bg-success" : s.label === "Oferta" ? "bg-warning" : "bg-primary"}`} />
+                className={`h-full rounded-full ${s.color}`} />
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Diagnostic Summary - from AI */}
-      {(() => {
-        const payload = analysis.normalized_payload as Record<string, any> | null;
-        const summary = payload?.executive_summary as string | undefined;
-        const improvements = (payload?.improvements as string[] | undefined) || [];
-        const strengths = (payload?.strengths as string[] | undefined) || [];
-        const audienceInsights = (payload?.audience_insights as Array<{ generation: string; emoji: string; feedback: string }> | undefined) || [];
-        const marketRefs = (payload?.market_references as string[] | undefined) || [];
-
-        return (
-          <>
-            {/* Executive Summary */}
-            {summary && (
-              <div className="glass-card p-6">
-                <h3 className="section-label mb-3">Resumo Executivo</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{summary}</p>
-              </div>
-            )}
-
-            {/* Improvements & Strengths */}
-            <div className="glass-card p-6">
-              <h3 className="section-label mb-4">Diagnóstico</h3>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold text-sm mb-2">🔴 Gargalos Identificados</h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {improvements.length > 0
-                      ? improvements.map((imp, i) => <li key={i}>• {imp}</li>)
-                      : <>
-                          <li>• Proposta de valor não é clara em 3 segundos</li>
-                          <li>• Métricas de vaidade dominando o painel de KPIs</li>
-                          <li>• Excesso de fricção no funil de conversão</li>
-                        </>
-                    }
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-sm mb-2">🟢 Pontos Fortes</h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {strengths.length > 0
-                      ? strengths.map((s, i) => <li key={i}>• {s}</li>)
-                      : <>
-                          <li>• Boa segmentação inicial</li>
-                          <li>• Canal adequado ao público</li>
-                        </>
-                    }
-                  </ul>
-                </div>
-              </div>
+      {/* Marketing Era */}
+      {marketingEra && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Era do Marketing</h3>
+          <div className="flex items-center gap-4 mb-3">
+            <span className="text-3xl font-display font-bold text-primary">{marketingEra.era}</span>
+            <div className="flex gap-1">
+              {["1.0", "2.0", "3.0", "4.0"].map((era) => (
+                <div key={era} className={`h-2 w-8 rounded-full ${parseFloat(era) <= parseFloat(marketingEra.era) ? "bg-primary" : "bg-border"}`} />
+              ))}
             </div>
+          </div>
+          <p className="text-sm text-muted-foreground mb-2">{marketingEra.description}</p>
+          <p className="text-sm text-foreground/80"><strong>Recomendação:</strong> {marketingEra.recommendation}</p>
+        </div>
+      )}
 
-            {/* Market References */}
-            {marketRefs.length > 0 && (
-              <div className="glass-card p-6">
-                <h3 className="section-label mb-3 flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Referências de Mercado
-                </h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  {marketRefs.map((ref, i) => <li key={i}>• {ref}</li>)}
-                </ul>
-              </div>
-            )}
+      {/* Executive Summary */}
+      {summary && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-3">Resumo Executivo</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{summary}</p>
+        </div>
+      )}
 
-            {/* Synthetic Audience */}
-            {canUseSyntheticAudience ? (
-              <div>
-                <h3 className="section-label mb-4">Audiência Sintética — Veredicto Geracional</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {(audienceInsights.length > 0 ? audienceInsights : [
-                    { generation: "Gen Z", emoji: "🧑‍💻", feedback: "Análise pendente." },
-                    { generation: "Millennials", emoji: "👩‍🎨", feedback: "Análise pendente." },
-                    { generation: "Gen X", emoji: "👨‍💼", feedback: "Análise pendente." },
-                    { generation: "Boomers", emoji: "👴", feedback: "Análise pendente." },
-                  ]).map((a, i) => (
-                    <motion.div key={a.generation} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
-                      className="glass-card p-5">
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-2xl">{a.emoji}</span>
-                        <span className="font-display font-semibold text-sm">{a.generation}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground italic">"{a.feedback}"</p>
-                    </motion.div>
+      {/* Hormozi Value Analysis */}
+      {hormoziAnalysis && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-4 flex items-center gap-2"><Target className="h-4 w-4" /> Análise de Valor (Hormozi)</h3>
+          <p className="text-xs text-muted-foreground mb-4">Valor = (Resultado Sonhado × Probabilidade) ÷ (Tempo × Esforço)</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {[
+              { label: "Resultado Sonhado", value: hormoziAnalysis.dream_outcome, icon: "🎯" },
+              { label: "Probabilidade", value: hormoziAnalysis.perceived_likelihood, icon: "📈" },
+              { label: "Tempo (rapidez)", value: hormoziAnalysis.time_delay, icon: "⚡" },
+              { label: "Facilidade", value: hormoziAnalysis.effort_sacrifice, icon: "🧘" },
+            ].map((item) => (
+              <div key={item.label} className="text-center">
+                <span className="text-2xl">{item.icon}</span>
+                <div className="flex justify-center gap-0.5 my-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <div key={n} className={`h-2 w-4 rounded-sm ${n <= item.value ? "bg-primary" : "bg-border"}`} />
                   ))}
                 </div>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
               </div>
-            ) : (
-              <div className="glass-card p-8 text-center relative overflow-hidden">
-                <div className="absolute inset-0 backdrop-blur-md bg-card/80 flex flex-col items-center justify-center z-10">
-                  <span className="section-label mb-2">Recurso Premium</span>
-                  <p className="text-sm text-muted-foreground mb-4">A audiência sintética está disponível a partir do plano Standard.</p>
-                  <Button variant="hero" size="sm" asChild>
-                    <Link to="/app/settings">Fazer Upgrade</Link>
-                  </Button>
-                </div>
-                <div className="opacity-30 grid md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="glass-card p-5">
-                      <p className="text-sm">Conteúdo bloqueado</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">{hormoziAnalysis.overall_value}</p>
+        </div>
+      )}
+
+      {/* Cognitive Biases */}
+      {cognitiveBiases.length > 0 && (
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-label flex items-center gap-2"><Brain className="h-4 w-4" /> Vieses Cognitivos</h3>
+            {cognitiveBiases.length > 4 && (
+              <button onClick={() => setExpandedBiases(!expandedBiases)} className="text-xs text-primary flex items-center gap-1">
+                {expandedBiases ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {expandedBiases ? "Ver menos" : `Ver todos (${cognitiveBiases.length})`}
+              </button>
             )}
-          </>
-        );
-      })()}
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            {(expandedBiases ? cognitiveBiases : cognitiveBiases.slice(0, 4)).map((b, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-accent/30">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${
+                  b.status === "presente" ? "bg-success/20 text-success" :
+                  b.status === "ausente" ? "bg-destructive/20 text-destructive" :
+                  "bg-warning/20 text-warning"
+                }`}>{b.status}</span>
+                <div>
+                  <p className="text-sm font-medium">{b.bias}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{b.application}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KPI Analysis */}
+      {kpiAnalysis && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Análise de KPIs</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><AlertTriangle className="h-3.5 w-3.5 text-warning" /> Métricas de Vaidade</h4>
+              <ul className="space-y-1">
+                {kpiAnalysis.vanity_metrics.map((m, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-warning shrink-0" /> {m}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Target className="h-3.5 w-3.5 text-success" /> KPIs Recomendados</h4>
+              <div className="mb-3">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">North Star Metric</span>
+                <p className="text-sm font-medium text-primary">{kpiAnalysis.recommended_north_star}</p>
+              </div>
+              <ul className="space-y-1">
+                {kpiAnalysis.recommended_kpis.map((k, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" /> {k}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timing Analysis */}
+      {timingAnalysis && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-4 flex items-center gap-2"><Clock className="h-4 w-4" /> Timing e Tendências</h3>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-3 rounded-lg bg-accent/30">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Demand Momentum</span>
+              <p className="text-sm font-medium mt-1">{timingAnalysis.demand_momentum}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-accent/30">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Context Shock</span>
+              <p className="text-sm font-medium mt-1">{timingAnalysis.context_shock}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-accent/30">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Sazonalidade</span>
+              <p className="text-sm font-medium mt-1">{timingAnalysis.seasonality}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Brand Sentiment */}
+      {brandSentiment && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-3 flex items-center gap-2"><Eye className="h-4 w-4" /> Sentimento da Marca</h3>
+          <div className="flex items-center gap-3 mb-2">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              brandSentiment.overall === "Positivo" ? "bg-success/20 text-success" :
+              brandSentiment.overall === "Negativo" ? "bg-destructive/20 text-destructive" :
+              "bg-warning/20 text-warning"
+            }`}>{brandSentiment.overall}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{brandSentiment.analysis}</p>
+        </div>
+      )}
+
+      {/* Improvements & Strengths */}
+      <div className="glass-card p-6">
+        <h3 className="section-label mb-4">Diagnóstico</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-sm mb-2">🔴 Gargalos Identificados</h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {improvements.length > 0
+                ? improvements.map((imp, i) => <li key={i}>• {imp}</li>)
+                : <li>• Dados de melhoria não disponíveis</li>
+              }
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm mb-2">🟢 Pontos Fortes</h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {strengths.length > 0
+                ? strengths.map((s, i) => <li key={i}>• {s}</li>)
+                : <li>• Dados de pontos fortes não disponíveis</li>
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Market References */}
+      {marketRefs.length > 0 && (
+        <div className="glass-card p-6">
+          <h3 className="section-label mb-3 flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Referências de Mercado
+          </h3>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            {marketRefs.map((ref, i) => <li key={i}>• {ref}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Synthetic Audience */}
+      {canUseSyntheticAudience ? (
+        <div>
+          <h3 className="section-label mb-4">Audiência Sintética — Veredicto Geracional</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {(audienceInsights.length > 0 ? audienceInsights : [
+              { generation: "Gen Z", emoji: "🧑‍💻", feedback: "Análise pendente." },
+              { generation: "Millennials", emoji: "👩‍🎨", feedback: "Análise pendente." },
+              { generation: "Gen X", emoji: "👨‍💼", feedback: "Análise pendente." },
+              { generation: "Boomers", emoji: "👴", feedback: "Análise pendente." },
+            ]).map((a, i) => (
+              <motion.div key={a.generation} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
+                className="glass-card p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl">{a.emoji}</span>
+                  <span className="font-display font-semibold text-sm">{a.generation}</span>
+                </div>
+                <p className="text-sm text-muted-foreground italic">"{a.feedback}"</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="glass-card p-8 text-center relative overflow-hidden">
+          <div className="absolute inset-0 backdrop-blur-md bg-card/80 flex flex-col items-center justify-center z-10">
+            <span className="section-label mb-2">Recurso Premium</span>
+            <p className="text-sm text-muted-foreground mb-4">A audiência sintética está disponível a partir do plano Standard.</p>
+            <Button variant="hero" size="sm" asChild>
+              <Link to="/app/settings">Fazer Upgrade</Link>
+            </Button>
+          </div>
+          <div className="opacity-30 grid md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="glass-card p-5"><p className="text-sm">Conteúdo bloqueado</p></div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Feedback */}
-      <div className="glass-card p-6 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">Como foi essa análise?</h3>
-          <p className="text-sm text-muted-foreground">Seu feedback ajuda a melhorar os agentes.</p>
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold">Como foi essa análise?</h3>
+            <p className="text-sm text-muted-foreground">Seu feedback ajuda a melhorar os agentes.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant={feedbackSent === "like" ? "default" : "outline"} size="icon" onClick={() => handleFeedback("like")} disabled={feedbackSent !== null}>
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button variant={feedbackSent === "dislike" ? "default" : "outline"} size="icon" onClick={() => handleFeedback("dislike")} disabled={feedbackSent !== null}>
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => handleFeedback("like")}>
-            <ThumbsUp className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => handleFeedback("dislike")}>
-            <ThumbsDown className="h-4 w-4" />
-          </Button>
-        </div>
+        {!feedbackSent && (
+          <Textarea
+            value={feedbackComment}
+            onChange={(e) => setFeedbackComment(e.target.value)}
+            placeholder="Deixe um comentário (opcional)..."
+            className="bg-card text-sm"
+            rows={2}
+          />
+        )}
+        {feedbackSent && (
+          <p className="text-sm text-success">✓ Feedback enviado. Obrigado!</p>
+        )}
       </div>
     </div>
   );

@@ -12,19 +12,26 @@ export default function DashboardPage() {
   const { profile } = useAuth();
   const { planCode, uploadsLimit } = usePlanAccess();
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisRequest[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRecent = async () => {
-      const { data } = await supabase
-        .from("analysis_requests")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      setRecentAnalyses(data ?? []);
+    const fetchData = async () => {
+      const [recentRes, countRes] = await Promise.all([
+        supabase
+          .from("analysis_requests")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("analysis_requests")
+          .select("id", { count: "exact", head: true }),
+      ]);
+      setRecentAnalyses(recentRes.data ?? []);
+      setTotalCount(countRes.count ?? 0);
       setLoading(false);
     };
-    fetchRecent();
+    fetchData();
   }, []);
 
   const statusLabels: Record<string, { label: string; color: string }> = {
@@ -35,6 +42,8 @@ export default function DashboardPage() {
     awaiting_clarification: { label: "Aguardando", color: "text-warning" },
     archived: { label: "Arquivada", color: "text-muted-foreground" },
   };
+
+  const todayCount = recentAnalyses.filter(a => new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -73,11 +82,11 @@ export default function DashboardPage() {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="glass-card p-5">
           <span className="section-label">Análises Hoje</span>
-          <p className="mt-2 text-3xl font-display font-bold text-tabular">{recentAnalyses.filter(a => new Date(a.created_at).toDateString() === new Date().toDateString()).length}</p>
+          <p className="mt-2 text-3xl font-display font-bold text-tabular">{todayCount}</p>
         </div>
         <div className="glass-card p-5">
           <span className="section-label">Total de Análises</span>
-          <p className="mt-2 text-3xl font-display font-bold text-tabular">{recentAnalyses.length}</p>
+          <p className="mt-2 text-3xl font-display font-bold text-tabular">{totalCount}</p>
         </div>
         <div className="glass-card p-5">
           <span className="section-label">Limite de Uploads</span>
