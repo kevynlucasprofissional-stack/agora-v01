@@ -118,6 +118,7 @@ export default function NewAnalysisPage() {
   const { user } = useAuth();
   const { uploadsLimit } = usePlanAccess();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [step, setStep] = useState<FlowStep>("intake");
   const [input, setInput] = useState("");
@@ -127,15 +128,65 @@ export default function NewAnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const hasMessages = messages.length > 0;
 
+  // Load existing conversation on mount
+  useEffect(() => {
+    const convId = searchParams.get("c");
+    if (convId && user) {
+      setConversationId(convId);
+      setLoadingHistory(true);
+      supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("conversation_id", convId)
+        .order("created_at", { ascending: true })
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+            setMessages(restored);
+            // Check if AI already signaled readiness
+            if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
+              setIsReady(true);
+            }
+          }
+          setLoadingHistory(false);
+        });
+    }
+  }, [user]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Helper: ensure a conversation exists, create if needed
+  const ensureConversation = useCallback(async (): Promise<string> => {
+    if (conversationId) return conversationId;
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, context_type: "intake", title: "Nova Análise" })
+      .select("id")
+      .single();
+
+    if (error || !data) throw new Error("Failed to create conversation");
+
+    setConversationId(data.id);
+    setSearchParams({ c: data.id }, { replace: true });
+    return data.id;
+  }, [conversationId, user, setSearchParams]);
+
+  // Helper: persist a message to DB
+  const persistMessage = useCallback(async (convId: string, role: string, content: string) => {
+    await supabase.from("chat_messages").insert({ conversation_id: convId, role, content });
+  }, []);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
