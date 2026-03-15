@@ -261,7 +261,7 @@ export default function CampaignDocumentPage() {
       toast.error(e instanceof Error ? e.message : "Erro ao editar documento.");
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading, saveCampaignToDb]);
+  }, [chatInput, chatMessages, chatLoading, saveCampaignToDb, chatConversationId, saveChatMsg]);
 
   const handleDownloadMarkdown = () => {
     const blob = new Blob([document], { type: "text/markdown" });
