@@ -41,12 +41,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profileData) {
       setProfile(profileData);
+
+      // Check if trial has expired
+      const trialExpired = profileData.trial_ends_at
+        ? new Date(profileData.trial_ends_at) < new Date()
+        : false;
+
+      // If trial expired, use original (freemium) plan; otherwise use current plan
+      const planIdToUse = trialExpired && profileData.original_plan_id
+        ? profileData.original_plan_id
+        : profileData.current_plan_id;
+
       const { data: planData } = await supabase
         .from("plans")
         .select("*")
-        .eq("id", profileData.current_plan_id)
+        .eq("id", planIdToUse)
         .single();
       if (planData) setPlan(planData);
+
+      // If trial expired and profile still shows standard, revert in DB
+      if (trialExpired && profileData.original_plan_id && profileData.current_plan_id !== profileData.original_plan_id) {
+        await supabase
+          .from("profiles")
+          .update({ current_plan_id: profileData.original_plan_id, trial_ends_at: null })
+          .eq("id", userId);
+      }
     }
   };
 
