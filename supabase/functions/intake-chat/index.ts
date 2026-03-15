@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `<motor_multi_agentes_agora>
+const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETOR JSON PARA O USUÁRIO]
+<motor_multi_agentes_agora>
 
 <arquitetura_de_agentes_e_schemas>
 ### 🏛️ Arquitetura Multi-Agentes Ágora (Core Engine)
@@ -459,9 +460,7 @@ serve(async (req) => {
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     // Build messages array, injecting file contents into the conversation
-    const processedMessages: any[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-    ];
+    const processedMessages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
 
     for (const msg of messages) {
       processedMessages.push({ role: msg.role, content: msg.content });
@@ -495,16 +494,19 @@ serve(async (req) => {
       // Build multimodal user message with files
       if (fileParts.length > 0 || imageParts.length > 0) {
         const fileContextContent: any[] = [];
-        
+
         if (fileParts.length > 0) {
           fileContextContent.push({
             type: "text",
-            text: `O usuário anexou os seguintes documentos. Analise-os com atenção:\n\n${fileParts.join('\n\n')}`,
+            text: `O usuário anexou os seguintes documentos. Analise-os com atenção:\n\n${fileParts.join("\n\n")}`,
           });
         }
 
         if (imageParts.length > 0) {
-          const fileNames = fileContents.filter(f => f.isBase64).map(f => f.name).join(', ');
+          const fileNames = fileContents
+            .filter((f) => f.isBase64)
+            .map((f) => f.name)
+            .join(", ");
           fileContextContent.push({
             type: "text",
             text: `O usuário anexou os seguintes arquivos: ${fileNames}. Analise o conteúdo com atenção:`,
@@ -519,41 +521,38 @@ serve(async (req) => {
       }
     }
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-2.5-flash",
-          messages: processedMessages,
-          stream: true,
-        }),
-      }
-    );
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: processedMessages,
+        stream: true,
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(
-        JSON.stringify({ error: "Erro no serviço de IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(response.body, {
@@ -561,9 +560,9 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("intake-chat error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
