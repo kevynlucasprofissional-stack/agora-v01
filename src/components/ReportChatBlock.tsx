@@ -333,7 +333,17 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
+        {/* Scroll to bottom button */}
+        {showScrollDown && (
+          <button
+            onClick={scrollToBottom}
+            className="sticky top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/95 backdrop-blur-sm border border-border/60 shadow-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowDown className="h-3 w-3" />
+            Mais recente
+          </button>
+        )}
         {!loaded ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
