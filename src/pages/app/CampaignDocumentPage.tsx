@@ -67,7 +67,17 @@ export default function CampaignDocumentPage() {
           .limit(1)
           .maybeSingle(),
       ]);
-      setAnalysis(analysisRes.data);
+      const analysisData = analysisRes.data;
+      setAnalysis(analysisData);
+
+      // Load real improvements from analysis if available
+      if (analysisData?.normalized_payload) {
+        const payload = analysisData.normalized_payload as Record<string, any>;
+        const realImprovements = payload?.improvements as string[] | undefined;
+        if (realImprovements && realImprovements.length > 0) {
+          setSelectedImprovements(realImprovements);
+        }
+      }
 
       // If a campaign was previously saved, restore it
       if (outputRes.data?.content_markdown) {
