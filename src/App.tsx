@@ -52,6 +52,8 @@ const App = () => (
               <Route index element={<DashboardPage />} />
               <Route path="new-analysis" element={<NewAnalysisPage />} />
               <Route path="history" element={<HistoryPage />} />
+              <Route path="analyses" element={<AnalysisResultsPage />} />
+              <Route path="conversations" element={<ConversationHistoryPage />} />
               <Route path="analysis/:id/report" element={<AnalysisReportPage />} />
               <Route path="analysis/:id/chat" element={<AnalysisChatPage />} />
               <Route path="analysis/:id/campaign" element={<CampaignDocumentPage />} />
