@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,6 +118,7 @@ export default function NewAnalysisPage() {
   const { user } = useAuth();
   const { uploadsLimit } = usePlanAccess();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [step, setStep] = useState<FlowStep>("intake");
   const [input, setInput] = useState("");
@@ -127,15 +128,65 @@ export default function NewAnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const hasMessages = messages.length > 0;
 
+  // Load existing conversation on mount
+  useEffect(() => {
+    const convId = searchParams.get("c");
+    if (convId && user) {
+      setConversationId(convId);
+      setLoadingHistory(true);
+      supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("conversation_id", convId)
+        .order("created_at", { ascending: true })
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+            setMessages(restored);
+            // Check if AI already signaled readiness
+            if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
+              setIsReady(true);
+            }
+          }
+          setLoadingHistory(false);
+        });
+    }
+  }, [user]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Helper: ensure a conversation exists, create if needed
+  const ensureConversation = useCallback(async (): Promise<string> => {
+    if (conversationId) return conversationId;
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, context_type: "intake", title: "Nova Análise" })
+      .select("id")
+      .single();
+
+    if (error || !data) throw new Error("Failed to create conversation");
+
+    setConversationId(data.id);
+    setSearchParams({ c: data.id }, { replace: true });
+    return data.id;
+  }, [conversationId, user, setSearchParams]);
+
+  // Helper: persist a message to DB
+  const persistMessage = useCallback(async (convId: string, role: string, content: string) => {
+    await supabase.from("chat_messages").insert({ conversation_id: convId, role, content });
+  }, []);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
@@ -184,13 +235,21 @@ export default function NewAnalysisPage() {
   const handleSend = async () => {
     if ((!input.trim() && files.length === 0) || isStreaming) return;
 
+    // Ensure conversation exists
+    let convId: string;
+    try {
+      convId = await ensureConversation();
+    } catch {
+      toast.error("Erro ao criar conversa.");
+      return;
+    }
+
     // Build user message content with files
     let userDisplayContent = input.trim();
     const pendingFiles = [...files];
     const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
 
     if (pendingFiles.length > 0) {
-      // Read all file contents
       try {
         const results = await Promise.all(pendingFiles.map(readFileContent));
         fileContents.push(...results);
@@ -211,6 +270,14 @@ export default function NewAnalysisPage() {
     setInput("");
     setFiles([]);
     setIsStreaming(true);
+
+    // Persist user message
+    persistMessage(convId, "user", userDisplayContent);
+
+    // Update conversation title from first message
+    if (messages.length === 0) {
+      supabase.from("conversations").update({ title: userDisplayContent.slice(0, 80) }).eq("id", convId);
+    }
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -236,7 +303,13 @@ export default function NewAnalysisPage() {
       await streamChat({
         messages: updatedMessages,
         onDelta: upsertAssistant,
-        onDone: () => setIsStreaming(false),
+        onDone: () => {
+          setIsStreaming(false);
+          // Persist assistant response
+          if (assistantSoFar) {
+            persistMessage(convId, "assistant", assistantSoFar);
+          }
+        },
         fileContents: fileContents.length > 0 ? fileContents : undefined,
       });
     } catch (e) {
@@ -457,7 +530,7 @@ export default function NewAnalysisPage() {
       {/* Scrollable chat area */}
       <div className="flex-1 overflow-y-auto px-4">
         <div className="max-w-2xl mx-auto py-6">
-          {!hasMessages && (
+          {!hasMessages && !loadingHistory && (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
               <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2 text-center">
                 O que você quer analisar?
