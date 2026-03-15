@@ -36,13 +36,13 @@
     --muted: 40 10% 88%;
     --muted-foreground: 220 10% 45%;
 
-    /* Accent - Coral (10%) */
-    --accent: 4 79% 61%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Amber (10%) */
+    --accent: 35 90% 67%;
+    --accent-foreground: 35 50% 15%;
 
-    /* Destructive - Coral mais escuro */
-    --destructive: 4 70% 55%;
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive - Amber mais escuro */
+    --destructive: 35 80% 55%;
+    --destructive-foreground: 35 50% 15%;
 
     /* Success - Verde sálvia */
     --success: 155 42% 65%;
