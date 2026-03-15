@@ -5,7 +5,7 @@ import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
+  Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
   Sparkles, Globe, Brain, TrendingUp, AlertTriangle, Target, Clock, Eye, Plus,
   FileText, Presentation, ChevronDown, ChevronUp,
 } from "lucide-react";
