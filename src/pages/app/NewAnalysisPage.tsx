@@ -248,7 +248,7 @@ export default function NewAnalysisPage() {
       }
     }
 
-    await simulateProcessing(analysis.id);
+    await runRealAnalysis(analysis.id);
     setLoading(false);
   };
 
