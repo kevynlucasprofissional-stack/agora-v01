@@ -24,7 +24,9 @@ export default function AnalysisChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isUserNearBottomRef = useRef(true);
 
   // Load analysis + conversation + messages
   useEffect(() => {
