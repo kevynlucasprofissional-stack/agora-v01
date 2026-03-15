@@ -143,6 +143,8 @@ export default function NewAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
 
   const hasMessages = messages.length > 0;
 
