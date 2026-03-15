@@ -60,19 +60,13 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
   };
 
-  // Persist creative snapshot as a chat message with special prefix
+  // Persist creative snapshot
   const persistCreative = useCallback(async (dataUrl: string) => {
-    if (!conversationId) return;
-    // Save a marker message so creative appears in history
-    const marker = `[creative-image]\n${dataUrl.substring(0, 200)}...`;
-    await saveMessage(conversationId, "assistant", marker);
-    // Also update the creative_job with the captured image
-    if (creativeData?.creative_job_id) {
-      await supabase.from("creative_jobs" as any)
-        .update({ image_url: dataUrl, status: "saved" } as any)
-        .eq("id", creativeData.creative_job_id);
-    }
-    toast.success("Criativo salvo no histórico!");
+    if (!conversationId || !creativeData?.creative_job_id) return;
+    await supabase.from("creative_jobs" as any)
+      .update({ image_url: dataUrl, status: "saved" } as any)
+      .eq("id", creativeData.creative_job_id);
+    toast.success("Criativo salvo!");
   }, [conversationId, creativeData]);
 
   // Load existing creative for this conversation on mount
