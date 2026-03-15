@@ -50,7 +50,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [creativeData, setCreativeData] = useState<CreativeData | null>(null);
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
-  const [creativeMode, setCreativeMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -132,18 +131,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, []);
 
   // Generate creative via edge function
-  const generateCreative = useCallback(async (userPrompt?: string) => {
+  const generateCreative = useCallback(async () => {
     if (isGeneratingCreative) return;
     setIsGeneratingCreative(true);
     setCreativeData(null);
-    setCreativeMode(false);
-
-    // Add user message to chat if there's a prompt
-    if (userPrompt && conversationId) {
-      const creativeMsg = `🎨 *Gerar criativo:* ${userPrompt}`;
-      setMessages(prev => [...prev, { role: "user", content: creativeMsg }]);
-      await saveMessage(conversationId, "user", creativeMsg);
-    }
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
@@ -151,7 +142,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           analysis_id: analysis.id,
           conversation_id: conversationId,
           format: "1080x1080",
-          user_prompt: userPrompt || "",
         },
       });
 
@@ -179,27 +169,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     } finally {
       setIsGeneratingCreative(false);
     }
-  }, [analysis, isGeneratingCreative, conversationId, messages]);
+  }, [analysis, isGeneratingCreative, conversationId]);
 
   const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
     if (action.action === "creative") {
-      setCreativeMode(prev => !prev);
+      generateCreative();
     } else if (action.prompt) {
       sendMessage(action.prompt);
     }
-  }, []);
+  }, [generateCreative]);
 
   const sendMessage = useCallback(async (text: string) => {
     if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
-
-    // If creative mode is active, redirect to creative generation
-    if (creativeMode) {
-      generateCreative(text.trim());
-      setInput("");
-      setAttachments([]);
-      if (textareaRef.current) textareaRef.current.style.height = "auto";
-      return;
-    }
 
     let userMsg = text.trim();
     if (attachments.length > 0) {
@@ -259,7 +240,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
     }
-  }, [input, isStreaming, messages, analysis, conversationId, attachments, creativeMode, generateCreative]);
+  }, [input, isStreaming, messages, analysis, conversationId, attachments]);
 
   return (
     <div className="glass-card p-6">
@@ -327,7 +308,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             imageUrl={creativeData.image_url}
             editableHtml={creativeData.editable_html}
             creativeJobId={creativeData.creative_job_id}
-            onRegenerate={() => generateCreative()}
+            onRegenerate={generateCreative}
             isRegenerating={isGeneratingCreative}
           />
         </div>
@@ -335,41 +316,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
       {/* Action chips */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {ACTION_OPTIONS.map((action) => {
-          const isActive = action.action === "creative" && creativeMode;
-          return (
-            <button
-              key={action.label}
-              onClick={() => handleActionClick(action)}
-              disabled={isStreaming || isGeneratingCreative || !conversationId}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 ${
-                isActive
-                  ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
-                  : "border-border/50 bg-accent/30 hover:bg-accent/60 text-foreground"
-              }`}
-            >
-              <action.icon className="h-3.5 w-3.5" />
-              {action.label}
-              {isActive && <X className="h-3 w-3 ml-0.5" />}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Creative mode hint */}
-      <AnimatePresence>
-        {creativeMode && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-3 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-xs text-primary flex items-center gap-2"
+        {ACTION_OPTIONS.map((action) => (
+          <button
+            key={action.label}
+            onClick={() => handleActionClick(action)}
+            disabled={isStreaming || isGeneratingCreative || !conversationId}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border/50 bg-accent/30 hover:bg-accent/60 text-foreground transition-colors disabled:opacity-50"
           >
-            <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            <span>Modo criativo ativado — descreva como quer o criativo e envie</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <action.icon className="h-3.5 w-3.5" />
+            {action.label}
+          </button>
+        ))}
+      </div>
 
       {/* Attachment previews */}
       <AnimatePresence>
@@ -420,7 +378,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
           }}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage(input))}
-          placeholder={creativeMode ? "Descreva o criativo que deseja... Ex: Fundo azul com uma mulher sorrindo" : "Pergunte qualquer coisa sobre a análise..."}
+          placeholder="Pergunte qualquer coisa sobre a análise..."
           rows={1}
           className="flex-1 resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />

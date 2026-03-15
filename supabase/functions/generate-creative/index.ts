@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { analysis_id, conversation_id, format = "1080x1080", user_prompt = "" } = await req.json();
+    const { analysis_id, conversation_id, format = "1080x1080" } = await req.json();
     if (!analysis_id) {
       return new Response(JSON.stringify({ error: "analysis_id é obrigatório" }), {
         status: 400,
@@ -99,18 +99,13 @@ serve(async (req) => {
       agents: agentOutputs,
       chat_history: chatHistory,
       requested_format: format,
-      user_prompt: user_prompt,
     };
 
     // ─── 2. Gemini Strategist ───
-    const userRequestSection = user_prompt
-      ? `\n\nPEDIDO ESPECÍFICO DO USUÁRIO:\n"${user_prompt}"\n\nIMPORTANTE: O pedido do usuário tem PRIORIDADE sobre as sugestões automáticas. Adapte o criativo para atender exatamente o que foi pedido, mas mantenha coerência com o contexto da campanha.`
-      : "";
-
     const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto completo desta campanha e gere um briefing criativo estruturado para produzir um criativo de marketing.
 
 CONTEXTO DA CAMPANHA:
-${JSON.stringify(creativeContext, null, 2)}${userRequestSection}
+${JSON.stringify(creativeContext, null, 2)}
 
 Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com este schema:
 {
@@ -138,8 +133,7 @@ REGRAS:
 - O headline, body_copy e CTA devem refletir os insights da análise
 - O nano_banana_prompt deve ser em INGLÊS e descrever APENAS o visual de fundo, SEM texto
 - O visual deve ser coerente com a indústria e público-alvo
-- Inclua compliance_warnings se houver restrições identificadas na análise
-- Se o usuário fez um pedido específico, siga-o fielmente`;
+- Inclua compliance_warnings se houver restrições identificadas na análise`;
 
     const strategistRes = await fetch(GATEWAY, {
       method: "POST",
