@@ -420,7 +420,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
           }}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage(input))}
-          placeholder="Pergunte qualquer coisa sobre a análise..."
+          placeholder={creativeMode ? "Descreva o criativo que deseja... Ex: Fundo azul com uma mulher sorrindo" : "Pergunte qualquer coisa sobre a análise..."}
           rows={1}
           className="flex-1 resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
