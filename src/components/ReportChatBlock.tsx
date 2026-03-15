@@ -147,6 +147,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, [user, analysis, loaded]);
 
   useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
