@@ -397,7 +397,8 @@ export default function AnalysisReportPage() {
                 <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
               </motion.div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
         {/* Inline Chat Block */}
