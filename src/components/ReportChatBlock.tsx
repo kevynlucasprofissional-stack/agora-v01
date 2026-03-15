@@ -131,10 +131,16 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, []);
 
   // Generate creative via edge function
-  const generateCreative = useCallback(async () => {
+  const generateCreative = useCallback(async (userPrompt?: string) => {
     if (isGeneratingCreative) return;
     setIsGeneratingCreative(true);
     setCreativeData(null);
+
+    // Clear input if user typed a prompt
+    if (userPrompt?.trim()) {
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
@@ -142,6 +148,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           analysis_id: analysis.id,
           conversation_id: conversationId,
           format: "1080x1080",
+          user_prompt: userPrompt?.trim() || undefined,
         },
       });
 
