@@ -141,8 +141,16 @@ export default function CampaignDocumentPage() {
     loadData();
   }, [id, user]);
 
+  const handleChatScroll = useCallback(() => {
+    const el = chatScrollContainerRef.current;
+    if (!el) return;
+    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }, []);
+
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isUserNearBottomRef.current) {
+      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [chatMessages]);
 
   const handleToggleImprovement = (imp: string) => {
