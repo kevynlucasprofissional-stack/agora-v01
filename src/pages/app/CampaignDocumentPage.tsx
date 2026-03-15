@@ -52,6 +52,8 @@ export default function CampaignDocumentPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef(true);
   const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const documentRef = useRef<string>("");
 
