@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3 } from "lucide-react";
+import { MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
