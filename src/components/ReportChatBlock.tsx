@@ -50,6 +50,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [creativeData, setCreativeData] = useState<CreativeData | null>(null);
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
+  const [creativeMode, setCreativeMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

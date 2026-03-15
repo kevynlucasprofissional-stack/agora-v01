@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { analysis_id, conversation_id, format = "1080x1080" } = await req.json();
+    const { analysis_id, conversation_id, format = "1080x1080", user_prompt = "" } = await req.json();
     if (!analysis_id) {
       return new Response(JSON.stringify({ error: "analysis_id é obrigatório" }), {
         status: 400,
