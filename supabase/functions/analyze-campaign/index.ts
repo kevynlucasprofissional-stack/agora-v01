@@ -25,33 +25,73 @@ async function fetchIbgeData(region: string): Promise<IbgeData> {
 
     // Map common UF names/abbreviations
     const ufMap: Record<string, string> = {
-      "sp": "35", "são paulo": "35", "sao paulo": "35",
-      "rj": "33", "rio de janeiro": "33",
-      "mg": "31", "minas gerais": "31",
-      "ba": "29", "bahia": "29",
-      "pr": "41", "paraná": "41", "parana": "41",
-      "rs": "43", "rio grande do sul": "43",
-      "pe": "26", "pernambuco": "26",
-      "ce": "23", "ceará": "23", "ceara": "23",
-      "pa": "15", "pará": "15", "para": "15",
-      "sc": "42", "santa catarina": "42",
-      "go": "52", "goiás": "52", "goias": "52",
-      "ma": "21", "maranhão": "21", "maranhao": "21",
-      "am": "13", "amazonas": "13",
-      "es": "32", "espírito santo": "32", "espirito santo": "32",
-      "pb": "25", "paraíba": "25", "paraiba": "25",
-      "rn": "24", "rio grande do norte": "24",
-      "mt": "51", "mato grosso": "51",
-      "al": "27", "alagoas": "27",
-      "pi": "22", "piauí": "22", "piaui": "22",
-      "df": "53", "distrito federal": "53", "brasília": "53", "brasilia": "53",
-      "ms": "50", "mato grosso do sul": "50",
-      "se": "28", "sergipe": "28",
-      "ro": "11", "rondônia": "11", "rondonia": "11",
-      "to": "17", "tocantins": "17",
-      "ac": "12", "acre": "12",
-      "ap": "16", "amapá": "16", "amapa": "16",
-      "rr": "14", "roraima": "14",
+      sp: "35",
+      "são paulo": "35",
+      "sao paulo": "35",
+      rj: "33",
+      "rio de janeiro": "33",
+      mg: "31",
+      "minas gerais": "31",
+      ba: "29",
+      bahia: "29",
+      pr: "41",
+      paraná: "41",
+      parana: "41",
+      rs: "43",
+      "rio grande do sul": "43",
+      pe: "26",
+      pernambuco: "26",
+      ce: "23",
+      ceará: "23",
+      ceara: "23",
+      pa: "15",
+      pará: "15",
+      para: "15",
+      sc: "42",
+      "santa catarina": "42",
+      go: "52",
+      goiás: "52",
+      goias: "52",
+      ma: "21",
+      maranhão: "21",
+      maranhao: "21",
+      am: "13",
+      amazonas: "13",
+      es: "32",
+      "espírito santo": "32",
+      "espirito santo": "32",
+      pb: "25",
+      paraíba: "25",
+      paraiba: "25",
+      rn: "24",
+      "rio grande do norte": "24",
+      mt: "51",
+      "mato grosso": "51",
+      al: "27",
+      alagoas: "27",
+      pi: "22",
+      piauí: "22",
+      piaui: "22",
+      df: "53",
+      "distrito federal": "53",
+      brasília: "53",
+      brasilia: "53",
+      ms: "50",
+      "mato grosso do sul": "50",
+      se: "28",
+      sergipe: "28",
+      ro: "11",
+      rondônia: "11",
+      rondonia: "11",
+      to: "17",
+      tocantins: "17",
+      ac: "12",
+      acre: "12",
+      ap: "16",
+      amapá: "16",
+      amapa: "16",
+      rr: "14",
+      roraima: "14",
     };
 
     // Try to find UF code
@@ -67,7 +107,10 @@ async function fetchIbgeData(region: string): Promise<IbgeData> {
       for (const [key, code] of Object.entries(ufMap)) {
         if (normalized.includes(key) && key.length > 2) {
           ufCode = code;
-          municipioNome = normalized.replace(key, "").trim().replace(/^[-,\s]+|[-,\s]+$/g, "");
+          municipioNome = normalized
+            .replace(key, "")
+            .trim()
+            .replace(/^[-,\s]+|[-,\s]+$/g, "");
           break;
         }
       }
@@ -80,9 +123,8 @@ async function fetchIbgeData(region: string): Promise<IbgeData> {
       });
       if (searchResp.ok) {
         const allMunicipios = await searchResp.json();
-        const found = allMunicipios.find((m: any) =>
-          m.nome.toLowerCase() === normalized ||
-          m.nome.toLowerCase().includes(normalized)
+        const found = allMunicipios.find(
+          (m: any) => m.nome.toLowerCase() === normalized || m.nome.toLowerCase().includes(normalized),
         );
         if (found) {
           ufCode = String(found.microrregiao?.mesorregiao?.UF?.id || "");
@@ -104,10 +146,9 @@ async function fetchIbgeData(region: string): Promise<IbgeData> {
     // Fetch population estimate from SIDRA (table 6579 - population estimates)
     let populacao = "Não disponível";
     try {
-      const popResp = await fetch(
-        `${SIDRA_BASE}/values/t/6579/n3/${ufCode}/v/9324/p/last%201/d/v9324%200`,
-        { signal: AbortSignal.timeout(8000) }
-      );
+      const popResp = await fetch(`${SIDRA_BASE}/values/t/6579/n3/${ufCode}/v/9324/p/last%201/d/v9324%200`, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (popResp.ok) {
         const popData = await popResp.json();
         if (popData?.[1]?.V) {
@@ -133,7 +174,7 @@ async function fetchIbgeData(region: string): Promise<IbgeData> {
 
 // ── Main ──────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Você é um auditor de marketing científico do Ágora. Sua missão é analisar campanhas de marketing com precisão absoluta, usando frameworks consagrados:
+const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETORNE JSON PARA O USUÁRIO] Você é um auditor de marketing científico do Ágora. Sua missão é analisar campanhas de marketing com precisão absoluta, usando frameworks consagrados:
 
 ## Frameworks de Análise
 
@@ -235,192 +276,217 @@ ${ibgeSection}
 
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-2.5-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "analysis_result",
-                description: "Retorna o resultado completo da análise da campanha.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    score_overall: { type: "number", description: "Score geral (0-100)" },
-                    score_sociobehavioral: { type: "number", description: "Score sociocomportamental (0-100)" },
-                    score_offer: { type: "number", description: "Score da oferta (0-100)" },
-                    score_performance: { type: "number", description: "Score de performance (0-100)" },
-                    industry: { type: "string", description: "Indústria/setor identificado" },
-                    primary_channel: { type: "string", description: "Canal principal identificado" },
-                    declared_target_audience: { type: "string", description: "Público-alvo identificado" },
-                    region: { type: "string", description: "Região/mercado" },
-                    executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
-                    marketing_era: {
-                      type: "object",
-                      properties: {
-                        era: { type: "string", description: "1.0, 2.0, 3.0 ou 4.0" },
-                        description: { type: "string", description: "Por que esta campanha está nesta era" },
-                        recommendation: { type: "string", description: "O que fazer para evoluir para a próxima era" }
-                      },
-                      required: ["era", "description", "recommendation"]
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "analysis_result",
+              description: "Retorna o resultado completo da análise da campanha.",
+              parameters: {
+                type: "object",
+                properties: {
+                  score_overall: { type: "number", description: "Score geral (0-100)" },
+                  score_sociobehavioral: { type: "number", description: "Score sociocomportamental (0-100)" },
+                  score_offer: { type: "number", description: "Score da oferta (0-100)" },
+                  score_performance: { type: "number", description: "Score de performance (0-100)" },
+                  industry: { type: "string", description: "Indústria/setor identificado" },
+                  primary_channel: { type: "string", description: "Canal principal identificado" },
+                  declared_target_audience: { type: "string", description: "Público-alvo identificado" },
+                  region: { type: "string", description: "Região/mercado" },
+                  executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
+                  marketing_era: {
+                    type: "object",
+                    properties: {
+                      era: { type: "string", description: "1.0, 2.0, 3.0 ou 4.0" },
+                      description: { type: "string", description: "Por que esta campanha está nesta era" },
+                      recommendation: { type: "string", description: "O que fazer para evoluir para a próxima era" },
                     },
-                    cognitive_biases: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          bias: { type: "string", description: "Nome do viés cognitivo" },
-                          status: { type: "string", description: "'presente', 'ausente' ou 'mal aplicado'" },
-                          application: { type: "string", description: "Como está sendo usado ou como deveria ser usado" }
-                        },
-                        required: ["bias", "status", "application"]
-                      },
-                      description: "Vieses cognitivos identificados na campanha"
-                    },
-                    hormozi_analysis: {
-                      type: "object",
-                      properties: {
-                        dream_outcome: { type: "number", description: "Nota 1-5 para o resultado sonhado prometido" },
-                        perceived_likelihood: { type: "number", description: "Nota 1-5 para probabilidade percebida de alcançar" },
-                        time_delay: { type: "number", description: "Nota 1-5 para tempo de espera (5=rápido)" },
-                        effort_sacrifice: { type: "number", description: "Nota 1-5 para esforço percebido (5=fácil)" },
-                        overall_value: { type: "string", description: "Diagnóstico geral do valor percebido" }
-                      },
-                      required: ["dream_outcome", "perceived_likelihood", "time_delay", "effort_sacrifice", "overall_value"]
-                    },
-                    kpi_analysis: {
-                      type: "object",
-                      properties: {
-                        vanity_metrics: { type: "array", items: { type: "string" }, description: "Métricas de vaidade identificadas" },
-                        recommended_north_star: { type: "string", description: "North Star Metric recomendada" },
-                        recommended_kpis: { type: "array", items: { type: "string" }, description: "KPIs recomendados" }
-                      },
-                      required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"]
-                    },
-                    timing_analysis: {
-                      type: "object",
-                      properties: {
-                        demand_momentum: { type: "string", description: "Subindo, estável ou caindo" },
-                        context_shock: { type: "string", description: "Avaliação de diferenciação no feed" },
-                        seasonality: { type: "string", description: "Observações sobre timing e sazonalidade" }
-                      },
-                      required: ["demand_momentum", "context_shock", "seasonality"]
-                    },
-                    improvements: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "Lista de 6-10 melhorias acionáveis"
-                    },
-                    strengths: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "Lista de 3-5 pontos fortes"
-                    },
-                    audience_insights: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          generation: { type: "string" },
-                          emoji: { type: "string" },
-                          feedback: { type: "string" }
-                        },
-                        required: ["generation", "emoji", "feedback"]
-                      },
-                      description: "Feedback de audiência sintética por geração"
-                    },
-                    market_references: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "Referências de mercado e benchmarks"
-                    },
-                    brand_sentiment: {
-                      type: "object",
-                      properties: {
-                        overall: { type: "string", description: "Positivo, Neutro ou Negativo" },
-                        analysis: { type: "string", description: "Análise do sentimento baseado nos dados disponíveis" }
-                      },
-                      required: ["overall", "analysis"]
-                    },
-                    ibge_insights: {
-                      type: "object",
-                      properties: {
-                        region_fit: { type: "string", description: "Adequação da região para o produto/campanha" },
-                        demographic_notes: { type: "string", description: "Observações demográficas relevantes baseadas nos dados IBGE" }
-                      }
-                    }
+                    required: ["era", "description", "recommendation"],
                   },
-                  required: [
-                    "score_overall", "score_sociobehavioral", "score_offer", "score_performance",
-                    "industry", "primary_channel", "declared_target_audience",
-                    "executive_summary", "improvements", "strengths", "audience_insights",
-                    "market_references", "marketing_era", "cognitive_biases", "hormozi_analysis",
-                    "kpi_analysis", "timing_analysis", "brand_sentiment"
-                  ],
-                  additionalProperties: false
-                }
-              }
-            }
-          ],
-          tool_choice: { type: "function", function: { name: "analysis_result" } },
-        }),
-      }
-    );
+                  cognitive_biases: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        bias: { type: "string", description: "Nome do viés cognitivo" },
+                        status: { type: "string", description: "'presente', 'ausente' ou 'mal aplicado'" },
+                        application: { type: "string", description: "Como está sendo usado ou como deveria ser usado" },
+                      },
+                      required: ["bias", "status", "application"],
+                    },
+                    description: "Vieses cognitivos identificados na campanha",
+                  },
+                  hormozi_analysis: {
+                    type: "object",
+                    properties: {
+                      dream_outcome: { type: "number", description: "Nota 1-5 para o resultado sonhado prometido" },
+                      perceived_likelihood: {
+                        type: "number",
+                        description: "Nota 1-5 para probabilidade percebida de alcançar",
+                      },
+                      time_delay: { type: "number", description: "Nota 1-5 para tempo de espera (5=rápido)" },
+                      effort_sacrifice: { type: "number", description: "Nota 1-5 para esforço percebido (5=fácil)" },
+                      overall_value: { type: "string", description: "Diagnóstico geral do valor percebido" },
+                    },
+                    required: [
+                      "dream_outcome",
+                      "perceived_likelihood",
+                      "time_delay",
+                      "effort_sacrifice",
+                      "overall_value",
+                    ],
+                  },
+                  kpi_analysis: {
+                    type: "object",
+                    properties: {
+                      vanity_metrics: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Métricas de vaidade identificadas",
+                      },
+                      recommended_north_star: { type: "string", description: "North Star Metric recomendada" },
+                      recommended_kpis: { type: "array", items: { type: "string" }, description: "KPIs recomendados" },
+                    },
+                    required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"],
+                  },
+                  timing_analysis: {
+                    type: "object",
+                    properties: {
+                      demand_momentum: { type: "string", description: "Subindo, estável ou caindo" },
+                      context_shock: { type: "string", description: "Avaliação de diferenciação no feed" },
+                      seasonality: { type: "string", description: "Observações sobre timing e sazonalidade" },
+                    },
+                    required: ["demand_momentum", "context_shock", "seasonality"],
+                  },
+                  improvements: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Lista de 6-10 melhorias acionáveis",
+                  },
+                  strengths: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Lista de 3-5 pontos fortes",
+                  },
+                  audience_insights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        generation: { type: "string" },
+                        emoji: { type: "string" },
+                        feedback: { type: "string" },
+                      },
+                      required: ["generation", "emoji", "feedback"],
+                    },
+                    description: "Feedback de audiência sintética por geração",
+                  },
+                  market_references: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Referências de mercado e benchmarks",
+                  },
+                  brand_sentiment: {
+                    type: "object",
+                    properties: {
+                      overall: { type: "string", description: "Positivo, Neutro ou Negativo" },
+                      analysis: { type: "string", description: "Análise do sentimento baseado nos dados disponíveis" },
+                    },
+                    required: ["overall", "analysis"],
+                  },
+                  ibge_insights: {
+                    type: "object",
+                    properties: {
+                      region_fit: { type: "string", description: "Adequação da região para o produto/campanha" },
+                      demographic_notes: {
+                        type: "string",
+                        description: "Observações demográficas relevantes baseadas nos dados IBGE",
+                      },
+                    },
+                  },
+                },
+                required: [
+                  "score_overall",
+                  "score_sociobehavioral",
+                  "score_offer",
+                  "score_performance",
+                  "industry",
+                  "primary_channel",
+                  "declared_target_audience",
+                  "executive_summary",
+                  "improvements",
+                  "strengths",
+                  "audience_insights",
+                  "market_references",
+                  "marketing_era",
+                  "cognitive_biases",
+                  "hormozi_analysis",
+                  "kpi_analysis",
+                  "timing_analysis",
+                  "brand_sentiment",
+                ],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "analysis_result" } },
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(
-        JSON.stringify({ error: "Erro no serviço de IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "analysis_result") {
       console.error("Unexpected response format:", JSON.stringify(data));
-      return new Response(
-        JSON.stringify({ error: "Formato de resposta inesperado da IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Formato de resposta inesperado da IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const analysisResult = JSON.parse(toolCall.function.arguments);
 
-    return new Response(
-      JSON.stringify({ success: true, analysis: analysisResult }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, analysis: analysisResult }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("analyze-campaign error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
