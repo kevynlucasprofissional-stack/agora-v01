@@ -167,6 +167,24 @@ export function CreativeEditor({
     toast.success("Posições resetadas!");
   }, [strategistOutput]);
 
+  const addNewLayer = useCallback(() => {
+    const newLayer: LayerState = {
+      type: `texto-${layers.length + 1}`,
+      content: "Novo texto",
+      x: 50,
+      y: 30 + (layers.length * 12) % 60,
+      color: "#FFFFFF",
+      fontSize: 16,
+      shadowEnabled: true,
+      shadowBlur: 8,
+      shadowColor: "rgba(0,0,0,0.6)",
+    };
+    setLayers(prev => [...prev, newLayer]);
+    setSelectedLayer(layers.length);
+    setActivePanel(null);
+    toast.success("Nova camada adicionada!");
+  }, [layers.length]);
+
   const sel = selectedLayer !== null ? layers[selectedLayer] : null;
 
   return (
