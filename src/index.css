@@ -132,9 +132,7 @@
   .bg-creme { background-color: hsl(40 12% 94%); }
   .bg-sage { background-color: hsl(155 42% 71%); }
   .bg-amber { background-color: hsl(35 90% 67%); }
-  .bg-coral { background-color: hsl(4 79% 61%); }
   
   .text-sage { color: hsl(155 35% 55%); }
   .text-amber { color: hsl(35 80% 55%); }
-  .text-coral { color: hsl(4 70% 55%); }
 }
