@@ -362,6 +362,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
               creativeJobId={creativeData.creative_job_id}
               onRegenerate={() => generateCreative(input)}
               isRegenerating={isGeneratingCreative}
+              onCapture={persistCreative}
             />
           </div>
         )}
