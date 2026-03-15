@@ -194,13 +194,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       }
 
       if (data?.editable_html) {
-        setCreativeData({
+        const cd: CreativeData = {
           strategist_output: data.strategist_output,
           image_url: data.image_url,
           editable_html: data.editable_html,
           creative_job_id: data.creative_job_id,
-        });
-        toast.success("Criativo gerado com base na sua campanha! Edite os textos clicando neles.");
+        };
+        setCreativeData(cd);
+        // Add a marker message so creative renders inline in chat flow
+        const markerMsg: ChatMessage = { role: "assistant", content: CREATIVE_MARKER };
+        setMessages(prev => [...prev, markerMsg]);
+        if (conversationId) await saveMessage(conversationId, "assistant", CREATIVE_MARKER);
+        toast.success("Criativo gerado! Edite os textos clicando neles.");
       } else {
         toast.error("Não foi possível gerar o criativo. Tente novamente.");
       }
