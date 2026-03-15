@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  MessageSquare, Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
+  Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
   Sparkles, Globe, Brain, TrendingUp, AlertTriangle, Target, Clock, Eye, Plus,
   FileText, Presentation, ChevronDown, ChevronUp,
 } from "lucide-react";
@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { exportToDocx, exportToPptx } from "@/lib/exportUtils";
-import { StrategistChatPanel } from "@/components/StrategistChatPanel";
 import { ReportChatBlock } from "@/components/ReportChatBlock";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,9 +27,6 @@ export default function AnalysisReportPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
   const [expandedBiases, setExpandedBiases] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatButtonVisible, setChatButtonVisible] = useState(false);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!id) return;
@@ -40,30 +36,8 @@ export default function AnalysisReportPage() {
     });
   }, [id]);
 
-  // Hover zone: show chat FAB when mouse approaches right edge (desktop only)
-  useEffect(() => {
-    if (isMobile) {
-      setChatButtonVisible(true);
-      return;
-    }
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const threshold = window.innerWidth - 40;
-      if (e.clientX >= threshold && !chatOpen) {
-        setChatButtonVisible(true);
-        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-      } else if (e.clientX < threshold - 20 && !chatOpen) {
-        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = setTimeout(() => setChatButtonVisible(false), 600);
-      }
-    };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  }, [chatOpen, isMobile]);
 
   const handleFeedback = async (type: "like" | "dislike") => {
     if (!analysis || !user) return;
@@ -440,33 +414,6 @@ export default function AnalysisReportPage() {
           )}
         </div>
       </div>
-
-      {/* Floating Chat Button */}
-      <AnimatePresence>
-        {chatButtonVisible && !chatOpen && (
-          <motion.button
-            initial={{ x: 100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 100, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200, mass: 0.8 }}
-            onClick={() => setChatOpen(true)}
-            className="fixed right-4 bottom-24 z-30 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-shadow"
-            title="Dúvidas?"
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span className="text-sm font-medium hidden sm:inline">Dúvidas?</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Chat Panel */}
-      {analysis && (
-        <StrategistChatPanel
-          analysis={analysis}
-          open={chatOpen}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
     </>
   );
 }
