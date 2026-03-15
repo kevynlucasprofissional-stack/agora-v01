@@ -190,7 +190,22 @@ export default function NewAnalysisPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Helper: ensure a conversation exists, create if needed
+  const handleRenameChat = useCallback(async (newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || !conversationId) return;
+    setChatTitle(trimmed);
+    setIsEditingTitle(false);
+    await supabase.from("conversations").update({ title: trimmed }).eq("id", conversationId);
+  }, [conversationId]);
+
+  const handleFeedback = useCallback((index: number, type: "like" | "dislike") => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [index]: prev[index] === type ? undefined! : type,
+    }));
+  }, []);
+
+
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) return conversationId;
     if (!user) throw new Error("Not authenticated");
