@@ -804,6 +804,7 @@ export default function NewAnalysisPage() {
               value={input}
               onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={
                 activeAction === "creative" ? "Descreva a imagem que deseja gerar..." :
                 activeAction === "research" ? "O que deseja pesquisar?" :
