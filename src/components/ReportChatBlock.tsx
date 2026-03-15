@@ -7,6 +7,8 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { CreativeEditor } from "@/components/CreativeEditor";
+import { toast } from "sonner";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -18,10 +20,15 @@ interface FileAttachment {
   preview?: string;
 }
 
+interface CreativeData {
+  imageUrl: string;
+  suggestedText: { headline: string; subheadline: string; cta: string };
+}
+
 const ACTION_OPTIONS = [
-  { label: "Gerar criativos", icon: Sparkles, prompt: "Gere criativos otimizados para esta campanha com base na análise completa." },
-  { label: "Pesquisa de mercado", icon: Search, prompt: "Faça uma pesquisa de mercado detalhada com base nos dados desta campanha." },
-  { label: "Gerar campanha", icon: BarChart3, prompt: "Gere uma campanha completa otimizada com base nos insights desta análise." },
+  { label: "Gerar criativos", icon: Sparkles, action: "creative" as const },
+  { label: "Pesquisa de mercado", icon: Search, action: "chat" as const, prompt: "Faça uma pesquisa de mercado detalhada com base nos dados desta campanha." },
+  { label: "Gerar campanha", icon: BarChart3, action: "chat" as const, prompt: "Gere uma campanha completa otimizada com base nos insights desta análise." },
 ];
 
 interface ReportChatBlockProps {
@@ -39,6 +46,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [creativeData, setCreativeData] = useState<CreativeData | null>(null);
+  const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,10 +56,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
   };
 
-  // Load or create conversation with greeting on mount
   useEffect(() => {
     if (!user || loaded) return;
-
     const load = async () => {
       const { data: existingConv } = await supabase
         .from("conversations" as any)
@@ -63,7 +70,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         .maybeSingle();
 
       let convId: string;
-
       if (existingConv) {
         convId = (existingConv as any).id;
         setConversationId(convId);
@@ -72,7 +78,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           .select("*")
           .eq("conversation_id", convId)
           .order("created_at", { ascending: true });
-
         if (dbMessages && dbMessages.length > 0) {
           setMessages((dbMessages as any[]).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })));
         } else {
@@ -86,7 +91,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           .insert({ user_id: user.id, analysis_request_id: analysis.id, context_type: "report-chat", title: analysis.title || "Chat Estrategista" } as any)
           .select("id")
           .single();
-
         if (newConv) {
           convId = (newConv as any).id;
           setConversationId(convId);
@@ -97,7 +101,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       }
       setLoaded(true);
     };
-
     load();
   }, [user, analysis, loaded]);
 
@@ -125,12 +128,63 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     });
   }, []);
 
+  // Generate creative via edge function
+  const generateCreative = useCallback(async () => {
+    if (isGeneratingCreative) return;
+    setIsGeneratingCreative(true);
+    setCreativeData(null);
+
+    const payload = analysis.normalized_payload as Record<string, any> | null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-creative", {
+        body: {
+          brief: {
+            context: `Campanha: ${analysis.title}. ${analysis.raw_prompt}. Score: ${analysis.score_overall}/100.`,
+            industry: analysis.industry || "Marketing digital",
+            target_audience: analysis.declared_target_audience || "Público geral",
+            visual_direction: payload?.executive_summary ? `Baseado na análise: ${String(payload.executive_summary).slice(0, 200)}` : "Moderno, profissional, impactante",
+            format: "1080x1080 square social media post",
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data?.image && data?.suggestedText) {
+        setCreativeData({
+          imageUrl: data.image,
+          suggestedText: data.suggestedText,
+        });
+        toast.success("Criativo gerado! Edite os textos clicando neles.");
+      } else {
+        toast.error("Não foi possível gerar o criativo. Tente novamente.");
+      }
+    } catch (err) {
+      console.error("Creative generation error:", err);
+      toast.error("Erro ao gerar criativo. Tente novamente.");
+    } finally {
+      setIsGeneratingCreative(false);
+    }
+  }, [analysis, isGeneratingCreative]);
+
+  const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
+    if (action.action === "creative") {
+      generateCreative();
+    } else if (action.prompt) {
+      sendMessage(action.prompt);
+    }
+  }, [generateCreative]);
+
   const sendMessage = useCallback(async (text: string) => {
     if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
 
     let userMsg = text.trim();
-
-    // Append file names to message context
     if (attachments.length > 0) {
       const fileNames = attachments.map(a => a.file.name).join(", ");
       userMsg = userMsg ? `${userMsg}\n\n📎 Arquivos anexados: ${fileNames}` : `📎 Arquivos anexados: ${fileNames}`;
@@ -140,7 +194,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    // Filter out greeting for API call
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
     setMessages(newMessages);
     setIsStreaming(true);
@@ -238,13 +291,36 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         <div ref={bottomRef} />
       </div>
 
+      {/* Creative Editor - shown when creative is generated */}
+      <AnimatePresence>
+        {isGeneratingCreative && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-12 gap-3 mb-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Gerando criativo com IA...</p>
+            <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {creativeData && !isGeneratingCreative && (
+        <div className="mb-4">
+          <CreativeEditor
+            imageUrl={creativeData.imageUrl}
+            suggestedText={creativeData.suggestedText}
+            onRegenerate={generateCreative}
+            isRegenerating={isGeneratingCreative}
+          />
+        </div>
+      )}
+
       {/* Action chips */}
       <div className="flex flex-wrap gap-2 mb-3">
         {ACTION_OPTIONS.map((action) => (
           <button
             key={action.label}
-            onClick={() => sendMessage(action.prompt)}
-            disabled={isStreaming || !conversationId}
+            onClick={() => handleActionClick(action)}
+            disabled={isStreaming || isGeneratingCreative || !conversationId}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border/50 bg-accent/30 hover:bg-accent/60 text-foreground transition-colors disabled:opacity-50"
           >
             <action.icon className="h-3.5 w-3.5" />
