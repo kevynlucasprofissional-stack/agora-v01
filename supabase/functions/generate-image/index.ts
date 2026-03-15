@@ -33,7 +33,7 @@ serve(async (req) => {
     }
 
     // Build context from chat messages
-    const chatContext = messages
+    const chatContext = effectiveMessages
       .map((m: any) => `${m.role}: ${m.content}`)
       .join("\n")
       .slice(0, 4000);
