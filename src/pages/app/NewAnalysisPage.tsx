@@ -757,16 +757,27 @@ export default function NewAnalysisPage() {
                 exit={{ opacity: 0, y: 8 }}
                 className="flex flex-wrap gap-2 mb-3"
               >
-                {files.map((f, i) => (
-                  <div key={f.name + i} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="truncate max-w-[140px]">{f.name}</span>
-                    <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
-                    <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive ml-1">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                {files.map((f, i) => {
+                  const isImage = f.type.startsWith("image/");
+                  return (
+                    <div key={f.name + i} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm">
+                      {isImage ? (
+                        <img
+                          src={URL.createObjectURL(f)}
+                          alt={f.name}
+                          className="h-8 w-8 rounded object-cover shrink-0"
+                        />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="truncate max-w-[140px]">{f.name}</span>
+                      <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
+                      <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive ml-1">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
           </AnimatePresence>
