@@ -450,6 +450,7 @@ export default function NewAnalysisPage() {
         onDelta: upsertAssistant,
         onDone: () => {
           setIsStreaming(false);
+          setStreamingIdx(null);
           // Persist assistant response
           if (assistantSoFar) {
             persistMessage(convId, "assistant", assistantSoFar);
