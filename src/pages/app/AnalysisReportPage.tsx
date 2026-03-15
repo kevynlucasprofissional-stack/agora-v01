@@ -27,9 +27,6 @@ export default function AnalysisReportPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
   const [expandedBiases, setExpandedBiases] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatButtonVisible, setChatButtonVisible] = useState(false);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!id) return;
