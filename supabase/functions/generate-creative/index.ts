@@ -31,15 +31,15 @@ Use vibrant colors that match the brand energy.
 Do NOT include any placeholder or lorem ipsum text.`;
 
     const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3.1-flash-image-preview",
+          model: "gemini-2.0-flash-exp",
           messages: [{ role: "user", content: prompt }],
           modalities: ["image", "text"],
         }),
