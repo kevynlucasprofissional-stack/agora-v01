@@ -770,7 +770,12 @@ export default function NewAnalysisPage() {
               value={input}
               onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
-              placeholder={hasMessages ? "Responda aqui..." : "Descreva sua campanha, produto, público-alvo..."}
+              placeholder={
+                activeAction === "creative" ? "Descreva a imagem que deseja gerar..." :
+                activeAction === "research" ? "O que deseja pesquisar?" :
+                activeAction === "campaign" ? "Descreva a campanha que deseja gerar..." :
+                hasMessages ? "Responda aqui..." : "Descreva sua campanha, produto, público-alvo..."
+              }
               rows={1}
               className="flex-1 bg-transparent border-none outline-none resize-none text-sm sm:text-base text-foreground placeholder:text-muted-foreground max-h-[200px]"
             />
@@ -778,9 +783,11 @@ export default function NewAnalysisPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={isStreaming || (!input.trim() && files.length === 0)}
+              disabled={(isStreaming || isGeneratingImage) || (!input.trim() && files.length === 0 && activeAction !== "creative")}
               className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
             >
+              {(isStreaming || isGeneratingImage) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
