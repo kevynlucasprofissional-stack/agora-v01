@@ -306,8 +306,21 @@ export default function NewAnalysisPage() {
     }
   }, [messages, isGeneratingImage]);
 
+  const handleSend = async () => {
+    if ((!input.trim() && files.length === 0) || isStreaming || isGeneratingImage) return;
 
-    if ((!input.trim() && files.length === 0) || isStreaming) return;
+    // Check if creative mode is active — intercept and generate image
+    if (activeAction === "creative") {
+      const userPrompt = input.trim();
+      const userMsg: ChatMessage = { role: "user", content: userPrompt || "Gerar imagem" };
+      setMessages((prev) => [...prev, userMsg]);
+      setInput("");
+      setActiveAction(null);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      await generateImage(userPrompt);
+      return;
+    }
+
 
     // Ensure conversation exists
     let convId: string;
