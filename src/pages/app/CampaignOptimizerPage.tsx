@@ -85,7 +85,7 @@ interface AnalysisResult {
   audience_insights: Array<{ generation: string; emoji: string; feedback: string }>;
   brand_sentiment: { overall: string; analysis: string };
   market_references: string[];
-  strengths: string[];
+  strengths: string[] | Array<{ category: string; items: string[] }>;
   optimized_campaign: OptimizedCampaign;
   creative_briefs: CreativeBrief[];
 }
