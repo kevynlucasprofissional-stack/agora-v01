@@ -17,7 +17,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { messages = [], user_prompt, format = "1080x1080" } = await req.json();
+    const { messages = [], user_prompt, format = "1080x1080", reference_images = [] } = await req.json();
 
     // Build effective messages: combine chat history + user prompt
     const effectiveMessages = [...(Array.isArray(messages) ? messages : [])];
@@ -39,9 +39,14 @@ serve(async (req) => {
       .slice(0, 4000);
 
     // ─── 1. Strategist: generate creative brief from chat context ───
-    const userPromptSection = user_prompt
-      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt.`
+    const hasRefImages = Array.isArray(reference_images) && reference_images.length > 0;
+    const refImageNote = hasRefImages
+      ? `\n\nO USUÁRIO ANEXOU ${reference_images.length} IMAGEM(NS) DE REFERÊNCIA. Leve em conta que o visual da imagem gerada deve se inspirar ou incorporar elementos dessas referências.`
       : "";
+
+    const userPromptSection = user_prompt
+      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt.${refImageNote}`
+      : refImageNote ? `\n${refImageNote}` : "";
 
     const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto do chat abaixo e gere um briefing criativo para produzir um criativo de marketing visual.
 
@@ -133,6 +138,20 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
+    // Build image generation message content (multimodal if reference images exist)
+    const imageMessageContent: any[] = [{ type: "text", text: imagePrompt }];
+    if (hasRefImages) {
+      for (const img of reference_images) {
+        const dataUrl = img.content.startsWith("data:")
+          ? img.content
+          : `data:${img.type || "image/png"};base64,${img.content}`;
+        imageMessageContent.push({
+          type: "image_url",
+          image_url: { url: dataUrl },
+        });
+      }
+    }
+
     const imageRes = await fetch(GATEWAY, {
       method: "POST",
       headers: {
@@ -141,7 +160,7 @@ IMPORTANT RULES:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: imagePrompt }],
+        messages: [{ role: "user", content: hasRefImages ? imageMessageContent : imagePrompt }],
         modalities: ["image", "text"],
       }),
     });

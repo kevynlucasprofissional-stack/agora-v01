@@ -262,7 +262,7 @@ export default function NewAnalysisPage() {
       }
     });
   };
-  const generateImage = useCallback(async (userPrompt: string) => {
+  const generateImage = useCallback(async (userPrompt: string, referenceImages?: { name: string; type: string; content: string }[]) => {
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     setCreativeData(null);
@@ -284,6 +284,7 @@ export default function NewAnalysisPage() {
             messages: messages.map((m) => ({ role: m.role, content: m.content })),
             user_prompt: userPrompt,
             format: "1080x1080",
+            reference_images: referenceImages || [],
           }),
         }
       );
@@ -334,12 +335,33 @@ export default function NewAnalysisPage() {
     // Check if creative mode is active — intercept and generate image
     if (activeAction === "creative") {
       const userPrompt = input.trim();
-      const userMsg: ChatMessage = { role: "user", content: userPrompt || "Gerar imagem" };
+      let displayContent = userPrompt || "Gerar imagem";
+      
+      // Process attached files for creative mode
+      const pendingFiles = [...files];
+      let referenceImages: { name: string; type: string; content: string }[] = [];
+      
+      if (pendingFiles.length > 0) {
+        try {
+          const results = await Promise.all(pendingFiles.map(readFileContent));
+          referenceImages = results
+            .filter(f => f.isBase64 && f.type.startsWith("image/"))
+            .map(f => ({ name: f.name, type: f.type, content: f.content }));
+          const fileNames = pendingFiles.map(f => f.name).join(', ');
+          displayContent += `\n\n📎 Imagens de referência: ${fileNames}`;
+        } catch (err) {
+          console.error("Error reading files:", err);
+          toast.error("Erro ao ler arquivo(s).");
+        }
+      }
+      
+      const userMsg: ChatMessage = { role: "user", content: displayContent };
       setMessages((prev) => [...prev, userMsg]);
       setInput("");
+      setFiles([]);
       setActiveAction(null);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
-      await generateImage(userPrompt);
+      await generateImage(userPrompt, referenceImages.length > 0 ? referenceImages : undefined);
       return;
     }
 
