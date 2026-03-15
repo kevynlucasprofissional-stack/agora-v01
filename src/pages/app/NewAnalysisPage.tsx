@@ -133,6 +133,12 @@ export default function NewAnalysisPage() {
   const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeAction, setActiveAction] = useState<ActionMode>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [creativeData, setCreativeData] = useState<{
+    strategist_output: any;
+    image_url: string;
+    editable_html: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
