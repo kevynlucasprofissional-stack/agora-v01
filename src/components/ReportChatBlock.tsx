@@ -174,6 +174,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   // Generate creative via edge function
   const generateCreative = useCallback(async (userPrompt?: string) => {
     if (isGeneratingCreative) return;
+    shouldAutoScrollRef.current = true;
     setIsGeneratingCreative(true);
     setCreativeData(null);
 
@@ -221,6 +222,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       toast.error("Erro ao gerar criativo. Tente novamente.");
     } finally {
       setIsGeneratingCreative(false);
+      shouldAutoScrollRef.current = false;
     }
   }, [analysis, isGeneratingCreative, conversationId]);
 
@@ -233,7 +235,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, [generateCreative, input]);
 
   const sendMessage = useCallback(async (text: string) => {
-    if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
+    if ((!text.trim() && attachments.length === 0) || isStreaming || isGeneratingCreative || !conversationId) return;
 
     let userMsg = text.trim();
     if (attachments.length > 0) {
@@ -245,6 +247,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    shouldAutoScrollRef.current = true;
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
     setMessages(newMessages);
     setIsStreaming(true);
@@ -282,6 +285,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         },
         onDone: async () => {
           setIsStreaming(false);
+          shouldAutoScrollRef.current = false;
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
           }
@@ -289,11 +293,12 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       });
     } catch (e) {
       setIsStreaming(false);
+      shouldAutoScrollRef.current = false;
       const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA."}`;
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
     }
-  }, [input, isStreaming, messages, analysis, conversationId, attachments]);
+  }, [isStreaming, isGeneratingCreative, messages, analysis, conversationId, attachments]);
 
   return (
     <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
