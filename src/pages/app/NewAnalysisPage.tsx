@@ -157,6 +157,17 @@ export default function NewAnalysisPage() {
     if (convId && user) {
       setConversationId(convId);
       setLoadingHistory(true);
+      
+      // Load title
+      supabase
+        .from("conversations")
+        .select("title")
+        .eq("id", convId)
+        .single()
+        .then(({ data }) => {
+          if (data?.title) setChatTitle(data.title);
+        });
+
       supabase
         .from("chat_messages")
         .select("role, content")
@@ -166,7 +177,6 @@ export default function NewAnalysisPage() {
           if (data && data.length > 0) {
             const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
             setMessages(restored);
-            // Check if AI already signaled readiness
             if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
               setIsReady(true);
             }
