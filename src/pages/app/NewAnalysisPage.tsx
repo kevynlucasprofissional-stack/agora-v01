@@ -891,6 +891,22 @@ export default function NewAnalysisPage() {
           </p>
         </div>
       </div>
+
+      {/* File Preview Dialog */}
+      <Dialog open={!!previewFile} onOpenChange={(open) => !open && setPreviewFile(null)}>
+        <DialogContent className="max-w-2xl p-2 bg-background/95 backdrop-blur-sm">
+          {previewFile && (
+            <div className="flex flex-col items-center gap-3 pt-4">
+              <img
+                src={URL.createObjectURL(previewFile)}
+                alt={previewFile.name}
+                className="max-h-[70vh] max-w-full rounded-lg object-contain"
+              />
+              <p className="text-sm text-muted-foreground">{previewFile.name}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
