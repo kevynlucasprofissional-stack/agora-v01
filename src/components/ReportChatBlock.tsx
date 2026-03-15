@@ -304,8 +304,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       {creativeData && !isGeneratingCreative && (
         <div className="mb-4">
           <CreativeEditor
-            imageUrl={creativeData.imageUrl}
-            suggestedText={creativeData.suggestedText}
+            strategistOutput={creativeData.strategist_output}
+            imageUrl={creativeData.image_url}
+            editableHtml={creativeData.editable_html}
+            creativeJobId={creativeData.creative_job_id}
             onRegenerate={generateCreative}
             isRegenerating={isGeneratingCreative}
           />
