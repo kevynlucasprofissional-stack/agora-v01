@@ -650,7 +650,7 @@ export default function NewAnalysisPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-12">
           {agentOrder.map((code, idx) => {
             const Icon = agentIcons[code];
             const info = AGENT_INFO[code];
@@ -658,7 +658,7 @@ export default function NewAnalysisPage() {
             const isDone = idx < currentAgent || step === "completed";
 
             return (
-              <div key={code} className="flex flex-col items-center text-center w-16 sm:w-20">
+              <div key={code} className="flex flex-col items-center text-center w-20 sm:w-24">
                 <motion.div
                   animate={{ opacity: isDone || isActive ? 1 : 0.3, scale: isActive ? 1.15 : 1 }}
                   transition={{ duration: 0.3 }}
@@ -674,7 +674,7 @@ export default function NewAnalysisPage() {
                     </div>
                   )}
                 </motion.div>
-                <span className="mt-2 text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground leading-tight line-clamp-2">
+                <span className="mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground leading-tight">
                   {info.name}
                 </span>
               </div>
