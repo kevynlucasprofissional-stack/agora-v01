@@ -737,7 +737,7 @@ export default function NewAnalysisPage() {
       )}
 
       {/* Scrollable chat area */}
-      <div className="flex-1 overflow-y-auto px-4">
+      <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto px-4">
         <div className="max-w-2xl mx-auto py-6">
           {!hasMessages && !loadingHistory && (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">

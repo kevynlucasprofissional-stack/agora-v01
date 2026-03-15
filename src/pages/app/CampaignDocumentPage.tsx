@@ -454,7 +454,7 @@ export default function CampaignDocumentPage() {
             <p className="text-xs text-muted-foreground">Peça alterações e a IA reescreve o documento.</p>
           </div>
 
-          <div className="flex-1 overflow-auto py-4 space-y-3">
+          <div ref={chatScrollContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-auto py-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-xs text-muted-foreground">
