@@ -111,10 +111,10 @@ export default function AnalysisReportPage() {
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             className="glass-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
                 <s.icon className="h-5 w-5 text-foreground/70" />
               </div>
-              <span className="section-label">{s.label}</span>
+              <span className="section-label truncate">{s.label}</span>
             </div>
             <div className="text-3xl font-display font-bold text-tabular">{Number(s.value ?? 0).toFixed(0)}<span className="text-lg text-muted-foreground">/100</span></div>
             <div className="mt-3 h-2 rounded-full bg-border overflow-hidden">
