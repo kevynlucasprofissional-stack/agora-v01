@@ -4,11 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
+import { CreativeEditor } from "@/components/CreativeEditor";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
 type ChatMessage = { role: "user" | "assistant"; content: string };
