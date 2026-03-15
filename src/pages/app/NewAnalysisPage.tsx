@@ -147,7 +147,7 @@ export default function NewAnalysisPage() {
         </div>
 
         {/* Agent orchestrator visualization */}
-        <div className="grid grid-cols-5 gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-3 mb-12">
           {agentOrder.map((code, idx) => {
             const Icon = agentIcons[code];
             const info = AGENT_INFO[code];
@@ -155,26 +155,26 @@ export default function NewAnalysisPage() {
             const isDone = idx < currentAgent || step === "completed";
 
             return (
-              <div key={code} className="flex flex-col items-center text-center">
+              <div key={code} className="flex flex-col items-center text-center w-16 sm:w-20">
                 <motion.div
                   animate={{
                     opacity: isDone || isActive ? 1 : 0.3,
                     scale: isActive ? 1.15 : 1,
                   }}
                   transition={{ duration: 0.3 }}
-                  className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border-2 transition-colors ${
+                  className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border-2 transition-colors ${
                     isActive ? "border-primary glow-primary bg-primary/10" :
                     isDone ? "border-success/50 bg-success/10" : "border-border bg-card"
                   }`}
                 >
-                  {isDone ? <Check className="h-6 w-6 text-success" /> : <Icon className="h-6 w-6" />}
+                  {isDone ? <Check className="h-5 w-5 sm:h-6 sm:w-6 text-success" /> : <Icon className="h-5 w-5 sm:h-6 sm:w-6" />}
                   {isActive && (
                     <div className="absolute -bottom-1 -right-1">
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     </div>
                   )}
                 </motion.div>
-                <span className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground leading-tight">
+                <span className="mt-2 text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground leading-tight line-clamp-2">
                   {info.name}
                 </span>
               </div>
