@@ -6,6 +6,133 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── IBGE Service ──────────────────────────────────────────────
+const IBGE_BASE = "https://servicodados.ibge.gov.br/api/v1";
+const SIDRA_BASE = "https://apisidra.ibge.gov.br";
+
+interface IbgeData {
+  municipio?: string;
+  uf?: string;
+  populacao?: string;
+  dados_disponiveis: boolean;
+  erro?: string;
+}
+
+async function fetchIbgeData(region: string): Promise<IbgeData> {
+  try {
+    // Normalize region input
+    const normalized = region.trim().toLowerCase();
+
+    // Map common UF names/abbreviations
+    const ufMap: Record<string, string> = {
+      "sp": "35", "são paulo": "35", "sao paulo": "35",
+      "rj": "33", "rio de janeiro": "33",
+      "mg": "31", "minas gerais": "31",
+      "ba": "29", "bahia": "29",
+      "pr": "41", "paraná": "41", "parana": "41",
+      "rs": "43", "rio grande do sul": "43",
+      "pe": "26", "pernambuco": "26",
+      "ce": "23", "ceará": "23", "ceara": "23",
+      "pa": "15", "pará": "15", "para": "15",
+      "sc": "42", "santa catarina": "42",
+      "go": "52", "goiás": "52", "goias": "52",
+      "ma": "21", "maranhão": "21", "maranhao": "21",
+      "am": "13", "amazonas": "13",
+      "es": "32", "espírito santo": "32", "espirito santo": "32",
+      "pb": "25", "paraíba": "25", "paraiba": "25",
+      "rn": "24", "rio grande do norte": "24",
+      "mt": "51", "mato grosso": "51",
+      "al": "27", "alagoas": "27",
+      "pi": "22", "piauí": "22", "piaui": "22",
+      "df": "53", "distrito federal": "53", "brasília": "53", "brasilia": "53",
+      "ms": "50", "mato grosso do sul": "50",
+      "se": "28", "sergipe": "28",
+      "ro": "11", "rondônia": "11", "rondonia": "11",
+      "to": "17", "tocantins": "17",
+      "ac": "12", "acre": "12",
+      "ap": "16", "amapá": "16", "amapa": "16",
+      "rr": "14", "roraima": "14",
+    };
+
+    // Try to find UF code
+    let ufCode: string | null = null;
+    let municipioNome: string | null = null;
+
+    // Check if input is a UF
+    if (ufMap[normalized]) {
+      ufCode = ufMap[normalized];
+    } else {
+      // Try to find city by searching municipalities
+      // First check if it contains a UF reference
+      for (const [key, code] of Object.entries(ufMap)) {
+        if (normalized.includes(key) && key.length > 2) {
+          ufCode = code;
+          municipioNome = normalized.replace(key, "").trim().replace(/^[-,\s]+|[-,\s]+$/g, "");
+          break;
+        }
+      }
+    }
+
+    if (!ufCode) {
+      // Try to search for the city across all states
+      const searchResp = await fetch(`${IBGE_BASE}/localidades/municipios`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (searchResp.ok) {
+        const allMunicipios = await searchResp.json();
+        const found = allMunicipios.find((m: any) =>
+          m.nome.toLowerCase() === normalized ||
+          m.nome.toLowerCase().includes(normalized)
+        );
+        if (found) {
+          ufCode = String(found.microrregiao?.mesorregiao?.UF?.id || "");
+          municipioNome = found.nome;
+        }
+      }
+    }
+
+    if (!ufCode) {
+      return { dados_disponiveis: false, erro: "Região não identificada no IBGE" };
+    }
+
+    // Fetch UF info
+    const ufResp = await fetch(`${IBGE_BASE}/localidades/estados/${ufCode}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const ufData = ufResp.ok ? await ufResp.json() : null;
+
+    // Fetch population estimate from SIDRA (table 6579 - population estimates)
+    let populacao = "Não disponível";
+    try {
+      const popResp = await fetch(
+        `${SIDRA_BASE}/values/t/6579/n3/${ufCode}/v/9324/p/last%201/d/v9324%200`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (popResp.ok) {
+        const popData = await popResp.json();
+        if (popData?.[1]?.V) {
+          const pop = parseInt(popData[1].V);
+          populacao = pop.toLocaleString("pt-BR") + " habitantes";
+        }
+      }
+    } catch (e) {
+      console.warn("IBGE SIDRA population fetch failed:", e);
+    }
+
+    return {
+      uf: ufData?.nome || ufCode,
+      municipio: municipioNome || undefined,
+      populacao,
+      dados_disponiveis: true,
+    };
+  } catch (e) {
+    console.warn("IBGE data fetch error:", e);
+    return { dados_disponiveis: false, erro: "API do IBGE temporariamente indisponível" };
+  }
+}
+
+// ── Main ──────────────────────────────────────────────────────
+
 const SYSTEM_PROMPT = `Você é um auditor de marketing científico do Ágora. Sua missão é analisar campanhas de marketing com precisão absoluta, usando frameworks consagrados:
 
 ## Frameworks de Análise
@@ -47,7 +174,8 @@ IMPORTANTE:
 - Classifique a era do marketing da campanha.
 - Identifique vieses cognitivos presentes e ausentes.
 - Avalie pela fórmula de Hormozi.
-- Analise sentimento geral da marca se dados disponíveis.`;
+- Analise sentimento geral da marca se dados disponíveis.
+- Se dados do IBGE forem fornecidos, USE-OS para enriquecer a análise regional e validar o público-alvo.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -59,6 +187,42 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // ── IBGE Enrichment ──
+    // Try to extract region from the prompt
+    let ibgeSection = "";
+    const regionPatterns = [
+      /(?:em|de|para|no|na|do|da)\s+([\wÀ-ÿ\s]+?)(?:\.|,|$|\n)/gi,
+      /(?:cidade|estado|região|uf|município)[\s:]+([^\n,\.]+)/gi,
+    ];
+
+    let detectedRegion = "";
+    for (const pattern of regionPatterns) {
+      const matches = rawPrompt.matchAll(pattern);
+      for (const match of matches) {
+        const candidate = match[1]?.trim();
+        if (candidate && candidate.length > 2 && candidate.length < 40) {
+          // Check if it looks like a Brazilian location
+          const ibgeResult = await fetchIbgeData(candidate);
+          if (ibgeResult.dados_disponiveis) {
+            detectedRegion = candidate;
+            ibgeSection = `\n\n# DADOS DEMOGRÁFICOS DO IBGE (Reais, extraídos automaticamente)
+- Estado/UF: ${ibgeResult.uf || "N/D"}
+${ibgeResult.municipio ? `- Município: ${ibgeResult.municipio}` : ""}
+- População Estimada: ${ibgeResult.populacao || "N/D"}
+- Fonte: IBGE/SIDRA (dados oficiais do governo brasileiro)
+
+INSTRUÇÃO: Use esses dados reais na sua análise sociocomportamental. Se a população ou região não forem adequadas para o produto/campanha, aponte isso como um gargalo.`;
+            break;
+          }
+        }
+      }
+      if (ibgeSection) break;
+    }
+
+    if (!ibgeSection) {
+      ibgeSection = "\n\n# DADOS IBGE: Região não identificada automaticamente no prompt. Use sua análise contextual.";
+    }
+
     const userPrompt = `Analise a seguinte campanha de marketing:
 
 TÍTULO: ${title || "Sem título"}
@@ -67,6 +231,7 @@ DESCRIÇÃO DA CAMPANHA:
 ${rawPrompt}
 
 ${files?.length ? `\nARQUIVOS ANEXADOS: ${files.map((f: string) => f).join(", ")}` : ""}
+${ibgeSection}
 
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
@@ -188,6 +353,13 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
                         analysis: { type: "string", description: "Análise do sentimento baseado nos dados disponíveis" }
                       },
                       required: ["overall", "analysis"]
+                    },
+                    ibge_insights: {
+                      type: "object",
+                      properties: {
+                        region_fit: { type: "string", description: "Adequação da região para o produto/campanha" },
+                        demographic_notes: { type: "string", description: "Observações demográficas relevantes baseadas nos dados IBGE" }
+                      }
                     }
                   },
                   required: [
