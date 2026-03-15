@@ -4,10 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Send, Upload, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { AGENT_INFO, AgentKind } from "@/types/database";
@@ -23,6 +21,13 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
   chief_strategist: Target,
 };
 
+const suggestions = [
+  { icon: "🎯", label: "Auditar campanha de Meta Ads" },
+  { icon: "📊", label: "Analisar funil de vendas" },
+  { icon: "🧠", label: "Avaliar copy e oferta" },
+  { icon: "📈", label: "Otimizar performance de mídia" },
+];
+
 export default function NewAnalysisPage() {
   const { user } = useAuth();
   const { uploadsLimit } = usePlanAccess();
@@ -30,11 +35,11 @@ export default function NewAnalysisPage() {
 
   const [step, setStep] = useState<FlowStep>("intake");
   const [prompt, setPrompt] = useState("");
-  const [title, setTitle] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [currentAgent, setCurrentAgent] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
@@ -45,16 +50,28 @@ export default function NewAnalysisPage() {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+    // Auto-resize
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const simulateProcessing = async (analysisId: string) => {
     setStep("processing");
-
-    // Simulate each agent processing
     for (let i = 0; i < agentOrder.length; i++) {
       setCurrentAgent(i);
       await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
     }
 
-    // Update analysis as completed with mock scores
     const scores = {
       score_overall: 45 + Math.random() * 40,
       score_sociobehavioral: 40 + Math.random() * 45,
@@ -91,12 +108,11 @@ export default function NewAnalysisPage() {
 
     setLoading(true);
 
-    // Create analysis request
     const { data: analysis, error } = await supabase
       .from("analysis_requests")
       .insert({
         user_id: user.id,
-        title: title || prompt.slice(0, 60),
+        title: prompt.slice(0, 60),
         raw_prompt: prompt,
         status: "processing",
         started_at: new Date().toISOString(),
@@ -110,7 +126,6 @@ export default function NewAnalysisPage() {
       return;
     }
 
-    // Upload files
     if (files.length > 0) {
       setStep("uploading");
       for (const file of files) {
@@ -129,11 +144,11 @@ export default function NewAnalysisPage() {
       }
     }
 
-    // Simulate agent processing
     await simulateProcessing(analysis.id);
     setLoading(false);
   };
 
+  // Processing / completed view
   if (step === "processing" || step === "completed") {
     return (
       <div className="max-w-3xl mx-auto py-12">
@@ -146,7 +161,6 @@ export default function NewAnalysisPage() {
           </p>
         </div>
 
-        {/* Agent orchestrator visualization */}
         <div className="flex flex-wrap justify-center gap-4 sm:gap-3 mb-12">
           {agentOrder.map((code, idx) => {
             const Icon = agentIcons[code];
@@ -163,7 +177,7 @@ export default function NewAnalysisPage() {
                   }}
                   transition={{ duration: 0.3 }}
                   className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border-2 transition-colors ${
-                    isActive ? "border-primary glow-primary bg-primary/10" :
+                    isActive ? "border-primary bg-primary/10" :
                     isDone ? "border-success/50 bg-success/10" : "border-border bg-card"
                   }`}
                 >
@@ -194,65 +208,112 @@ export default function NewAnalysisPage() {
     );
   }
 
+  // Chat-style intake view
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Nova Análise</h1>
-        <p className="mt-1 text-muted-foreground">Descreva sua campanha de marketing para iniciar a auditoria científica.</p>
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
+      {/* Hero heading */}
+      <div className="text-center mb-10">
+        <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2">
+          O que você quer analisar?
+        </h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
+          Descreva sua campanha e nossos agentes farão uma auditoria completa.
+        </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Title */}
-        <div className="space-y-2">
-          <Label>Título da análise (opcional)</Label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Campanha Black Friday 2026" className="bg-card" />
-        </div>
+      {/* Suggestion chips */}
+      <div className="flex flex-wrap justify-center gap-2 mb-8 max-w-xl">
+        {suggestions.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => {
+              setPrompt(s.label);
+              textareaRef.current?.focus();
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-muted text-sm text-foreground transition-colors"
+          >
+            <span>{s.icon}</span>
+            <span>{s.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Prompt */}
-        <div className="space-y-2">
-          <Label>Descreva sua campanha *</Label>
-          <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Descreva o produto/serviço, público-alvo, canais utilizados, objetivo da campanha, métricas atuais, contexto de mercado..."
-            className="min-h-[200px] bg-card resize-none" />
-          <p className="text-xs text-muted-foreground">
-            Quanto mais detalhes, melhor a análise. Inclua: produto, público, canais, KPIs, orçamento e contexto.
-          </p>
-        </div>
+      {/* Chat input area */}
+      <div className="w-full max-w-2xl">
+        {/* Attached files */}
+        <AnimatePresence>
+          {files.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="flex flex-wrap gap-2 mb-3"
+            >
+              {files.map((f, i) => (
+                <div
+                  key={f.name + i}
+                  className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate max-w-[140px]">{f.name}</span>
+                  <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
+                  <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive ml-1">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Files */}
-        <div className="space-y-3">
-          <Label>Arquivos de apoio</Label>
-          <div className="glass-card p-6 border-dashed text-center cursor-pointer hover:border-primary/30 transition-colors"
-            onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Clique ou arraste arquivos aqui</p>
-            <p className="text-xs text-muted-foreground mt-1">PDFs, imagens, planilhas, apresentações</p>
-            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileAdd}
-              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.pptx,.docx,.csv,.txt" />
-          </div>
+        {/* Input box */}
+        <div className="relative flex items-end gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm focus-within:border-primary/50 transition-colors">
+          {/* Attach button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-shrink-0 p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Anexar arquivos"
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileAdd}
+            accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.pptx,.docx,.csv,.txt"
+          />
 
-          <AnimatePresence>
-            {files.map((f, i) => (
-              <motion.div key={f.name + i} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-3 glass-card p-3">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm flex-1 truncate">{f.name}</span>
-                <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
-                <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
-                  <X className="h-4 w-4" />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={prompt}
+            onChange={handleTextareaInput}
+            onKeyDown={handleKeyDown}
+            placeholder="Descreva sua campanha, produto, público-alvo..."
+            rows={1}
+            className="flex-1 bg-transparent border-none outline-none resize-none text-sm sm:text-base text-foreground placeholder:text-muted-foreground max-h-[200px]"
+          />
 
-        {/* Submit */}
-        <div className="flex gap-3 pt-4">
-          <Button variant="hero" size="lg" className="flex-1" onClick={handleSubmit} disabled={loading || !prompt.trim()}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Enviar para Análise
+          {/* Send button */}
+          <Button
+            size="icon"
+            onClick={handleSubmit}
+            disabled={loading || !prompt.trim()}
+            className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-3">
+          Pressione Enter para enviar · Shift+Enter para nova linha
+        </p>
       </div>
     </div>
   );
