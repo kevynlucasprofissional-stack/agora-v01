@@ -22,10 +22,12 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
   chief_strategist: Target,
 };
 
-const quickActions = [
-  { icon: "✨", label: "Gerar criativos" },
-  { icon: "🔍", label: "Pesquisa de mercado" },
-  { icon: "📊", label: "Gerar campanha" },
+type ActionMode = "creative" | "research" | "campaign" | null;
+
+const ACTION_MODES = [
+  { key: "creative" as const, label: "Gerar criativos", icon: Sparkles, prefix: "[MODO: GERAR CRIATIVOS] " },
+  { key: "research" as const, label: "Pesquisa de mercado", icon: Search, prefix: "[MODO: PESQUISA DE MERCADO] " },
+  { key: "campaign" as const, label: "Gerar campanha", icon: BarChart3, prefix: "[MODO: GERAR CAMPANHA] " },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
