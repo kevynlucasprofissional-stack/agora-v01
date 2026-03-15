@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
@@ -7,6 +7,7 @@ import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import ReactMarkdown from "react-markdown";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -15,26 +16,104 @@ interface ChatMessage {
 
 export default function AnalysisChatPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [analysis, setAnalysis] = useState<AnalysisRequest | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load analysis + conversation + messages
   useEffect(() => {
-    if (!id) return;
-    supabase.from("analysis_requests").select("*").eq("id", id).single().then(({ data }) => {
-      setAnalysis(data);
-      if (data) {
-        setMessages([{
-          role: "assistant",
-          content: `Olá! Sou o **Estrategista-Chefe** da Ágora. Analisei sua campanha "${data.title || "sem título"}" e o score geral ficou em **${Number(data.score_overall ?? 0).toFixed(0)}/100**.\n\nPosso ajudá-lo com:\n- 🧠 **Neuromarketing** — vieses cognitivos e gatilhos para seu público\n- 🎯 **Oferta** — Fórmula de Hormozi, proposta de valor, pricing\n- 📊 **Performance** — KPIs, funil, canais e segmentação\n- 👥 **Público-alvo** — comportamento geracional e segmentação\n\nO que gostaria de explorar?`,
-        }]);
+    if (!id || !user) return;
+
+    const loadData = async () => {
+      // Load analysis
+      const { data: analysisData } = await supabase
+        .from("analysis_requests")
+        .select("*")
+        .eq("id", id)
+        .single();
+      setAnalysis(analysisData);
+
+      // Find or create conversation
+      const { data: existingConv } = await supabase
+        .from("conversations" as any)
+        .select("*")
+        .eq("analysis_request_id", id)
+        .eq("context_type", "strategist")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let convId: string;
+
+      if (existingConv) {
+        convId = (existingConv as any).id;
+        setConversationId(convId);
+
+        // Load existing messages
+        const { data: dbMessages } = await supabase
+          .from("chat_messages" as any)
+          .select("*")
+          .eq("conversation_id", convId)
+          .order("created_at", { ascending: true });
+
+        if (dbMessages && dbMessages.length > 0) {
+          setMessages(
+            (dbMessages as any[]).map((m: any) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }))
+          );
+        } else if (analysisData) {
+          // No messages yet, add greeting
+          const greeting = buildGreeting(analysisData);
+          setMessages([{ role: "assistant", content: greeting }]);
+          await saveMessage(convId, "assistant", greeting);
+        }
+      } else if (analysisData) {
+        // Create new conversation
+        const { data: newConv } = await supabase
+          .from("conversations" as any)
+          .insert({
+            user_id: user.id,
+            analysis_request_id: id,
+            context_type: "strategist",
+            title: analysisData.title || "Chat Estrategista",
+          } as any)
+          .select("id")
+          .single();
+
+        if (newConv) {
+          convId = (newConv as any).id;
+          setConversationId(convId);
+          const greeting = buildGreeting(analysisData);
+          setMessages([{ role: "assistant", content: greeting }]);
+          await saveMessage(convId, "assistant", greeting);
+        }
       }
-    });
-  }, [id]);
+
+      setLoading(false);
+    };
+
+    loadData();
+  }, [id, user]);
+
+  const buildGreeting = (data: AnalysisRequest) =>
+    `Olá! Sou o **Estrategista-Chefe** da Ágora. Analisei sua campanha "${data.title || "sem título"}" e o score geral ficou em **${Number(data.score_overall ?? 0).toFixed(0)}/100**.\n\nPosso ajudá-lo com:\n- 🧠 **Neuromarketing** — vieses cognitivos e gatilhos para seu público\n- 🎯 **Oferta** — Fórmula de Hormozi, proposta de valor, pricing\n- 📊 **Performance** — KPIs, funil, canais e segmentação\n- 👥 **Público-alvo** — comportamento geracional e segmentação\n\nO que gostaria de explorar?`;
+
+  const saveMessage = async (convId: string, role: string, content: string) => {
+    await supabase.from("chat_messages" as any).insert({
+      conversation_id: convId,
+      role,
+      content,
+    } as any);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,8 +126,8 @@ export default function AnalysisChatPage() {
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isStreaming || !conversationId) return;
     const userMsg = input.trim();
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -57,11 +136,14 @@ export default function AnalysisChatPage() {
     setMessages(newMessages);
     setIsStreaming(true);
 
+    // Save user message to DB
+    await saveMessage(conversationId, "user", userMsg);
+
     let assistantContent = "";
 
     try {
-      // Only send non-initial messages to the API
-      const apiMessages = newMessages.filter((_, i) => i > 0); // skip initial assistant greeting
+      // Send all messages (except initial greeting) to API
+      const apiMessages = newMessages.filter((_, i) => i > 0);
 
       await streamChat({
         messages: apiMessages,
@@ -84,27 +166,29 @@ export default function AnalysisChatPage() {
           assistantContent += chunk;
           setMessages((prev) => {
             const last = prev[prev.length - 1];
-            if (last?.role === "assistant" && prev.length > 1 && last.content === assistantContent.slice(0, -chunk.length)) {
-              return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
-            }
             if (last?.role === "user") {
               return [...prev, { role: "assistant", content: assistantContent }];
             }
             return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
           });
         },
-        onDone: () => {
+        onDone: async () => {
           setIsStreaming(false);
+          // Save assistant message to DB
+          if (assistantContent && conversationId) {
+            await saveMessage(conversationId, "assistant", assistantContent);
+          }
         },
       });
     } catch (e) {
       setIsStreaming(false);
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`,
-      }]);
+      const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`;
+      setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+      await saveMessage(conversationId, "assistant", errorMsg);
     }
-  };
+  }, [input, isStreaming, conversationId, messages, analysis]);
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto">
