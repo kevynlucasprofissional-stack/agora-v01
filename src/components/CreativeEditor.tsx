@@ -130,21 +130,21 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => setTexts(prev => ({ ...prev, headline: e.currentTarget.textContent || "" }))}
+              onBlur={(e) => setTexts(prev => ({ ...prev, headline: e.currentTarget?.textContent || prev.headline }))}
               className="text-center text-2xl sm:text-3xl font-display font-bold leading-tight outline-none cursor-text px-4 py-1 rounded hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all"
               style={{
                 color: textColor,
                 textShadow: "0 2px 8px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)",
               }}
             >
-              {suggestedText.headline}
+              {safeText.headline}
             </div>
 
             {/* Subheadline */}
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => setTexts(prev => ({ ...prev, subheadline: e.currentTarget.textContent || "" }))}
+              onBlur={(e) => setTexts(prev => ({ ...prev, subheadline: e.currentTarget?.textContent || prev.subheadline }))}
               className="text-center text-sm sm:text-base font-medium leading-relaxed outline-none cursor-text px-4 py-1 rounded hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all max-w-[80%]"
               style={{
                 color: textColor,
