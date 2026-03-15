@@ -179,6 +179,9 @@ export default function AnalysisReportPage() {
           ))}
         </div>
 
+        {/* Inline Chat Block - Estrategista-Chefe */}
+        {analysis && <ReportChatBlock analysis={analysis} />}
+
         {/* Marketing Era */}
         {marketingEra && (
           <div className="glass-card p-6">
