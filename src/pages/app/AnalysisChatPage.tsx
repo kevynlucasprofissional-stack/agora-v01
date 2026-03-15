@@ -169,8 +169,11 @@ export default function AnalysisChatPage() {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last?.role === "user") {
+              const newIdx = prev.length;
+              setStreamingIdx(newIdx);
               return [...prev, { role: "assistant", content: assistantContent }];
             }
+            setStreamingIdx(prev.length - 1);
             return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
           });
         },
