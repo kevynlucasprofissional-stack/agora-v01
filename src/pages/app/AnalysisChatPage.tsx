@@ -7,6 +7,7 @@ import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import ReactMarkdown from "react-markdown";
+import { ResponseStream } from "@/components/ui/response-stream";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ChatMessage {
@@ -25,6 +26,7 @@ export default function AnalysisChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
 
   // Load analysis + conversation + messages
   useEffect(() => {
@@ -167,13 +169,17 @@ export default function AnalysisChatPage() {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last?.role === "user") {
+              const newIdx = prev.length;
+              setStreamingIdx(newIdx);
               return [...prev, { role: "assistant", content: assistantContent }];
             }
+            setStreamingIdx(prev.length - 1);
             return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
           });
         },
         onDone: async () => {
           setIsStreaming(false);
+          setStreamingIdx(null);
           // Save assistant message to DB
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
@@ -182,6 +188,7 @@ export default function AnalysisChatPage() {
       });
     } catch (e) {
       setIsStreaming(false);
+      setStreamingIdx(null);
       const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`;
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
@@ -220,9 +227,20 @@ export default function AnalysisChatPage() {
               msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card"
             }`}>
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
+                streamingIdx === i ? (
+                  <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground">
+                    <ResponseStream
+                      textStream={msg.content}
+                      mode="fade"
+                      speed={75}
+                      as="span"
+                    />
+                  </div>
+                ) : (
+                  <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                )
               ) : (
                 <div className="whitespace-pre-wrap">{msg.content}</div>
               )}

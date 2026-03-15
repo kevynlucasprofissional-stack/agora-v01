@@ -8,6 +8,7 @@ import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { ResponseStream } from "@/components/ui/response-stream";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -700,8 +701,12 @@ export default function NewAnalysisPage() {
                 {msg.role === "assistant" ? (
                   streamingIdx === idx ? (
                     <div className="prose prose-sm max-w-none text-foreground">
-                      <span className="whitespace-pre-wrap">{msg.content.replace("##READY##", "").trim()}</span>
-                      <span className="inline-block w-[2px] h-[1em] bg-primary align-text-bottom ml-0.5 animate-pulse" />
+                      <ResponseStream
+                        textStream={msg.content.replace("##READY##", "").trim()}
+                        mode="fade"
+                        speed={75}
+                        as="span"
+                      />
                     </div>
                   ) : (
                     <div className="prose prose-sm max-w-none text-foreground">
