@@ -63,8 +63,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.h1 variants={fadeUp} custom={1} initial="hidden" animate="visible"
             className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.1] md:text-7xl">
-            Audite sua campanha contra as{" "}
-            <span className="gradient-text">leis do comportamento humano</span>
+            Simule suas campanhas. Otimize sua estratégia. Aumente suas vendas.
           </motion.h1>
           <motion.p variants={fadeUp} custom={2} initial="hidden" animate="visible"
             className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
