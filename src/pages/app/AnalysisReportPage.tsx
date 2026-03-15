@@ -414,33 +414,6 @@ export default function AnalysisReportPage() {
           )}
         </div>
       </div>
-
-      {/* Floating Chat Button */}
-      <AnimatePresence>
-        {chatButtonVisible && !chatOpen && (
-          <motion.button
-            initial={{ x: 100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 100, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200, mass: 0.8 }}
-            onClick={() => setChatOpen(true)}
-            className="fixed right-4 bottom-24 z-30 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-shadow"
-            title="Dúvidas?"
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span className="text-sm font-medium hidden sm:inline">Dúvidas?</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Chat Panel */}
-      {analysis && (
-        <StrategistChatPanel
-          analysis={analysis}
-          open={chatOpen}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
     </>
   );
 }
