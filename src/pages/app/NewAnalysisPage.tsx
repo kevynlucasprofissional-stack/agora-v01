@@ -320,6 +320,12 @@ export default function NewAnalysisPage() {
             strengths: result.strengths,
             audience_insights: result.audience_insights,
             market_references: result.market_references,
+            marketing_era: result.marketing_era,
+            cognitive_biases: result.cognitive_biases,
+            hormozi_analysis: result.hormozi_analysis,
+            kpi_analysis: result.kpi_analysis,
+            timing_analysis: result.timing_analysis,
+            brand_sentiment: result.brand_sentiment,
           },
         })
         .eq("id", analysisId);
