@@ -55,9 +55,13 @@ export default function CampaignDocumentPage() {
   const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const documentRef = useRef<string>("");
 
-  // Load analysis + check for existing campaign
+  const saveChatMsg = useCallback(async (convId: string, role: string, content: string) => {
+    await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
+  }, []);
+
+  // Load analysis + check for existing campaign + load chat history
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     const loadData = async () => {
       const [analysisRes, outputRes] = await Promise.all([
         supabase.from("analysis_requests").select("*").eq("id", id).single(),
@@ -90,10 +94,46 @@ export default function CampaignDocumentPage() {
         setStep("document");
       }
 
+      // Load or create chat conversation for campaign editing
+      const { data: existingConv } = await supabase
+        .from("conversations" as any)
+        .select("*")
+        .eq("analysis_request_id", id)
+        .eq("context_type", "campaign")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingConv) {
+        const convId = (existingConv as any).id;
+        setChatConversationId(convId);
+        const { data: dbMsgs } = await supabase
+          .from("chat_messages" as any)
+          .select("*")
+          .eq("conversation_id", convId)
+          .order("created_at", { ascending: true });
+        if (dbMsgs && dbMsgs.length > 0) {
+          setChatMessages((dbMsgs as any[]).map((m: any) => ({ role: m.role, content: m.content })));
+        }
+      } else {
+        const { data: newConv } = await supabase
+          .from("conversations" as any)
+          .insert({
+            user_id: user.id,
+            analysis_request_id: id,
+            context_type: "campaign",
+            title: analysisData?.title || "Editor de Campanha",
+          } as any)
+          .select("id")
+          .single();
+        if (newConv) setChatConversationId((newConv as any).id);
+      }
+
       setLoading(false);
     };
     loadData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
