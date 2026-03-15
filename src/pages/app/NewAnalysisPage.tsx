@@ -235,13 +235,21 @@ export default function NewAnalysisPage() {
   const handleSend = async () => {
     if ((!input.trim() && files.length === 0) || isStreaming) return;
 
+    // Ensure conversation exists
+    let convId: string;
+    try {
+      convId = await ensureConversation();
+    } catch {
+      toast.error("Erro ao criar conversa.");
+      return;
+    }
+
     // Build user message content with files
     let userDisplayContent = input.trim();
     const pendingFiles = [...files];
     const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
 
     if (pendingFiles.length > 0) {
-      // Read all file contents
       try {
         const results = await Promise.all(pendingFiles.map(readFileContent));
         fileContents.push(...results);
@@ -262,6 +270,14 @@ export default function NewAnalysisPage() {
     setInput("");
     setFiles([]);
     setIsStreaming(true);
+
+    // Persist user message
+    persistMessage(convId, "user", userDisplayContent);
+
+    // Update conversation title from first message
+    if (messages.length === 0) {
+      supabase.from("conversations").update({ title: userDisplayContent.slice(0, 80) }).eq("id", convId);
+    }
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -287,7 +303,13 @@ export default function NewAnalysisPage() {
       await streamChat({
         messages: updatedMessages,
         onDelta: upsertAssistant,
-        onDone: () => setIsStreaming(false),
+        onDone: () => {
+          setIsStreaming(false);
+          // Persist assistant response
+          if (assistantSoFar) {
+            persistMessage(convId, "assistant", assistantSoFar);
+          }
+        },
         fileContents: fileContents.length > 0 ? fileContents : undefined,
       });
     } catch (e) {
