@@ -151,7 +151,7 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
                 textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               }}
             >
-              {suggestedText.subheadline}
+              {safeText.subheadline}
             </div>
 
             {/* CTA Button */}
@@ -159,7 +159,7 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
               <div
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e) => setTexts(prev => ({ ...prev, cta: e.currentTarget.textContent || "" }))}
+                onBlur={(e) => setTexts(prev => ({ ...prev, cta: e.currentTarget?.textContent || prev.cta }))}
                 className="inline-block px-6 py-2.5 rounded-full text-sm font-bold outline-none cursor-text hover:ring-2 hover:ring-white/30 focus:ring-2 focus:ring-white/50 transition-all"
                 style={{
                   backgroundColor: textColor === "#FFFFFF" ? "hsl(var(--primary))" : textColor,
@@ -167,7 +167,7 @@ export function CreativeEditor({ imageUrl, suggestedText, onRegenerate, isRegene
                   boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
                 }}
               >
-                {suggestedText.cta}
+                {safeText.cta}
               </div>
             </div>
           </div>
