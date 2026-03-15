@@ -212,7 +212,7 @@ export default function NewAnalysisPage() {
 
     const { data, error } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, context_type: "intake", title: "Nova Análise" })
+      .insert({ user_id: user.id, context_type: "intake", title: "Novo chat" })
       .select("id")
       .single();
 
