@@ -179,6 +179,9 @@ export default function AnalysisReportPage() {
           ))}
         </div>
 
+        {/* Inline Chat Block - Estrategista-Chefe */}
+        {analysis && <ReportChatBlock analysis={analysis} />}
+
         {/* Marketing Era */}
         {marketingEra && (
           <div className="glass-card p-6">
@@ -401,9 +404,6 @@ export default function AnalysisReportPage() {
             })()}
           </div>
         </div>
-        {/* Inline Chat Block */}
-        {analysis && <ReportChatBlock analysis={analysis} />}
-
         {/* Feedback */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
