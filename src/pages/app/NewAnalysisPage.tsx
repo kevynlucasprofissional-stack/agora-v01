@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -22,10 +22,12 @@ const agentIcons: Record<AgentKind, React.ElementType> = {
   chief_strategist: Target,
 };
 
-const quickActions = [
-  { icon: "✨", label: "Gerar criativos" },
-  { icon: "🔍", label: "Pesquisa de mercado" },
-  { icon: "📊", label: "Gerar campanha" },
+type ActionMode = "creative" | "research" | "campaign" | null;
+
+const ACTION_MODES = [
+  { key: "creative" as const, label: "Gerar criativos", icon: Sparkles, prefix: "[MODO: GERAR CRIATIVOS] " },
+  { key: "research" as const, label: "Pesquisa de mercado", icon: Search, prefix: "[MODO: PESQUISA DE MERCADO] " },
+  { key: "campaign" as const, label: "Gerar campanha", icon: BarChart3, prefix: "[MODO: GERAR CAMPANHA] " },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
@@ -129,6 +131,7 @@ export default function NewAnalysisPage() {
   const [isReady, setIsReady] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(searchParams.get("c"));
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeAction, setActiveAction] = useState<ActionMode>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -245,6 +248,8 @@ export default function NewAnalysisPage() {
 
     // Build user message content with files
     let userDisplayContent = input.trim();
+    const activeMode = ACTION_MODES.find(m => m.key === activeAction);
+    setActiveAction(null); // Reset action after sending
     const pendingFiles = [...files];
     const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
 
@@ -264,6 +269,10 @@ export default function NewAnalysisPage() {
     }
 
     const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
+    // Prepend action mode prefix for the AI but show clean message to user
+    const messagesForAI = activeMode
+      ? [...messages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
+      : [...messages, userMsg];
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
@@ -301,7 +310,7 @@ export default function NewAnalysisPage() {
 
     try {
       await streamChat({
-        messages: updatedMessages,
+        messages: messagesForAI,
         onDelta: upsertAssistant,
         onDone: () => {
           setIsStreaming(false);
@@ -662,19 +671,23 @@ export default function NewAnalysisPage() {
           </div>
 
           <div className="flex flex-nowrap justify-center gap-2 mt-3">
-            {quickActions.map((a) => (
-              <button
-                key={a.label}
-                onClick={() => {
-                  setInput(a.label);
-                  textareaRef.current?.focus();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card hover:bg-muted text-xs sm:text-sm text-foreground transition-colors whitespace-nowrap"
-              >
-                <span>{a.icon}</span>
-                <span>{a.label}</span>
-              </button>
-            ))}
+            {ACTION_MODES.map((a) => {
+              const isActive = activeAction === a.key;
+              return (
+                <button
+                  key={a.key}
+                  onClick={() => setActiveAction(isActive ? null : a.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
+                      : "border-border bg-card hover:bg-muted text-foreground"
+                  }`}
+                >
+                  <a.icon className="h-3.5 w-3.5" />
+                  <span>{a.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-2">
