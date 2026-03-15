@@ -383,7 +383,7 @@ export default function CampaignOptimizerPage() {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <button onClick={handleNewAnalysis} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
-              <ArrowLeft className="h-4 w-4" /> Nova análise
+              <ArrowLeft className="h-4 w-4" /> Novo chat
             </button>
             <h1 className="text-2xl font-bold font-display">Otimização de Campanha</h1>
             <p className="text-sm text-muted-foreground mt-1">{input.slice(0, 80)}{input.length > 80 ? "..." : ""}</p>
