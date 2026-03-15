@@ -373,7 +373,7 @@ export function CreativeEditor({
       )}
 
       {/* Layer chips */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {layers.map((layer, i) => (
           <button
             key={i}
@@ -388,6 +388,14 @@ export function CreativeEditor({
             {layer.type === "headline" ? "Título" : layer.type === "subheadline" ? "Subtítulo" : layer.type === "cta" ? "CTA" : layer.type}
           </button>
         ))}
+        <button
+          onClick={addNewLayer}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+          title="Adicionar nova camada de texto"
+        >
+          <Plus className="h-3 w-3" />
+          Texto
+        </button>
       </div>
 
       {/* Creative Canvas */}
