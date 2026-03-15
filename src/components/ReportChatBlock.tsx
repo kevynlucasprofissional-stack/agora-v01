@@ -309,13 +309,20 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       </AnimatePresence>
 
       {creativeData && !isGeneratingCreative && (
-        <div className="mb-4">
+        <div className="mb-4 relative">
+          <button
+            onClick={() => setCreativeData(null)}
+            className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+            title="Fechar criativo"
+          >
+            <X className="h-4 w-4" />
+          </button>
           <CreativeEditor
             strategistOutput={creativeData.strategist_output}
             imageUrl={creativeData.image_url}
             editableHtml={creativeData.editable_html}
             creativeJobId={creativeData.creative_job_id}
-            onRegenerate={generateCreative}
+            onRegenerate={() => generateCreative(input)}
             isRegenerating={isGeneratingCreative}
           />
         </div>
