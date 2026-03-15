@@ -263,7 +263,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       </div>
 
       {/* Messages */}
-      <div className="max-h-[500px] overflow-auto space-y-3 mb-4 pr-1">
+      <div className="flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
         {!loaded ? (
           <div className="flex items-center justify-center h-24">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
