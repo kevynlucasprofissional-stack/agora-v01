@@ -327,7 +327,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             imageUrl={creativeData.image_url}
             editableHtml={creativeData.editable_html}
             creativeJobId={creativeData.creative_job_id}
-            onRegenerate={generateCreative}
+            onRegenerate={() => generateCreative()}
             isRegenerating={isGeneratingCreative}
           />
         </div>
