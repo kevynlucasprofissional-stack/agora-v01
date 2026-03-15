@@ -41,12 +41,12 @@ export function InfiniteGrid({ className, children }: InfiniteGridProps) {
     >
       {/* Base grid layer - subtle */}
       <div className="absolute inset-0">
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--warning) / 0.08)" />
+        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--primary) / 0.12)" />
       </div>
 
       {/* Mouse-reveal layer - brighter */}
       <motion.div className="absolute inset-0" style={{ WebkitMaskImage: maskImage, maskImage }}>
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--warning) / 0.25)" />
+        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} color="hsl(var(--primary) / 0.35)" />
       </motion.div>
 
       {children}
