@@ -785,20 +785,21 @@ export default function NewAnalysisPage() {
             </Button>
           </div>
 
-          <div className="flex flex-nowrap justify-center gap-2 mt-3">
+          <div className="flex justify-center gap-1.5 sm:gap-2 mt-3">
             {ACTION_MODES.map((a) => {
               const isActive = activeAction === a.key;
               return (
                 <button
                   key={a.key}
                   onClick={() => setActiveAction(isActive ? null : a.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${
+                  disabled={isStreaming || isGeneratingImage}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-all whitespace-nowrap disabled:opacity-50 ${
                     isActive
-                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
+                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30 scale-[1.02]"
                       : "border-border bg-card hover:bg-muted text-foreground"
                   }`}
                 >
-                  <a.icon className="h-3.5 w-3.5" />
+                  <a.icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                   <span>{a.label}</span>
                 </button>
               );
