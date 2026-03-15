@@ -111,7 +111,7 @@ export default function AnalysisReportPage() {
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             className="glass-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
               <span className="section-label">{s.label}</span>
