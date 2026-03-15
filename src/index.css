@@ -10,7 +10,7 @@
      * Fundo: f2f1ef (creme)
      * 60%: 9bd1ba (sálvia/mint)
      * 30%: f6b561 (âmbar)
-     * 10%: ea534c (coral)
+     * 10%: f6b561 (âmbar/destaque)
      */
     
     /* Base - Fundo creme */
@@ -36,13 +36,13 @@
     --muted: 40 10% 88%;
     --muted-foreground: 220 10% 45%;
 
-    /* Accent - Coral (10%) */
-    --accent: 4 79% 61%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Amber (10%) */
+    --accent: 35 90% 67%;
+    --accent-foreground: 35 50% 15%;
 
-    /* Destructive - Coral mais escuro */
-    --destructive: 4 70% 55%;
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive - Amber mais escuro */
+    --destructive: 35 80% 55%;
+    --destructive-foreground: 35 50% 15%;
 
     /* Success - Verde sálvia */
     --success: 155 42% 65%;
@@ -84,7 +84,7 @@
     --primary: 155 42% 60%;
     --secondary: 35 90% 60%;
     --muted: 40 10% 20%;
-    --accent: 4 79% 65%;
+    --accent: 35 90% 60%;
     --border: 40 10% 25%;
   }
 }
@@ -132,9 +132,7 @@
   .bg-creme { background-color: hsl(40 12% 94%); }
   .bg-sage { background-color: hsl(155 42% 71%); }
   .bg-amber { background-color: hsl(35 90% 67%); }
-  .bg-coral { background-color: hsl(4 79% 61%); }
   
   .text-sage { color: hsl(155 35% 55%); }
   .text-amber { color: hsl(35 80% 55%); }
-  .text-coral { color: hsl(4 70% 55%); }
 }

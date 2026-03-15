@@ -86,9 +86,9 @@ export default {
           light: "hsl(35 90% 80%)",
         },
         coral: {
-          DEFAULT: "hsl(4 79% 61%)",
-          dark: "hsl(4 70% 55%)",
-          light: "hsl(4 79% 70%)",
+          DEFAULT: "hsl(35 90% 67%)",
+          dark: "hsl(35 80% 55%)",
+          light: "hsl(35 90% 80%)",
         },
       },
       borderRadius: {
