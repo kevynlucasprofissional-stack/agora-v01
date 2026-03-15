@@ -35,7 +35,7 @@ export default function DashboardPage() {
         supabase
           .from("analysis_requests")
           .select("id", { count: "exact", head: true }),
-        supabase
+      supabase
           .from("conversations")
           .select("id, title, context_type, analysis_request_id, updated_at")
           .order("updated_at", { ascending: false })
@@ -43,7 +43,33 @@ export default function DashboardPage() {
       ]);
       setRecentAnalyses(recentRes.data ?? []);
       setTotalCount(countRes.count ?? 0);
-      setRecentConversations(convsRes.data ?? []);
+
+      // Enrich conversation titles with first user message (same logic as History)
+      const rawConvs = convsRes.data ?? [];
+      if (rawConvs.length > 0) {
+        const enriched = await Promise.all(
+          rawConvs.map(async (c) => {
+            if (c.title && c.title !== "Nova Análise") return c;
+            const { data } = await supabase
+              .from("chat_messages")
+              .select("content")
+              .eq("conversation_id", c.id)
+              .eq("role", "user")
+              .order("created_at", { ascending: true })
+              .limit(1);
+            const firstMsg = data?.[0]?.content;
+            return {
+              ...c,
+              title: firstMsg
+                ? firstMsg.replace(/📎.*$/, "").trim().slice(0, 80)
+                : c.title,
+            };
+          })
+        );
+        setRecentConversations(enriched);
+      } else {
+        setRecentConversations([]);
+      }
       setLoading(false);
     };
     fetchData();
