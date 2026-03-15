@@ -147,6 +147,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Score evolution chart */}
+      <ScoreEvolutionChart />
+
       {/* Recent conversations */}
       {recentConversations.length > 0 && (
         <div>
