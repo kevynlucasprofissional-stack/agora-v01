@@ -144,14 +144,31 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         }
       }
       setLoaded(true);
+      // Scroll to bottom after initial load
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      }, 100);
     };
     load();
   }, [user, analysis, loaded]);
 
+  // Auto-scroll only during active streaming/generation
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Track scroll position to show/hide "scroll to bottom" button
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(distanceFromBottom > 150);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
