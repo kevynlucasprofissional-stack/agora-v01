@@ -202,6 +202,28 @@ export default function NewAnalysisPage() {
     setFiles((prev) => [...prev, ...newFiles]);
   };
 
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          // Create a named file from clipboard
+          const named = new File([file], `imagem-colada-${Date.now()}.png`, { type: file.type });
+          imageFiles.push(named);
+        }
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      setFiles((prev) => [...prev, ...imageFiles]);
+      toast.success(`${imageFiles.length} imagem(ns) colada(s)`);
+    }
+  }, []);
+
   const removeFile = (idx: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   };
