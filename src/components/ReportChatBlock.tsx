@@ -192,6 +192,15 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const sendMessage = useCallback(async (text: string) => {
     if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
 
+    // If creative mode is active, redirect to creative generation
+    if (creativeMode) {
+      generateCreative(text.trim());
+      setInput("");
+      setAttachments([]);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      return;
+    }
+
     let userMsg = text.trim();
     if (attachments.length > 0) {
       const fileNames = attachments.map(a => a.file.name).join(", ");
@@ -250,7 +259,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
       await saveMessage(conversationId, "assistant", errorMsg);
     }
-  }, [input, isStreaming, messages, analysis, conversationId, attachments]);
+  }, [input, isStreaming, messages, analysis, conversationId, attachments, creativeMode, generateCreative]);
 
   return (
     <div className="glass-card p-6">
