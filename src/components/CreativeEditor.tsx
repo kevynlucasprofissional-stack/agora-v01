@@ -69,7 +69,7 @@ function parseLayers(strategistOutput: StrategistOutput): LayerState[] {
     x: 50, // percent
     y: layer.type === "headline" ? 40 : layer.type === "subheadline" ? 55 : 70,
     color: layer.type === "cta" ? "#FFFFFF" : "#FFFFFF",
-    fontSize: layer.type === "headline" ? 32 : layer.type === "cta" ? 14 : 16,
+    fontSize: layer.type === "headline" ? 22 : layer.type === "cta" ? 14 : 15,
     shadowEnabled: true,
     shadowBlur: 8,
     shadowColor: "rgba(0,0,0,0.6)",
