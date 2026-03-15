@@ -1,133 +1,137 @@
-import { 
-  LayoutGrid, History, FolderOpen, Settings, User, 
-  Zap, LogOut, Plus, ChevronLeft, Building2, Link2
+import {
+  LayoutGrid, History, FolderOpen, Settings, User,
+  Zap, LogOut, Plus, Link2,
 } from "lucide-react";
-import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocation } from "react-router-dom";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarFooter, useSidebar,
-} from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+  Sidebar, SidebarBody, SidebarLink, useSidebar,
+} from "@/components/ui/hover-sidebar";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const mainNav = [
-  { title: "Dashboard", url: "/app", icon: LayoutGrid },
-  { title: "Nova Análise", url: "/app/new-analysis", icon: Plus },
-  { title: "Histórico", url: "/app/history", icon: History },
-  { title: "Biblioteca", url: "/app/assets", icon: FolderOpen },
+  { label: "Dashboard", href: "/app", icon: <LayoutGrid className="h-5 w-5 shrink-0" /> },
+  { label: "Nova Análise", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
+  { label: "Histórico", href: "/app/history", icon: <History className="h-5 w-5 shrink-0" /> },
+  { label: "Biblioteca", href: "/app/assets", icon: <FolderOpen className="h-5 w-5 shrink-0" /> },
 ];
 
 const accountNav = [
-  { title: "Conta", url: "/app/account", icon: User },
-  { title: "Configurações", url: "/app/settings", icon: Settings },
+  { label: "Conta", href: "/app/account", icon: <User className="h-5 w-5 shrink-0" /> },
+  { label: "Configurações", href: "/app/settings", icon: <Settings className="h-5 w-5 shrink-0" /> },
 ];
 
 export function AppSidebar() {
-  const { state, setOpenMobile } = useSidebar();
-  const collapsed = state === "collapsed";
   const { signOut, profile } = useAuth();
   const { isEnterprise } = usePlanAccess();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
-  const closeMobileMenu = () => {
-    if (isMobile) setOpenMobile(false);
+  const isActive = (href: string) => {
+    if (href === "/app") return currentPath === "/app";
+    return currentPath.startsWith(href);
   };
 
+  const enterpriseNav = isEnterprise
+    ? [{ label: "Integrações", href: "/app/integrations", icon: <Link2 className="h-5 w-5 shrink-0" /> }]
+    : [];
+
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+    <Sidebar>
+      <SidebarBody className="justify-between gap-6">
+        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Logo */}
+          <Logo />
+
+          {/* Main nav */}
+          <div className="mt-6 flex flex-col gap-1">
+            {mainNav.map((link) => (
+              <SidebarLink key={link.href} link={link} active={isActive(link.href)} />
+            ))}
           </div>
-          {!collapsed && (
-            <span className="font-display text-lg font-bold tracking-tight text-foreground">
-              Ágora
-            </span>
+
+          {/* Enterprise nav */}
+          {enterpriseNav.length > 0 && (
+            <div className="mt-6 flex flex-col gap-1">
+              {enterpriseNav.map((link) => (
+                <SidebarLink key={link.href} link={link} active={isActive(link.href)} />
+              ))}
+            </div>
           )}
+
+          {/* Account nav */}
+          <div className="mt-6 flex flex-col gap-1">
+            {accountNav.map((link) => (
+              <SidebarLink key={link.href} link={link} active={isActive(link.href)} />
+            ))}
+          </div>
         </div>
 
-        {/* Main nav */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === "/app"} onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-secondary text-foreground font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Enterprise nav */}
-        {isEnterprise && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Enterprise</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/app/integrations" onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-accent text-primary font-medium">
-                      <Link2 className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>Integrações</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Account nav */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Conta</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accountNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} onClick={closeMobileMenu} className="hover:bg-accent/50" activeClassName="bg-accent text-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className="p-4">
-        {!collapsed && profile && (
-          <div className="mb-3 rounded-xl bg-accent/50 p-3">
-            <p className="text-xs font-medium text-foreground truncate">{profile.full_name || profile.email}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{profile.email}</p>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "default"}
-          className="w-full justify-start text-muted-foreground hover:text-destructive"
-          onClick={signOut}
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          {!collapsed && "Sair"}
-        </Button>
-      </SidebarFooter>
+        {/* Footer */}
+        <div className="flex flex-col gap-2">
+          <ProfileCard />
+          <SidebarLink
+            link={{
+              label: "Sair",
+              href: "#",
+              icon: <LogOut className="h-5 w-5 shrink-0 text-muted-foreground group-hover/sidebar:text-destructive" />,
+            }}
+            onClick={(e) => {
+              e?.preventDefault?.();
+              signOut();
+            }}
+            className="hover:text-destructive"
+          />
+        </div>
+      </SidebarBody>
     </Sidebar>
+  );
+}
+
+function Logo() {
+  const { open, animate } = useSidebar();
+  return (
+    <div className="flex items-center gap-3 px-1 py-1">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+        <Zap className="h-4 w-4 text-primary-foreground" />
+      </div>
+      <motion.span
+        animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        transition={{ duration: 0.2 }}
+        className="font-display text-lg font-bold tracking-tight text-foreground whitespace-pre"
+      >
+        Ágora
+      </motion.span>
+    </div>
+  );
+}
+
+function ProfileCard() {
+  const { open, animate } = useSidebar();
+  const { profile } = useAuth();
+
+  if (!profile) return null;
+
+  return (
+    <motion.div
+      animate={{
+        opacity: animate ? (open ? 1 : 0) : 1,
+        height: animate ? (open ? "auto" : 0) : "auto",
+      }}
+      transition={{ duration: 0.2 }}
+      className="overflow-hidden"
+    >
+      <div className="rounded-xl bg-accent/50 p-3">
+        <p className="text-xs font-medium text-foreground truncate">
+          {profile.full_name || profile.email}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate">{profile.email}</p>
+      </div>
+    </motion.div>
   );
 }
