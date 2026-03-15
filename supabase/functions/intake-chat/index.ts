@@ -545,7 +545,7 @@ Seu fluxo agora não é apenas um "rascunho". É um sistema de IA de nível empr
 Como seu Engenheiro de Prompt, pergunto: Há mais algum módulo ou ajuste fino que você deseja fazer neste fluxo ou podemos dar este motor por finalizado?
 </sintetizador_final>
 
-</motor_multi_agentes_agora>;
+</motor_multi_agentes_agora>`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
