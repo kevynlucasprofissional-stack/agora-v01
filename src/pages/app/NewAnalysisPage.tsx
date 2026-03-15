@@ -597,7 +597,7 @@ export default function NewAnalysisPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={isStreaming || !input.trim()}
+              disabled={isStreaming || (!input.trim() && files.length === 0)}
               className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
             >
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
