@@ -661,7 +661,7 @@ export default function NewAnalysisPage() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2 mt-3">
+          <div className="flex flex-nowrap justify-center gap-2 mt-3">
             {quickActions.map((a) => (
               <button
                 key={a.label}
@@ -669,7 +669,7 @@ export default function NewAnalysisPage() {
                   setInput(a.label);
                   textareaRef.current?.focus();
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:bg-muted text-sm text-foreground transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card hover:bg-muted text-xs sm:text-sm text-foreground transition-colors whitespace-nowrap"
               >
                 <span>{a.icon}</span>
                 <span>{a.label}</span>
