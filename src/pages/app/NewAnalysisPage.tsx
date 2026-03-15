@@ -8,10 +8,8 @@ import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { ResponseStream } from "@/components/ui/response-stream";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -144,8 +142,6 @@ export default function NewAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
 
   const hasMessages = messages.length > 0;
 
@@ -432,11 +428,8 @@ export default function NewAnalysisPage() {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant") {
-          setStreamingIdx(prev.length - 1);
           return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
         }
-        const newIdx = prev.length;
-        setStreamingIdx(newIdx);
         return [...prev, { role: "assistant", content: assistantSoFar }];
       });
 
@@ -451,7 +444,6 @@ export default function NewAnalysisPage() {
         onDelta: upsertAssistant,
         onDone: () => {
           setIsStreaming(false);
-          setStreamingIdx(null);
           // Persist assistant response
           if (assistantSoFar) {
             persistMessage(convId, "assistant", assistantSoFar);
@@ -699,22 +691,11 @@ export default function NewAnalysisPage() {
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  streamingIdx === idx ? (
-                    <div className="prose prose-sm max-w-none text-foreground">
-                      <ResponseStream
-                        textStream={msg.content.replace("##READY##", "").trim()}
-                        mode="fade"
-                        speed={75}
-                        as="span"
-                      />
-                    </div>
-                  ) : (
-                    <div className="prose prose-sm max-w-none text-foreground">
-                      <ReactMarkdown>
-                        {msg.content.replace("##READY##", "").trim()}
-                      </ReactMarkdown>
-                    </div>
-                  )
+                  <div className="prose prose-sm max-w-none text-foreground">
+                    <ReactMarkdown>
+                      {msg.content.replace("##READY##", "").trim()}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}
@@ -801,11 +782,7 @@ export default function NewAnalysisPage() {
                 {files.map((f, i) => {
                   const isImage = f.type.startsWith("image/");
                   return (
-                    <div
-                      key={f.name + i}
-                      className={`flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm ${isImage ? "cursor-pointer hover:border-primary/50 transition-colors" : ""}`}
-                      onClick={() => isImage && setPreviewFile(f)}
-                    >
+                    <div key={f.name + i} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 text-sm">
                       {isImage ? (
                         <img
                           src={URL.createObjectURL(f)}
@@ -817,7 +794,7 @@ export default function NewAnalysisPage() {
                       )}
                       <span className="truncate max-w-[140px]">{f.name}</span>
                       <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
-                      <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-muted-foreground hover:text-destructive ml-1">
+                      <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive ml-1">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -896,22 +873,6 @@ export default function NewAnalysisPage() {
           </p>
         </div>
       </div>
-
-      {/* File Preview Dialog */}
-      <Dialog open={!!previewFile} onOpenChange={(open) => !open && setPreviewFile(null)}>
-        <DialogContent className="max-w-2xl p-2 bg-background/95 backdrop-blur-sm">
-          {previewFile && (
-            <div className="flex flex-col items-center gap-3 pt-4">
-              <img
-                src={URL.createObjectURL(previewFile)}
-                alt={previewFile.name}
-                className="max-h-[70vh] max-w-full rounded-lg object-contain"
-              />
-              <p className="text-sm text-muted-foreground">{previewFile.name}</p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
