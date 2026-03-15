@@ -183,11 +183,11 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
   const handleActionClick = useCallback((action: typeof ACTION_OPTIONS[number]) => {
     if (action.action === "creative") {
-      generateCreative();
+      setCreativeMode(prev => !prev);
     } else if (action.prompt) {
       sendMessage(action.prompt);
     }
-  }, [generateCreative]);
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if ((!text.trim() && attachments.length === 0) || isStreaming || !conversationId) return;
