@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { exportToDocx, exportToPptx } from "@/lib/exportUtils";
-import { StrategistChatPanel } from "@/components/StrategistChatPanel";
 import { ReportChatBlock } from "@/components/ReportChatBlock";
 import { useIsMobile } from "@/hooks/use-mobile";
 
