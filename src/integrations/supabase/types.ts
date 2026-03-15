@@ -322,6 +322,66 @@ export type Database = {
           },
         ]
       }
+      creative_jobs: {
+        Row: {
+          analysis_request_id: string
+          conversation_id: string | null
+          created_at: string
+          editable_html: string | null
+          format: string | null
+          id: string
+          image_url: string | null
+          prompt_context: Json | null
+          status: string
+          strategist_output: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_request_id: string
+          conversation_id?: string | null
+          created_at?: string
+          editable_html?: string | null
+          format?: string | null
+          id?: string
+          image_url?: string | null
+          prompt_context?: Json | null
+          status?: string
+          strategist_output?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_request_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          editable_html?: string | null
+          format?: string | null
+          id?: string
+          image_url?: string | null
+          prompt_context?: Json | null
+          status?: string
+          strategist_output?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_jobs_analysis_request_id_fkey"
+            columns: ["analysis_request_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_jobs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_usage_counters: {
         Row: {
           analyses_count: number
