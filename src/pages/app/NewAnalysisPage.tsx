@@ -671,19 +671,23 @@ export default function NewAnalysisPage() {
           </div>
 
           <div className="flex flex-nowrap justify-center gap-2 mt-3">
-            {quickActions.map((a) => (
-              <button
-                key={a.label}
-                onClick={() => {
-                  setInput(a.label);
-                  textareaRef.current?.focus();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card hover:bg-muted text-xs sm:text-sm text-foreground transition-colors whitespace-nowrap"
-              >
-                <span>{a.icon}</span>
-                <span>{a.label}</span>
-              </button>
-            ))}
+            {ACTION_MODES.map((a) => {
+              const isActive = activeAction === a.key;
+              return (
+                <button
+                  key={a.key}
+                  onClick={() => setActiveAction(isActive ? null : a.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
+                      : "border-border bg-card hover:bg-muted text-foreground"
+                  }`}
+                >
+                  <a.icon className="h-3.5 w-3.5" />
+                  <span>{a.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-2">
