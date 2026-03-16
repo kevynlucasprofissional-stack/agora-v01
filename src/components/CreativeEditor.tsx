@@ -67,7 +67,7 @@ export function CreativeEditor({
   const [showColors, setShowColors] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number; dragging: boolean } | null>(null);
   const resizeRef = useRef<{ id: string; startX: number; origWidth: number; origFontSize: number; side: string } | null>(null);
 
   useEffect(() => {
@@ -84,14 +84,14 @@ export function CreativeEditor({
   // --- Drag ---
   const onPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.stopPropagation();
-    e.preventDefault();
+    // Don't preventDefault so contentEditable can receive focus/cursor
     setSelectedId(id);
     setShowColors(false);
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const layer = layers.find(l => l.id === id);
     if (!layer) return;
-    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: layer.x, origY: layer.y };
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: layer.x, origY: layer.y, dragging: false };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [layers]);
 
@@ -100,8 +100,15 @@ export function CreativeEditor({
     if (!rect) return;
 
     if (dragRef.current) {
-      const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100;
-      const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
+      const rawDx = e.clientX - dragRef.current.startX;
+      const rawDy = e.clientY - dragRef.current.startY;
+      // Only start dragging after a 5px threshold to allow text editing clicks
+      if (!dragRef.current.dragging) {
+        if (Math.abs(rawDx) < 5 && Math.abs(rawDy) < 5) return;
+        dragRef.current.dragging = true;
+      }
+      const dx = (rawDx / rect.width) * 100;
+      const dy = (rawDy / rect.height) * 100;
       update(dragRef.current.id, {
         x: Math.max(5, Math.min(95, dragRef.current.origX + dx)),
         y: Math.max(5, Math.min(95, dragRef.current.origY + dy)),
@@ -134,8 +141,12 @@ export function CreativeEditor({
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [layers]);
 
-  // --- Double-click to add text ---
+  // --- Double-click to add text (only on empty canvas area) ---
   const onCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
+    // If the click target is inside an existing layer element, don't create a new one
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-layer-id]")) return;
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -205,6 +216,7 @@ export function CreativeEditor({
             return (
               <div
                 key={layer.id}
+                data-layer-id={layer.id}
                 className="absolute"
                 style={{
                   left: `${layer.x}%`, top: `${layer.y}%`,
