@@ -209,6 +209,7 @@ export function CreativeEditor({
             return (
               <div
                 key={layer.id}
+                data-layer-id={layer.id}
                 className="absolute"
                 style={{
                   left: `${layer.x}%`, top: `${layer.y}%`,
