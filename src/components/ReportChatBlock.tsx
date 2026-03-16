@@ -146,7 +146,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       setLoaded(true);
       // Scroll to bottom after initial load
       setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "instant" });
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
       }, 100);
     };
     load();
