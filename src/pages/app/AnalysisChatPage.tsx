@@ -127,8 +127,9 @@ export default function AnalysisChatPage() {
 
   // Only auto-scroll if user is near bottom
   useEffect(() => {
-    if (isUserNearBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (isUserNearBottomRef.current && el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 

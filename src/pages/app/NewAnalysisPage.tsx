@@ -195,8 +195,9 @@ export default function NewAnalysisPage() {
   }, []);
 
   useEffect(() => {
-    if (isUserNearBottomRef.current) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (isUserNearBottomRef.current && el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 
