@@ -91,7 +91,7 @@ export function CreativeEditor({
     if (!rect) return;
     const layer = layers.find(l => l.id === id);
     if (!layer) return;
-    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: layer.x, origY: layer.y };
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: layer.x, origY: layer.y, dragging: false };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [layers]);
 
