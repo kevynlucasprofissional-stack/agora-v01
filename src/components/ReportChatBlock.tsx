@@ -156,7 +156,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   // Auto-scroll only during active streaming/generation
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Track scroll position to show/hide "scroll to bottom" button
