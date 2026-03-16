@@ -169,7 +169,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
   const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
