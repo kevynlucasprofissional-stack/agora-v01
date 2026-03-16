@@ -146,7 +146,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       setLoaded(true);
       // Scroll to bottom after initial load
       setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "instant" });
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
       }, 100);
     };
     load();
@@ -155,7 +156,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   // Auto-scroll only during active streaming/generation
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Track scroll position to show/hide "scroll to bottom" button
@@ -167,7 +169,8 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
   const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
