@@ -134,8 +134,12 @@ export function CreativeEditor({
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [layers]);
 
-  // --- Double-click to add text ---
+  // --- Double-click to add text (only on empty canvas area) ---
   const onCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
+    // If the click target is inside an existing layer element, don't create a new one
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-layer-id]")) return;
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = ((e.clientX - rect.left) / rect.width) * 100;
