@@ -20,7 +20,7 @@ O fluxo principal permite que o usuário descreva sua campanha em linguagem natu
 |------|-------|
 | **Henrique Fernandes Silvestre** | Membro |
 | **Ricael Menezes Durand** | Membro |
-| **Kevyn Lucas** | Membro |
+| **Kevyn Lucas** | Porta-Voz|
 | **Yuki Tanaka** | Membro |
 
 ---
