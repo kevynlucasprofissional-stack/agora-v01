@@ -81,6 +81,48 @@ export function CreativeEditor({
 
   const selected = layers.find(l => l.id === selectedId) || null;
 
+  // --- Keyboard controls ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      // Don't intercept if user is editing text inside contentEditable
+      const active = document.activeElement;
+      if (active && active.getAttribute("contenteditable") === "true") {
+        // Only intercept Delete/Backspace if there's no text selection (i.e. not editing)
+        return;
+      }
+
+      const STEP = 2; // percentage step per keypress
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          update(selectedId, { y: Math.max(5, (layers.find(l => l.id === selectedId)?.y ?? 50) - STEP) });
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          update(selectedId, { y: Math.min(95, (layers.find(l => l.id === selectedId)?.y ?? 50) + STEP) });
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          update(selectedId, { x: Math.max(5, (layers.find(l => l.id === selectedId)?.x ?? 50) - STEP) });
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          update(selectedId, { x: Math.min(95, (layers.find(l => l.id === selectedId)?.x ?? 50) + STEP) });
+          break;
+        case "Delete":
+        case "Backspace":
+          e.preventDefault();
+          setLayers(prev => prev.filter(l => l.id !== selectedId));
+          setSelectedId(null);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId, layers, update]);
+
   // --- Drag ---
   const onPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.stopPropagation();
