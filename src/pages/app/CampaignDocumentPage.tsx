@@ -148,8 +148,9 @@ export default function CampaignDocumentPage() {
   }, []);
 
   useEffect(() => {
-    if (isUserNearBottomRef.current) {
-      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollContainerRef.current;
+    if (isUserNearBottomRef.current && el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [chatMessages]);
 
