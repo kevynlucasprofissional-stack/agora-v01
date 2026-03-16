@@ -113,7 +113,8 @@ export function CreativeEditor({
         case "Delete":
         case "Backspace":
           e.preventDefault();
-          deleteSelected();
+          setLayers(prev => prev.filter(l => l.id !== selectedId));
+          setSelectedId(null);
           break;
       }
     };
