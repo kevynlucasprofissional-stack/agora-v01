@@ -67,7 +67,7 @@ export function CreativeEditor({
   const [showColors, setShowColors] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number; dragging: boolean } | null>(null);
   const resizeRef = useRef<{ id: string; startX: number; origWidth: number; origFontSize: number; side: string } | null>(null);
 
   useEffect(() => {
