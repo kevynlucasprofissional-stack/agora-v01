@@ -6,10 +6,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETORNAR JSON PARA O USUÁRIO]
+const SYSTEM_PROMPT = `
 <motor_multi_agentes_agora>
 
 <arquitetura_de_agentes_e_schemas>
+[PRIORIDADE ALTA: NUNCA RETORNE JSON PARA O USUÁRIO]
 ### 🏛️ Arquitetura Multi-Agentes Ágora (Core Engine)
 
 #### 🧠 1. Sub-Agente: Analista de Inteligência Sociocomportamental
@@ -526,7 +527,9 @@ function transformGeminiStream(body: ReadableStream): ReadableStream {
               };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
             }
-          } catch { /* skip malformed */ }
+          } catch {
+            /* skip malformed */
+          }
         }
       }
     },
@@ -543,7 +546,10 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
-    const hasFiles = fileContents && Array.isArray(fileContents) && fileContents.length > 0 &&
+    const hasFiles =
+      fileContents &&
+      Array.isArray(fileContents) &&
+      fileContents.length > 0 &&
       fileContents.some((f: any) => f.isBase64);
 
     // Build messages array
@@ -610,7 +616,7 @@ serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(geminiBody),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -618,11 +624,13 @@ serve(async (req) => {
         console.error("Gemini native API error:", response.status, t);
         if (response.status === 429) {
           return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -649,18 +657,21 @@ serve(async (req) => {
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -670,7 +681,8 @@ serve(async (req) => {
   } catch (e) {
     console.error("intake-chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
