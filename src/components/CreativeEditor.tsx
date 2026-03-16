@@ -121,7 +121,7 @@ export function CreativeEditor({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedId, layers, update, deleteSelected]);
+  }, [selectedId, layers, update]);
 
   // --- Drag ---
   const onPointerDown = useCallback((e: React.PointerEvent, id: string) => {
