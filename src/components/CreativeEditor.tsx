@@ -84,7 +84,7 @@ export function CreativeEditor({
   // --- Drag ---
   const onPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.stopPropagation();
-    e.preventDefault();
+    // Don't preventDefault so contentEditable can receive focus/cursor
     setSelectedId(id);
     setShowColors(false);
     const rect = canvasRef.current?.getBoundingClientRect();
