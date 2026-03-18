@@ -357,7 +357,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             if (msg.content === CREATIVE_MARKER && creativeData && !isGeneratingCreative) {
               return (
                 <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-                  <PolotnoEditor
+                  <CreativeEditor
                     strategistOutput={creativeData.strategist_output}
                     imageUrl={creativeData.image_url}
                     editableHtml={creativeData.editable_html}
