@@ -137,13 +137,12 @@ export function PolotnoEditor({
           align: "center",
           backgroundEnabled: true,
           backgroundColor: "hsl(220, 80%, 55%)",
-          borderRadius: 50,
           shadowEnabled: true,
           shadowColor: "rgba(0,0,0,0.3)",
           shadowBlur: 12,
           shadowOffsetX: 0,
           shadowOffsetY: 4,
-        });
+        } as any);
       }
     });
 
