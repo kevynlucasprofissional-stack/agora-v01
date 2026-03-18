@@ -827,7 +827,7 @@ export default function NewAnalysisPage() {
               >
                 <X className="h-4 w-4" />
               </button>
-              <CreativeEditor
+              <PolotnoEditor
                 strategistOutput={creativeData.strategist_output}
                 imageUrl={creativeData.image_url}
                 editableHtml={creativeData.editable_html}
