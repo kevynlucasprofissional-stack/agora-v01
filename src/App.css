@@ -1,1 +1,29 @@
 /* App-level resets — keep minimal, theming lives in index.css */
+
+/* ── Polotno Editor scoped overrides ── */
+.polotno-editor-wrapper {
+  height: 650px;
+  min-height: 550px;
+  position: relative;
+}
+
+/* Ensure the polotno container fills its wrapper */
+.polotno-editor-wrapper > div {
+  height: 100% !important;
+}
+
+/* Side panel styling */
+.polotno-editor-wrapper .polotno-side-panel {
+  background: #fafafa;
+  border-right: 1px solid #e5e5e5;
+}
+
+/* Toolbar cleanup */
+.polotno-editor-wrapper .polotno-toolbar {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+/* Make zoom buttons more visible */
+.polotno-editor-wrapper .polotno-zoom-buttons {
+  z-index: 10;
+}
