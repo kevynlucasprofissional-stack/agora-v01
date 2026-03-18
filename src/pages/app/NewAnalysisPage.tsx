@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
+import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 
