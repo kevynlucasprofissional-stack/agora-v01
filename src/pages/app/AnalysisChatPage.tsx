@@ -286,6 +286,19 @@ export default function AnalysisChatPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Creative Banner */}
+      {creativeJobId && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+          <Sparkles className="h-5 w-5 text-primary shrink-0" />
+          <span className="text-sm text-foreground flex-1">Criativo gerado com sucesso!</span>
+          <Button variant="hero" size="sm" asChild>
+            <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
+              Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="shrink-0 flex gap-2 pt-4 border-t border-border/50">
         <textarea
