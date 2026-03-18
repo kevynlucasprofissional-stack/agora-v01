@@ -66,7 +66,7 @@ export default function CreativeStudioPage() {
                 left: dims.w * 0.1,
                 top: dims.h * 0.3,
                 width: dims.w * 0.8,
-                shadow: new (window as any).fabric?.Shadow?.("0 2px 8px rgba(0,0,0,0.6)") || undefined,
+                shadow: undefined,
               });
             } else if (layer.type === "subheadline") {
               canvasState.addText(layer.content || output.body_copy || "Subtítulo", {
