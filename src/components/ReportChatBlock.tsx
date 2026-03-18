@@ -7,7 +7,7 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CreativeEditor } from "@/components/CreativeEditor";
+import { PolotnoEditor } from "@/components/PolotnoEditor";
 import { toast } from "sonner";
 
 interface ChatMessage {
