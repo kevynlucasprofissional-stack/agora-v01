@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
+import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
