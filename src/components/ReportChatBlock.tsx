@@ -8,6 +8,7 @@ import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CreativeEditor } from "@/components/CreativeEditor";
+import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -366,6 +367,14 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                     isRegenerating={isGeneratingCreative}
                     onCapture={persistCreative}
                   />
+                  <div className="mt-2 flex justify-center">
+                    <AdobeExpressEditor
+                      imageUrl={creativeData.image_url}
+                      onPublish={(data) => {
+                        persistCreative(data.imageData);
+                      }}
+                    />
+                  </div>
                 </motion.div>
               );
             }

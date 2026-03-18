@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { CreativeEditor } from "@/components/CreativeEditor";
+import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 
@@ -835,6 +836,14 @@ export default function NewAnalysisPage() {
                 onRegenerate={() => generateImage(input)}
                 isRegenerating={isGeneratingImage}
               />
+              <div className="mt-2 flex justify-center">
+                <AdobeExpressEditor
+                  imageUrl={creativeData.image_url}
+                  onPublish={(data) => {
+                    toast.success("Criativo salvo do Adobe Express!");
+                  }}
+                />
+              </div>
             </div>
           )}
 
