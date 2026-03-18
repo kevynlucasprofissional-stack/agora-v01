@@ -63,6 +63,8 @@ const App = () => (
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="integrations" element={<IntegrationsPage />} />
+              <Route path="creative-studio" element={<CreativeStudioPage />} />
+              <Route path="creative-studio/:jobId" element={<CreativeStudioPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
