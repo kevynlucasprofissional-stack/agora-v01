@@ -11,7 +11,7 @@ import { SidePanel, DEFAULT_SECTIONS } from "polotno/side-panel";
 import { Workspace } from "polotno/canvas/workspace";
 import { createStore } from "polotno/model/store";
 
-import "polotno/polotno.css";
+
 
 interface StrategistOutput {
   creative_objective?: string;
