@@ -28,6 +28,7 @@ import AssetsPage from "@/pages/app/AssetsPage";
 import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
 import IntegrationsPage from "@/pages/app/IntegrationsPage";
+import CreativeStudioPage from "@/pages/app/CreativeStudioPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,8 @@ const App = () => (
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="integrations" element={<IntegrationsPage />} />
+              <Route path="creative-studio" element={<CreativeStudioPage />} />
+              <Route path="creative-studio/:jobId" element={<CreativeStudioPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

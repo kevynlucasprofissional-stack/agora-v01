@@ -1,6 +1,6 @@
 import {
   LayoutGrid, FolderOpen, Settings, User,
-  LogOut, Plus, Link2, BarChart3, MessageSquare,
+  LogOut, Plus, Link2, BarChart3, MessageSquare, Palette,
 } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,7 @@ const mainNav = [
   { label: "Análises", href: "/app/analyses", icon: <BarChart3 className="h-5 w-5 shrink-0" /> },
   { label: "Conversas", href: "/app/conversations", icon: <MessageSquare className="h-5 w-5 shrink-0" /> },
   { label: "Biblioteca", href: "/app/assets", icon: <FolderOpen className="h-5 w-5 shrink-0" /> },
+  { label: "Estúdio Criativo", href: "/app/creative-studio", icon: <Palette className="h-5 w-5 shrink-0" /> },
 ];
 
 const accountNav = [

@@ -331,6 +331,7 @@ export type Database = {
           format: string | null
           id: string
           image_url: string | null
+          layers_state: Json | null
           prompt_context: Json | null
           status: string
           strategist_output: Json | null
@@ -345,6 +346,7 @@ export type Database = {
           format?: string | null
           id?: string
           image_url?: string | null
+          layers_state?: Json | null
           prompt_context?: Json | null
           status?: string
           strategist_output?: Json | null
@@ -359,6 +361,7 @@ export type Database = {
           format?: string | null
           id?: string
           image_url?: string | null
+          layers_state?: Json | null
           prompt_context?: Json | null
           status?: string
           strategist_output?: Json | null
