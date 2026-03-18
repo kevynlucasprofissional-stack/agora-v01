@@ -42,8 +42,16 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
     throw new Error("Adobe Express SDK não disponível");
   }
 
-  // Reuse global instance/promise so HMR or re-renders don't re-initialize the SDK.
+  // Check for existing active instance first (survives HMR)
   if (window.__adobeExpressInstance) return window.__adobeExpressInstance;
+
+  // Check SDK's own static activeInstance
+  const existingActive = window.CCEverywhere.activeInstance;
+  if (existingActive) {
+    window.__adobeExpressInstance = existingActive;
+    return existingActive;
+  }
+
   if (window.__adobeExpressInitPromise) return window.__adobeExpressInitPromise;
 
   const hostInfo = {
@@ -60,9 +68,7 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
       return instance;
     })
     .catch((err: any) => {
-      // Adobe SDK can throw this in dev/HMR flows even with a valid in-memory instance.
       if (err?._code === "SDK_ALREADY_INITIALIZED" || err?.message?.includes("already initialized")) {
-        if (window.__adobeExpressInstance) return window.__adobeExpressInstance;
         const active = window.CCEverywhere?.activeInstance;
         if (active) {
           window.__adobeExpressInstance = active;
@@ -76,7 +82,6 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
     });
 
   window.__adobeExpressInitPromise = initPromise;
-
   return initPromise;
 }
 
