@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from "react";
-import { Loader2, ExternalLink } from "lucide-react";
+import { useRef, useCallback, useState } from "react";
+import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -41,16 +41,13 @@ export function AdobeExpressEditor({
   onPublish,
   canvasSize = "1:1",
 }: AdobeExpressEditorProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const editorRef = useRef<any>(null);
-  const initializedRef = useRef(false);
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const launchEditor = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+    if (isLaunching) return;
+    setIsLaunching(true);
 
+    try {
       await loadAdobeSDK();
 
       if (!window.CCEverywhere) {
@@ -74,10 +71,9 @@ export function AdobeExpressEditor({
         configParams
       );
 
-      editorRef.current = ccEverywhere.editor;
-
-      const exportConfig = {
-        onPublish: (intent: string, publishParams: any) => {
+      const callbacks = {
+        onCancel: () => {},
+        onPublish: (_intent: string, publishParams: any) => {
           const asset = publishParams?.asset?.[0];
           if (asset?.data) {
             onPublish?.({
@@ -87,13 +83,15 @@ export function AdobeExpressEditor({
             toast.success("Criativo exportado com sucesso!");
           }
         },
-        onCancel: () => {
-          // User cancelled - do nothing
+        onError: (err: any) => {
+          console.error("Adobe Express error:", err);
+          toast.error("Erro no Adobe Express");
         },
       };
 
       const appConfig = {
         selectedCategory: "socialMedia",
+        callbacks,
       };
 
       const docConfig: any = {
@@ -103,10 +101,10 @@ export function AdobeExpressEditor({
       // If we have an image URL, open with that asset
       if (imageUrl) {
         try {
-          const resp = await fetch(imageUrl);
+          const resp = await fetch(imageUrl, { mode: "cors" });
           const blob = await resp.blob();
-          const reader = new FileReader();
           const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
             reader.onload = () => {
               const result = reader.result as string;
               resolve(result.split(",")[1]);
@@ -121,75 +119,37 @@ export function AdobeExpressEditor({
             type: "image",
           };
 
-          ccEverywhere.editor.createWithAsset(docConfig, appConfig, exportConfig);
+          ccEverywhere.editor.createWithAsset(docConfig, appConfig);
         } catch (imgErr) {
           console.warn("Could not load image, opening blank editor:", imgErr);
-          ccEverywhere.editor.create(docConfig, appConfig, exportConfig);
+          ccEverywhere.editor.create(docConfig, appConfig);
         }
       } else {
-        ccEverywhere.editor.create(docConfig, appConfig, exportConfig);
+        ccEverywhere.editor.create(docConfig, appConfig);
       }
-
-      setIsLoading(false);
     } catch (err) {
       console.error("Adobe Express error:", err);
-      setError(err instanceof Error ? err.message : "Erro ao inicializar editor");
-      setIsLoading(false);
+      toast.error(err instanceof Error ? err.message : "Erro ao abrir editor");
+    } finally {
+      setIsLaunching(false);
     }
-  }, [imageUrl, canvasSize, onPublish]);
-
-  // Auto-launch on mount
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    launchEditor();
-
-    return () => {
-      // Cleanup: terminate SDK instance
-      try {
-        if (window.CCEverywhere?.activeInstance) {
-          window.CCEverywhere.activeInstance.terminate();
-        }
-      } catch {
-        // ignore cleanup errors
-      }
-    };
-  }, [launchEditor]);
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 rounded-xl border border-border/50 bg-accent/20">
-        <p className="text-sm text-destructive text-center">{error}</p>
-        <Button variant="outline" size="sm" onClick={() => { initializedRef.current = false; launchEditor(); }}>
-          Tentar novamente
-        </Button>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 rounded-xl border border-border/50 bg-accent/20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Abrindo Adobe Express...</p>
-        <p className="text-xs text-muted-foreground/60">O editor abrirá em uma janela modal</p>
-      </div>
-    );
-  }
+  }, [imageUrl, canvasSize, onPublish, isLaunching]);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-8 px-6 rounded-xl border border-border/50 bg-accent/20">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-        <ExternalLink className="h-6 w-6 text-primary" />
-      </div>
-      <div className="text-center space-y-1">
-        <p className="text-sm font-medium text-foreground">Adobe Express aberto</p>
-        <p className="text-xs text-muted-foreground">Edite seu criativo na janela do Adobe Express. Ao salvar, o resultado aparecerá aqui.</p>
-      </div>
-      <Button variant="outline" size="sm" onClick={() => { initializedRef.current = false; launchEditor(); }}>
-        Reabrir editor
-      </Button>
-    </div>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={launchEditor}
+      disabled={isLaunching}
+      className="gap-2"
+    >
+      {isLaunching ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Pencil className="h-4 w-4" />
+      )}
+      {isLaunching ? "Abrindo..." : "Editar no Adobe Express"}
+    </Button>
   );
 }
 
