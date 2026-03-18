@@ -28,6 +28,7 @@ import AssetsPage from "@/pages/app/AssetsPage";
 import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
 import IntegrationsPage from "@/pages/app/IntegrationsPage";
+import CreativeStudioPage from "@/pages/app/CreativeStudioPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
