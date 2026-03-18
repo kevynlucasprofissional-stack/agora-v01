@@ -120,7 +120,7 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
       };
 
       const appConfig = { callbacks };
-      const docConfig: any = { canvasSize };
+      const docConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
 
       if (imageUrl) {
         try {
