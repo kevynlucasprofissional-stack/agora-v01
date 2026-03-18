@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowLeft, Target, Loader2, Plus } from "lucide-react";
+import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
@@ -23,6 +23,8 @@ export default function AnalysisChatPage() {
   const [loading, setLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [generatingCreative, setGeneratingCreative] = useState(false);
+  const [creativeJobId, setCreativeJobId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -218,6 +220,35 @@ export default function AnalysisChatPage() {
           <h2 className="font-semibold text-sm">Estrategista-Chefe</h2>
           <p className="text-xs text-muted-foreground">Refinamento contextual da análise</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            if (!id || generatingCreative) return;
+            setGeneratingCreative(true);
+            try {
+              const { data, error } = await supabase.functions.invoke("generate-creative", {
+                body: { analysis_id: id, conversation_id: conversationId, format: "1080x1080" },
+              });
+              if (error) throw error;
+              if (data?.creative_job_id) {
+                setCreativeJobId(data.creative_job_id);
+              }
+            } catch (e: any) {
+              console.error("Erro ao gerar criativo:", e);
+            } finally {
+              setGeneratingCreative(false);
+            }
+          }}
+          disabled={generatingCreative}
+        >
+          {generatingCreative ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4 mr-2" />
+          )}
+          Gerar Criativo
+        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link to="/app/new-analysis">
             <Plus className="h-4 w-4 mr-2" /> Novo chat
@@ -254,6 +285,19 @@ export default function AnalysisChatPage() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Creative Banner */}
+      {creativeJobId && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+          <Sparkles className="h-5 w-5 text-primary shrink-0" />
+          <span className="text-sm text-foreground flex-1">Criativo gerado com sucesso!</span>
+          <Button variant="hero" size="sm" asChild>
+            <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
+              Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="shrink-0 flex gap-2 pt-4 border-t border-border/50">
