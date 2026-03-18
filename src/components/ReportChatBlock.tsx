@@ -7,7 +7,7 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CreativeEditor } from "@/components/CreativeEditor";
+import { PolotnoEditor } from "@/components/PolotnoEditor";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -357,7 +357,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
             if (msg.content === CREATIVE_MARKER && creativeData && !isGeneratingCreative) {
               return (
                 <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-                  <CreativeEditor
+                  <PolotnoEditor
                     strategistOutput={creativeData.strategist_output}
                     imageUrl={creativeData.image_url}
                     editableHtml={creativeData.editable_html}

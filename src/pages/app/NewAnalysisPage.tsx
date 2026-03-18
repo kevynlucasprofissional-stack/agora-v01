@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
-import { CreativeEditor } from "@/components/CreativeEditor";
+import { PolotnoEditor } from "@/components/PolotnoEditor";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 
@@ -827,7 +827,7 @@ export default function NewAnalysisPage() {
               >
                 <X className="h-4 w-4" />
               </button>
-              <CreativeEditor
+              <PolotnoEditor
                 strategistOutput={creativeData.strategist_output}
                 imageUrl={creativeData.image_url}
                 editableHtml={creativeData.editable_html}
