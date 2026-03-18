@@ -110,7 +110,7 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
         },
       };
 
-      const appConfig = { selectedCategory: "socialMedia", callbacks };
+      const appConfig = { callbacks };
       const docConfig: any = { canvasSize };
 
       if (imageUrl) {
