@@ -33,7 +33,11 @@ async function getSDKInstance(): Promise<any> {
   await loadAdobeSDK();
   if (!window.CCEverywhere) throw new Error("Adobe Express SDK not available");
 
-  if (ccEverywhereInstance) return ccEverywhereInstance;
+  // Terminate any previous instance to avoid "already initialized" error
+  if (ccEverywhereInstance) {
+    try { ccEverywhereInstance.terminate(); } catch { /* ignore */ }
+    ccEverywhereInstance = null;
+  }
 
   const hostInfo = {
     clientId: ADOBE_CLIENT_ID,
@@ -43,18 +47,7 @@ async function getSDKInstance(): Promise<any> {
   };
   const configParams = { loginMode: "delayed", locale: "pt_BR" };
 
-  try {
-    ccEverywhereInstance = await window.CCEverywhere.initialize(hostInfo, configParams);
-  } catch (err: any) {
-    // If already initialized, use the active instance
-    if (err?._code === "SDK_ALREADY_INITIALIZED" || err?.message?.includes("already initialized")) {
-      ccEverywhereInstance = window.CCEverywhere.activeInstance;
-      if (!ccEverywhereInstance) throw new Error("SDK initialized but no active instance found");
-    } else {
-      throw err;
-    }
-  }
-
+  ccEverywhereInstance = await window.CCEverywhere.initialize(hostInfo, configParams);
   return ccEverywhereInstance;
 }
 
