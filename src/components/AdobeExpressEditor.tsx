@@ -128,12 +128,12 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
           const blob = await resp.blob();
           const base64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string).split(",")[1]);
+            reader.onload = () => resolve(reader.result as string);
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
 
-          docConfig.asset = { data: base64, dataType: "base64", type: "image" };
+          docConfig.asset = [{ data: base64, dataType: "base64", type: "image" }];
           sdk.editor.createWithAsset(docConfig, appConfig);
         } catch {
           sdk.editor.create(docConfig, appConfig);
