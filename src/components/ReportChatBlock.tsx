@@ -367,6 +367,14 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                     isRegenerating={isGeneratingCreative}
                     onCapture={persistCreative}
                   />
+                  <div className="mt-2 flex justify-center">
+                    <AdobeExpressEditor
+                      imageUrl={creativeData.image_url}
+                      onPublish={(data) => {
+                        persistCreative(data.imageData);
+                      }}
+                    />
+                  </div>
                 </motion.div>
               );
             }
