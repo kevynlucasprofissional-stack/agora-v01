@@ -220,6 +220,35 @@ export default function AnalysisChatPage() {
           <h2 className="font-semibold text-sm">Estrategista-Chefe</h2>
           <p className="text-xs text-muted-foreground">Refinamento contextual da análise</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            if (!id || generatingCreative) return;
+            setGeneratingCreative(true);
+            try {
+              const { data, error } = await supabase.functions.invoke("generate-creative", {
+                body: { analysis_id: id, conversation_id: conversationId, format: "1080x1080" },
+              });
+              if (error) throw error;
+              if (data?.creative_job_id) {
+                setCreativeJobId(data.creative_job_id);
+              }
+            } catch (e: any) {
+              console.error("Erro ao gerar criativo:", e);
+            } finally {
+              setGeneratingCreative(false);
+            }
+          }}
+          disabled={generatingCreative}
+        >
+          {generatingCreative ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4 mr-2" />
+          )}
+          Gerar Criativo
+        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link to="/app/new-analysis">
             <Plus className="h-4 w-4 mr-2" /> Novo chat
