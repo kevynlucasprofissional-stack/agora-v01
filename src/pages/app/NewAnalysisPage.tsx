@@ -836,6 +836,14 @@ export default function NewAnalysisPage() {
                 onRegenerate={() => generateImage(input)}
                 isRegenerating={isGeneratingImage}
               />
+              <div className="mt-2 flex justify-center">
+                <AdobeExpressEditor
+                  imageUrl={creativeData.image_url}
+                  onPublish={(data) => {
+                    toast.success("Criativo salvo do Adobe Express!");
+                  }}
+                />
+              </div>
             </div>
           )}
 
