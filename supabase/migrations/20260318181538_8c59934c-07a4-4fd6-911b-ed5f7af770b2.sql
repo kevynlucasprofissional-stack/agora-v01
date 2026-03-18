@@ -1,0 +1,1 @@
+ALTER TABLE public.creative_jobs ADD COLUMN IF NOT EXISTS layers_state jsonb DEFAULT '{}'::jsonb;
