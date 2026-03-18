@@ -54,7 +54,7 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
   };
   const configParams = { loginMode: "delayed", locale: "pt_BR" };
 
-  window.__adobeExpressInitPromise = window.CCEverywhere.initialize(hostInfo, configParams)
+  const initPromise: Promise<AdobeSdkInstance> = window.CCEverywhere.initialize(hostInfo, configParams)
     .then((instance: AdobeSdkInstance) => {
       window.__adobeExpressInstance = instance;
       return instance;
@@ -75,7 +75,9 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
       window.__adobeExpressInitPromise = null;
     });
 
-  return window.__adobeExpressInitPromise;
+  window.__adobeExpressInitPromise = initPromise;
+
+  return initPromise;
 }
 
 export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: AdobeExpressEditorProps) {
