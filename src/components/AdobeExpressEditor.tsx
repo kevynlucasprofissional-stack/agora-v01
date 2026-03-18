@@ -107,9 +107,15 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
       const callbacks = {
         onCancel: () => {},
         onPublish: (_intent: string, publishParams: any) => {
-          const asset = publishParams?.asset?.[0];
-          if (asset?.data) {
-            onPublish?.({ imageData: asset.data, projectId: publishParams?.projectId });
+          const directAsset = Array.isArray(publishParams?.asset)
+            ? publishParams.asset[0]
+            : publishParams?.asset;
+          const nestedAsset = publishParams?.asset?.images?.[0] ?? publishParams?.asset?.videos?.[0];
+          const asset = nestedAsset ?? directAsset;
+          const imageData = asset?.data ?? asset?.dataUrl;
+
+          if (imageData) {
+            onPublish?.({ imageData, projectId: publishParams?.projectId });
             toast.success("Criativo exportado com sucesso!");
           }
         },
@@ -120,26 +126,68 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
       };
 
       const appConfig = { callbacks };
-      const docConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
+      const baseDocConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
+
+      const openBlankEditor = async () => {
+        await Promise.resolve(sdk.editor.create(baseDocConfig, appConfig));
+      };
 
       if (imageUrl) {
         try {
           const resp = await fetch(imageUrl, { mode: "cors" });
+          if (!resp.ok) throw new Error(`Falha ao carregar imagem (${resp.status})`);
+
           const blob = await resp.blob();
-          const base64 = await new Promise<string>((resolve, reject) => {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
 
-          docConfig.asset = [{ data: base64, dataType: "base64", type: "image" }];
-          sdk.editor.createWithAsset(docConfig, appConfig);
-        } catch {
-          sdk.editor.create(docConfig, appConfig);
+          const rawBase64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+          const createWithAssetCandidates: any[] = [
+            {
+              ...baseDocConfig,
+              asset: {
+                images: [{ data: dataUrl, dataType: "base64", type: "image" }],
+              },
+            },
+            {
+              ...baseDocConfig,
+              asset: {
+                images: [{ data: rawBase64, dataType: "base64", type: "image" }],
+              },
+            },
+            {
+              ...baseDocConfig,
+              asset: { data: dataUrl, dataType: "base64", type: "image" },
+            },
+            {
+              ...baseDocConfig,
+              asset: { data: rawBase64, dataType: "base64", type: "image" },
+            },
+          ];
+
+          let lastAssetError: unknown = null;
+          for (const candidate of createWithAssetCandidates) {
+            try {
+              await Promise.resolve(sdk.editor.createWithAsset(candidate, appConfig));
+              return;
+            } catch (assetError) {
+              lastAssetError = assetError;
+            }
+          }
+
+          console.error("Adobe createWithAsset failed for all payloads:", lastAssetError);
+          toast.warning("Não foi possível pré-carregar a imagem. Abrindo editor vazio.");
+          await openBlankEditor();
+        } catch (assetLoadError) {
+          console.warn("Falha ao preparar imagem para Adobe Express:", assetLoadError);
+          await openBlankEditor();
         }
       } else {
-        sdk.editor.create(docConfig, appConfig);
+        await openBlankEditor();
       }
     } catch (err) {
       console.error("Adobe Express error:", err);
