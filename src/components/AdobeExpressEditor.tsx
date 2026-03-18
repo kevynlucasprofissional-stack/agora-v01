@@ -6,11 +6,20 @@ import { toast } from "sonner";
 const ADOBE_CLIENT_ID = "0eb19546a87349719eb48a1c393ce98e";
 const APP_NAME = "Agora MKT AI";
 
+type CanvasRatio = "1:1" | "9:16" | "16:9" | "4:5";
+
 interface AdobeExpressEditorProps {
   imageUrl?: string;
   onPublish?: (data: { imageData: string; projectId?: string }) => void;
-  canvasSize?: "1:1" | "9:16" | "16:9" | "4:5";
+  canvasSize?: CanvasRatio;
 }
+
+const CANVAS_SIZE_MAP: Record<CanvasRatio, { width: number; height: number; unit: "px" }> = {
+  "1:1": { width: 1080, height: 1080, unit: "px" },
+  "9:16": { width: 1080, height: 1920, unit: "px" },
+  "16:9": { width: 1920, height: 1080, unit: "px" },
+  "4:5": { width: 1080, height: 1350, unit: "px" },
+};
 
 let sdkLoaded = false;
 let sdkLoadPromise: Promise<void> | null = null;
@@ -111,7 +120,7 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
       };
 
       const appConfig = { callbacks };
-      const docConfig: any = { canvasSize };
+      const docConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
 
       if (imageUrl) {
         try {
