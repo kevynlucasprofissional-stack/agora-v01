@@ -14,30 +14,37 @@ interface AdobeExpressEditorProps {
 
 let sdkLoaded = false;
 let sdkLoadPromise: Promise<void> | null = null;
-let ccEverywhereInstance: any = null;
+
+type AdobeSdkInstance = any;
 
 async function loadAdobeSDK(): Promise<void> {
   if (sdkLoaded) return;
   if (sdkLoadPromise) return sdkLoadPromise;
+
   sdkLoadPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://cc-embed.adobe.com/sdk/v4/CCEverywhere.js";
-    script.onload = () => { sdkLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error("Failed to load Adobe Express SDK"));
+    script.onload = () => {
+      sdkLoaded = true;
+      resolve();
+    };
+    script.onerror = () => reject(new Error("Falha ao carregar Adobe Express SDK"));
     document.head.appendChild(script);
   });
+
   return sdkLoadPromise;
 }
 
-async function getSDKInstance(): Promise<any> {
+async function getSDKInstance(): Promise<AdobeSdkInstance> {
   await loadAdobeSDK();
-  if (!window.CCEverywhere) throw new Error("Adobe Express SDK not available");
 
-  // Terminate any previous instance to avoid "already initialized" error
-  if (ccEverywhereInstance) {
-    try { ccEverywhereInstance.terminate(); } catch { /* ignore */ }
-    ccEverywhereInstance = null;
+  if (!window.CCEverywhere) {
+    throw new Error("Adobe Express SDK não disponível");
   }
+
+  // Reuse global instance/promise so HMR or re-renders don't re-initialize the SDK.
+  if (window.__adobeExpressInstance) return window.__adobeExpressInstance;
+  if (window.__adobeExpressInitPromise) return window.__adobeExpressInitPromise;
 
   const hostInfo = {
     clientId: ADOBE_CLIENT_ID,
@@ -47,8 +54,30 @@ async function getSDKInstance(): Promise<any> {
   };
   const configParams = { loginMode: "delayed", locale: "pt_BR" };
 
-  ccEverywhereInstance = await window.CCEverywhere.initialize(hostInfo, configParams);
-  return ccEverywhereInstance;
+  const initPromise: Promise<AdobeSdkInstance> = window.CCEverywhere.initialize(hostInfo, configParams)
+    .then((instance: AdobeSdkInstance) => {
+      window.__adobeExpressInstance = instance;
+      return instance;
+    })
+    .catch((err: any) => {
+      // Adobe SDK can throw this in dev/HMR flows even with a valid in-memory instance.
+      if (err?._code === "SDK_ALREADY_INITIALIZED" || err?.message?.includes("already initialized")) {
+        if (window.__adobeExpressInstance) return window.__adobeExpressInstance;
+        const active = window.CCEverywhere?.activeInstance;
+        if (active) {
+          window.__adobeExpressInstance = active;
+          return active;
+        }
+      }
+      throw err;
+    })
+    .finally(() => {
+      window.__adobeExpressInitPromise = null;
+    });
+
+  window.__adobeExpressInitPromise = initPromise;
+
+  return initPromise;
 }
 
 export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: AdobeExpressEditorProps) {
@@ -89,6 +118,7 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
+
           docConfig.asset = { data: base64, dataType: "base64", type: "image" };
           sdk.editor.createWithAsset(docConfig, appConfig);
         } catch {
@@ -114,5 +144,10 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
 }
 
 declare global {
-  interface Window { CCEverywhere: any; }
+  interface Window {
+    CCEverywhere: any;
+    __adobeExpressInstance?: any;
+    __adobeExpressInitPromise?: Promise<any> | null;
+  }
 }
+
