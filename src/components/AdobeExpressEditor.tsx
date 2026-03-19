@@ -138,4 +138,52 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
           if (!resp.ok) throw new Error(`Falha ao carregar imagem (${resp.status})`);
 
           const blob = await resp.blob();
-          const dataUrl = await new Promise<string>((resolve
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          await Promise.resolve(
+            sdk.editor.createWithAsset(
+              { ...baseDocConfig, asset: { data: dataUrl, dataType: "base64", type: blob.type } },
+              appConfig
+            )
+          );
+        } catch (imgErr) {
+          console.warn("Não foi possível carregar a imagem, abrindo editor vazio:", imgErr);
+          await openBlankEditor();
+        }
+      } else {
+        await openBlankEditor();
+      }
+    } catch (err: any) {
+      console.error("Erro ao abrir Adobe Express:", err);
+      toast.error("Não foi possível abrir o editor Adobe Express.");
+    } finally {
+      setIsLaunching(false);
+    }
+  }, [imageUrl, canvasSize, onPublish, isLaunching]);
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={launchEditor}
+      disabled={isLaunching}
+      className="gap-2"
+    >
+      {isLaunching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+      {isLaunching ? "Abrindo editor…" : "Editar no Adobe Express"}
+    </Button>
+  );
+}
+
+declare global {
+  interface Window {
+    CCEverywhere: any;
+    __adobeExpressInstance: any;
+    __adobeExpressInitPromise: Promise<any> | null;
+  }
+}
