@@ -32,9 +32,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 z-50 w-full border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <AgoraIcon size={32} className="shrink-0 rounded-lg" />
             <span className="font-display text-xl font-bold">Ágora</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
