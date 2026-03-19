@@ -3,11 +3,13 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ExternalLink } from "lucide-react";
+import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ExternalLink, ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
+import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
+import { toast } from "sonner";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -25,6 +27,7 @@ export default function AnalysisChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [generatingCreative, setGeneratingCreative] = useState(false);
   const [creativeJobId, setCreativeJobId] = useState<string | null>(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -233,6 +236,9 @@ export default function AnalysisChatPage() {
               if (error) throw error;
               if (data?.creative_job_id) {
                 setCreativeJobId(data.creative_job_id);
+                if (data?.image_url) {
+                  setGeneratedImageUrl(data.image_url);
+                }
               }
             } catch (e: any) {
               console.error("Erro ao gerar criativo:", e);
@@ -288,14 +294,24 @@ export default function AnalysisChatPage() {
 
       {/* Creative Banner */}
       {creativeJobId && (
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
           <Sparkles className="h-5 w-5 text-primary shrink-0" />
           <span className="text-sm text-foreground flex-1">Criativo gerado com sucesso!</span>
-          <Button variant="hero" size="sm" asChild>
-            <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
-              Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {generatedImageUrl && (
+              <AdobeExpressEditor
+                imageUrl={generatedImageUrl}
+                onPublish={(data) => {
+                  toast.success("Criativo salvo do Adobe Express!");
+                }}
+              />
+            )}
+            <Button variant="hero" size="sm" asChild>
+              <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
+                Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 
