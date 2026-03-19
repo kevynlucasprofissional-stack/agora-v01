@@ -104,6 +104,19 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
     try {
       const sdk = await getSDKInstance();
 
+      const baseDocConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
+      const containerConfig = {
+        loadTimeout: 180000,
+      };
+
+      const handledErrorCodes = new Set<string>();
+      let timeoutRetryAttempted = false;
+      let appConfig: any;
+
+      const openBlankEditor = async () => {
+        await Promise.resolve(sdk.editor.create(baseDocConfig, appConfig, undefined, containerConfig));
+      };
+
       const callbacks = {
         onCancel: () => {},
         onPublish: (_intent: string, publishParams: any) => {
@@ -119,18 +132,34 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
             toast.success("Criativo exportado com sucesso!");
           }
         },
-        onError: (err: any) => {
-          console.error("Adobe Express editor error:", err);
-          toast.error("Erro no Adobe Express");
+        onError: async (err: any) => {
+          const errorCode = err?._code ?? "UNKNOWN_ADOBE_ERROR";
+
+          if (errorCode === "TARGET_LOAD_TIMED_OUT" && !timeoutRetryAttempted) {
+            timeoutRetryAttempted = true;
+            toast.warning("Adobe Express demorou para carregar. Tentando novamente...");
+            try {
+              await openBlankEditor();
+              return;
+            } catch (retryErr) {
+              console.error("Falha ao tentar reabrir editor após timeout:", retryErr);
+            }
+          }
+
+          if (handledErrorCodes.has(errorCode)) return;
+          handledErrorCodes.add(errorCode);
+
+          console.error("Adobe Express editor error:", {
+            code: errorCode,
+            message: err?.message,
+            debugId: err?._debugId,
+          });
+
+          toast.error("Não foi possível carregar o Adobe Express agora. Tente novamente em instantes.");
         },
       };
 
-      const appConfig = { callbacks };
-      const baseDocConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
-
-      const openBlankEditor = async () => {
-        await Promise.resolve(sdk.editor.create(baseDocConfig, appConfig));
-      };
+      appConfig = { callbacks };
 
       if (imageUrl) {
         try {
@@ -158,13 +187,13 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
                   type: "image",
                   dataType: "base64",
                   data: dataUrl,
-                }
-              ]
+                },
+              ],
             },
           };
 
           try {
-            await Promise.resolve(sdk.editor.createWithAsset(docConfig, appConfig));
+            await Promise.resolve(sdk.editor.createWithAsset(docConfig, appConfig, undefined, containerConfig));
           } catch (assetError) {
             console.error("Falha síncrona ao preparar imagem para Adobe Express:", assetError);
             toast.warning("Não foi possível pré-carregar a imagem. Abrindo editor vazio.");
