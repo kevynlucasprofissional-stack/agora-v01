@@ -291,14 +291,24 @@ export default function AnalysisChatPage() {
 
       {/* Creative Banner */}
       {creativeJobId && (
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
           <Sparkles className="h-5 w-5 text-primary shrink-0" />
           <span className="text-sm text-foreground flex-1">Criativo gerado com sucesso!</span>
-          <Button variant="hero" size="sm" asChild>
-            <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
-              Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {generatedImageUrl && (
+              <AdobeExpressEditor
+                imageUrl={generatedImageUrl}
+                onPublish={(data) => {
+                  toast.success("Criativo salvo do Adobe Express!");
+                }}
+              />
+            )}
+            <Button variant="hero" size="sm" asChild>
+              <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
+                Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 

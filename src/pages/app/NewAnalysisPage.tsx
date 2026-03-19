@@ -817,31 +817,35 @@ export default function NewAnalysisPage() {
             </motion.div>
           )}
 
-          {/* Creative Editor */}
+          {/* Creative - Adobe Express */}
           {creativeData && !isGeneratingImage && (
             <div className="mb-4 relative">
-              <button
-                onClick={() => setCreativeData(null)}
-                className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-                title="Fechar criativo"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <CreativeEditor
-                strategistOutput={creativeData.strategist_output}
-                imageUrl={creativeData.image_url}
-                editableHtml={creativeData.editable_html}
-                creativeJobId={null}
-                onRegenerate={() => generateImage(input)}
-                isRegenerating={isGeneratingImage}
-              />
-              <div className="mt-2 flex justify-center">
-                <AdobeExpressEditor
-                  imageUrl={creativeData.image_url}
-                  onPublish={(data) => {
-                    toast.success("Criativo salvo do Adobe Express!");
-                  }}
-                />
+              <div className="glass-card p-4 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-foreground">✅ Imagem gerada com sucesso!</p>
+                  <button
+                    onClick={() => setCreativeData(null)}
+                    className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Fechar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {creativeData.image_url && (
+                  <img
+                    src={creativeData.image_url}
+                    alt="Criativo gerado"
+                    className="w-full max-w-[320px] mx-auto rounded-lg border border-border/50 mb-3"
+                  />
+                )}
+                <div className="flex justify-center">
+                  <AdobeExpressEditor
+                    imageUrl={creativeData.image_url}
+                    onPublish={(data) => {
+                      toast.success("Criativo salvo do Adobe Express!");
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
