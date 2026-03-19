@@ -173,7 +173,7 @@ export default function LandingPage() {
       <footer className="border-t border-border/30 py-12">
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
+            <AgoraIcon size={20} className="shrink-0 rounded" />
             <span className="font-display font-semibold text-foreground">Ágora</span>
           </div>
           <div className="flex items-center gap-4">
