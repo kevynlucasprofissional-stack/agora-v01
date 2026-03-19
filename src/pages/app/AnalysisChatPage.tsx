@@ -236,6 +236,9 @@ export default function AnalysisChatPage() {
               if (error) throw error;
               if (data?.creative_job_id) {
                 setCreativeJobId(data.creative_job_id);
+                if (data?.image_url) {
+                  setGeneratedImageUrl(data.image_url);
+                }
               }
             } catch (e: any) {
               console.error("Erro ao gerar criativo:", e);
