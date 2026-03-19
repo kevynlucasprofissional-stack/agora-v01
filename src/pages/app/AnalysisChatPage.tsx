@@ -27,6 +27,7 @@ export default function AnalysisChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [generatingCreative, setGeneratingCreative] = useState(false);
   const [creativeJobId, setCreativeJobId] = useState<string | null>(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
