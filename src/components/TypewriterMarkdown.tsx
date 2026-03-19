@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,12 +9,15 @@ interface TypewriterMarkdownProps {
   className?: string;
 }
 
-export function TypewriterMarkdown({
-  content,
-  isStreaming = false,
-  speed = 12,
-  className = "",
-}: TypewriterMarkdownProps) {
+export const TypewriterMarkdown = forwardRef<HTMLDivElement, TypewriterMarkdownProps>(function TypewriterMarkdown(
+  {
+    content,
+    isStreaming = false,
+    speed = 12,
+    className = "",
+  },
+  ref
+) {
   const [displayedLength, setDisplayedLength] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const prevContentRef = useRef("");
@@ -43,8 +46,8 @@ export function TypewriterMarkdown({
     intervalRef.current = setInterval(() => {
       setDisplayedLength((prev) => {
         const next = Math.min(prev + charsPerTick, content.length);
-        if (next >= content.length) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
+        if (next >= content.length && intervalRef.current) {
+          clearInterval(intervalRef.current);
         }
         return next;
       });
@@ -58,11 +61,11 @@ export function TypewriterMarkdown({
   const visibleText = isComplete ? content : content.slice(0, displayedLength);
 
   return (
-    <div className={`${className} markdown-prose`}>
+    <div ref={ref} className={`${className} markdown-prose`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{visibleText}</ReactMarkdown>
       {!isComplete && displayedLength < content.length && (
         <span className="inline-block w-[2px] h-[1em] bg-primary animate-pulse ml-0.5 align-text-bottom" />
       )}
     </div>
   );
-}
+});
