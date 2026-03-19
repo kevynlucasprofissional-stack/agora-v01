@@ -145,12 +145,24 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
             reader.readAsDataURL(blob);
           });
 
-          await Promise.resolve(
-            sdk.editor.createWithAsset(
-              { ...baseDocConfig, asset: { data: dataUrl, dataType: "base64", type: blob.type } },
-              appConfig
-            )
-          );
+          const rawBase64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+
+          const docConfig = {
+            ...baseDocConfig,
+            asset: {
+              type: "image",
+              dataType: "base64",
+              data: rawBase64,
+            },
+          };
+
+          try {
+            await Promise.resolve(sdk.editor.createWithAsset(docConfig, appConfig));
+          } catch (assetError) {
+            console.error("Falha síncrona ao preparar imagem para Adobe Express:", assetError);
+            toast.warning("Não foi possível pré-carregar a imagem. Abrindo editor vazio.");
+            await openBlankEditor();
+          }
         } catch (imgErr) {
           console.warn("Não foi possível carregar a imagem, abrindo editor vazio:", imgErr);
           await openBlankEditor();
