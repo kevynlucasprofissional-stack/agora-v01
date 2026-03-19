@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, BarChart3, Users, Target, Shield, ArrowRight, Check } from "lucide-react";
+import { BarChart3, Users, Target, Shield, ArrowRight, Check } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
 import { PLAN_FEATURES } from "@/types/database";
 
