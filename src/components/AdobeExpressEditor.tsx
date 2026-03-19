@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,28 +21,10 @@ const CANVAS_SIZE_MAP: Record<CanvasRatio, { width: number; height: number; unit
   "4:5": { width: 1080, height: 1350, unit: "px" },
 };
 
-const PREVIEW_HOST_PATTERNS = [/\.lovableproject\.com$/i, /^id-preview--.*\.lovable\.app$/i];
-
 let sdkLoaded = false;
 let sdkLoadPromise: Promise<void> | null = null;
 
 type AdobeSdkInstance = any;
-
-function isPreviewEnvironment(): boolean {
-  if (typeof window === "undefined") return false;
-  return PREVIEW_HOST_PATTERNS.some((pattern) => pattern.test(window.location.hostname));
-}
-
-function openStandaloneAdobeEditor(canvasSize: CanvasRatio) {
-  const { width, height, unit } = CANVAS_SIZE_MAP[canvasSize];
-  const url = new URL("https://new.express.adobe.com/new");
-  url.searchParams.set("width", String(width));
-  url.searchParams.set("height", String(height));
-  url.searchParams.set("unit", unit);
-  url.searchParams.set("locale", "pt_BR");
-
-  return window.open(url.toString(), "_blank", "noopener,noreferrer");
-}
 
 async function loadAdobeSDK(): Promise<void> {
   if (sdkLoaded) return;
@@ -87,7 +69,7 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
     appVersion: { major: 1, minor: 0 },
     platformCategory: "web",
   };
-  const configParams = { loginMode: "delayed", locale: "pt_BR" };
+  const configParams = { loginMode: "delayed", locale: "en_US" };
 
   const initPromise: Promise<AdobeSdkInstance> = window.CCEverywhere.initialize(hostInfo, configParams)
     .then((instance: AdobeSdkInstance) => {
@@ -112,54 +94,20 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
   return initPromise;
 }
 
-export const AdobeExpressEditor = forwardRef<HTMLButtonElement, AdobeExpressEditorProps>(function AdobeExpressEditor(
-  { imageUrl, onPublish, canvasSize = "1:1" },
-  ref
-) {
+export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: AdobeExpressEditorProps) {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const launchEditor = useCallback(async () => {
     if (isLaunching) return;
-
-    if (isPreviewEnvironment()) {
-      const popup = openStandaloneAdobeEditor(canvasSize);
-      if (!popup) {
-        toast.error("Não foi possível abrir o Adobe Express em nova aba. Libere pop-ups e tente novamente.");
-        return;
-      }
-
-      toast.info(
-        imageUrl
-          ? "No preview, o editor embutido pode falhar. Abri o Adobe Express em nova aba (a imagem precisa ser adicionada manualmente)."
-          : "No preview, o editor embutido pode falhar. Abri o Adobe Express em nova aba."
-      );
-      return;
-    }
-
     setIsLaunching(true);
 
     try {
       const sdk = await getSDKInstance();
 
-      const baseDocConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
-      const containerConfig = {
-        loadTimeout: 180000,
-      };
-
-      const handledErrorCodes = new Set<string>();
-      let timeoutRetryAttempted = false;
-      let appConfig: any;
-
-      const openBlankEditor = async () => {
-        await Promise.resolve(sdk.editor.create(baseDocConfig, appConfig, undefined, containerConfig));
-      };
-
       const callbacks = {
         onCancel: () => {},
         onPublish: (_intent: string, publishParams: any) => {
-          const directAsset = Array.isArray(publishParams?.asset)
-            ? publishParams.asset[0]
-            : publishParams?.asset;
+          const directAsset = Array.isArray(publishParams?.asset) ? publishParams.asset[0] : publishParams?.asset;
           const nestedAsset = publishParams?.asset?.images?.[0] ?? publishParams?.asset?.videos?.[0];
           const asset = nestedAsset ?? directAsset;
           const imageData = asset?.data ?? asset?.dataUrl;
@@ -169,34 +117,18 @@ export const AdobeExpressEditor = forwardRef<HTMLButtonElement, AdobeExpressEdit
             toast.success("Criativo exportado com sucesso!");
           }
         },
-        onError: async (err: any) => {
-          const errorCode = err?._code ?? "UNKNOWN_ADOBE_ERROR";
-
-          if (errorCode === "TARGET_LOAD_TIMED_OUT" && !timeoutRetryAttempted) {
-            timeoutRetryAttempted = true;
-            toast.warning("Adobe Express demorou para carregar. Tentando novamente...");
-            try {
-              await openBlankEditor();
-              return;
-            } catch (retryErr) {
-              console.error("Falha ao tentar reabrir editor após timeout:", retryErr);
-            }
-          }
-
-          if (handledErrorCodes.has(errorCode)) return;
-          handledErrorCodes.add(errorCode);
-
-          console.error("Adobe Express editor error:", {
-            code: errorCode,
-            message: err?.message,
-            debugId: err?._debugId,
-          });
-
-          toast.error("Não foi possível carregar o Adobe Express agora. Tente novamente em instantes.");
+        onError: (err: any) => {
+          console.error("Adobe Express editor error:", err);
+          toast.error("Erro no Adobe Express");
         },
       };
 
-      appConfig = { callbacks };
+      const appConfig = { callbacks };
+      const baseDocConfig: any = { canvasSize: CANVAS_SIZE_MAP[canvasSize] };
+
+      const openBlankEditor = async () => {
+        await Promise.resolve(sdk.editor.create(baseDocConfig, appConfig));
+      };
 
       if (imageUrl) {
         try {
@@ -230,7 +162,7 @@ export const AdobeExpressEditor = forwardRef<HTMLButtonElement, AdobeExpressEdit
           };
 
           try {
-            await Promise.resolve(sdk.editor.createWithAsset(docConfig, appConfig, undefined, containerConfig));
+            await Promise.resolve(sdk.editor.createWithAsset(docConfig, appConfig));
           } catch (assetError) {
             console.error("Falha síncrona ao preparar imagem para Adobe Express:", assetError);
             toast.warning("Não foi possível pré-carregar a imagem. Abrindo editor vazio.");
@@ -252,21 +184,12 @@ export const AdobeExpressEditor = forwardRef<HTMLButtonElement, AdobeExpressEdit
   }, [imageUrl, canvasSize, onPublish, isLaunching]);
 
   return (
-    <Button
-      ref={ref}
-      variant="outline"
-      size="sm"
-      onClick={launchEditor}
-      disabled={isLaunching}
-      className="gap-2"
-    >
+    <Button variant="outline" size="sm" onClick={launchEditor} disabled={isLaunching} className="gap-2">
       {isLaunching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
       {isLaunching ? "Abrindo editor…" : "Editar no Adobe Express"}
     </Button>
   );
-});
-
-AdobeExpressEditor.displayName = "AdobeExpressEditor";
+}
 
 declare global {
   interface Window {
