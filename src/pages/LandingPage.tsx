@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Zap, BarChart3, Users, Target, Shield, ArrowRight, Check } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
 import { PLAN_FEATURES } from "@/types/database";
 
@@ -31,9 +32,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 z-50 w-full border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <AgoraIcon size={32} className="shrink-0 rounded-lg" />
             <span className="font-display text-xl font-bold">Ágora</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -174,7 +173,7 @@ export default function LandingPage() {
       <footer className="border-t border-border/30 py-12">
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
+            <AgoraIcon size={20} className="shrink-0 rounded" />
             <span className="font-display font-semibold text-foreground">Ágora</span>
           </div>
           <div className="flex items-center gap-4">
