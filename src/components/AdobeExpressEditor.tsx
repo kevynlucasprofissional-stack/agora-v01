@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,10 +21,28 @@ const CANVAS_SIZE_MAP: Record<CanvasRatio, { width: number; height: number; unit
   "4:5": { width: 1080, height: 1350, unit: "px" },
 };
 
+const PREVIEW_HOST_PATTERNS = [/\.lovableproject\.com$/i, /^id-preview--.*\.lovable\.app$/i];
+
 let sdkLoaded = false;
 let sdkLoadPromise: Promise<void> | null = null;
 
 type AdobeSdkInstance = any;
+
+function isPreviewEnvironment(): boolean {
+  if (typeof window === "undefined") return false;
+  return PREVIEW_HOST_PATTERNS.some((pattern) => pattern.test(window.location.hostname));
+}
+
+function openStandaloneAdobeEditor(canvasSize: CanvasRatio) {
+  const { width, height, unit } = CANVAS_SIZE_MAP[canvasSize];
+  const url = new URL("https://new.express.adobe.com/new");
+  url.searchParams.set("width", String(width));
+  url.searchParams.set("height", String(height));
+  url.searchParams.set("unit", unit);
+  url.searchParams.set("locale", "pt_BR");
+
+  return window.open(url.toString(), "_blank", "noopener,noreferrer");
+}
 
 async function loadAdobeSDK(): Promise<void> {
   if (sdkLoaded) return;
@@ -94,11 +112,30 @@ async function getSDKInstance(): Promise<AdobeSdkInstance> {
   return initPromise;
 }
 
-export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: AdobeExpressEditorProps) {
+export const AdobeExpressEditor = forwardRef<HTMLButtonElement, AdobeExpressEditorProps>(function AdobeExpressEditor(
+  { imageUrl, onPublish, canvasSize = "1:1" },
+  ref
+) {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const launchEditor = useCallback(async () => {
     if (isLaunching) return;
+
+    if (isPreviewEnvironment()) {
+      const popup = openStandaloneAdobeEditor(canvasSize);
+      if (!popup) {
+        toast.error("Não foi possível abrir o Adobe Express em nova aba. Libere pop-ups e tente novamente.");
+        return;
+      }
+
+      toast.info(
+        imageUrl
+          ? "No preview, o editor embutido pode falhar. Abri o Adobe Express em nova aba (a imagem precisa ser adicionada manualmente)."
+          : "No preview, o editor embutido pode falhar. Abri o Adobe Express em nova aba."
+      );
+      return;
+    }
+
     setIsLaunching(true);
 
     try {
@@ -216,6 +253,7 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
 
   return (
     <Button
+      ref={ref}
       variant="outline"
       size="sm"
       onClick={launchEditor}
@@ -226,7 +264,9 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
       {isLaunching ? "Abrindo editor…" : "Editar no Adobe Express"}
     </Button>
   );
-}
+});
+
+AdobeExpressEditor.displayName = "AdobeExpressEditor";
 
 declare global {
   interface Window {
