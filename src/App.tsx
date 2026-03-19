@@ -13,6 +13,8 @@ import LoginPage from "@/pages/LoginPage";
 import PricingPage from "@/pages/PricingPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import TermsPage from "@/pages/TermsPage";
 
 // App pages
 import DashboardPage from "@/pages/app/DashboardPage";
@@ -47,6 +49,8 @@ const App = () => (
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
 
             {/* App (protected) */}
             <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

@@ -172,12 +172,16 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border/30 py-12">
-        <div className="container flex items-center justify-between text-sm text-muted-foreground">
+        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-primary" />
             <span className="font-display font-semibold text-foreground">Ágora</span>
           </div>
-          <p>© 2026 Ágora. Marketing que prevê o futuro.</p>
+          <div className="flex items-center gap-4">
+            <Link to="/terms" className="hover:text-foreground transition-colors">Termos de Uso</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacidade</Link>
+          </div>
+          <p>© 2026 Ágora</p>
         </div>
       </footer>
     </div>
