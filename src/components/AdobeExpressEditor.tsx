@@ -140,19 +140,26 @@ export function AdobeExpressEditor({ imageUrl, onPublish, canvasSize = "1:1" }: 
           const blob = await resp.blob();
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
+            reader.onload = () => resolve(reader.result as string);
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
 
-          const rawBase64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
-
           const docConfig = {
             ...baseDocConfig,
             asset: {
+              // Satisfaz a validação da camada externa da SDK
               type: "image",
               dataType: "base64",
-              data: rawBase64,
+              data: dataUrl,
+              // Satisfaz o motor interno do iframe do editor
+              images: [
+                {
+                  type: "image",
+                  dataType: "base64",
+                  data: dataUrl,
+                }
+              ]
             },
           };
 
