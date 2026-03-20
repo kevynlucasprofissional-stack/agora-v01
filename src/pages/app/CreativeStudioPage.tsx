@@ -28,12 +28,10 @@ export default function CreativeStudioPage() {
     const ab = workspace.editingArtboard;
     if (!ab) return;
 
-    // Set format
     if (ab.format !== canvasState.format) {
       canvasState.changeFormat(ab.format);
     }
 
-    // Load layers if they exist
     if (ab.layersState && ab.layersState.objects?.length > 0) {
       canvasState.loadJSON(ab.layersState);
     }
@@ -53,7 +51,6 @@ export default function CreativeStudioPage() {
       if (!job) return;
       setJobLoaded(true);
 
-      // Create an artboard from the job
       const format = (job.format as any) || "1080x1080";
       const id = workspace.addArtboard(format, "Criativo importado");
 
@@ -61,14 +58,12 @@ export default function CreativeStudioPage() {
         workspace.updateArtboard(id, { layersState: job.layers_state });
       }
 
-      // Auto-open in editor
       workspace.setEditingId(id);
     };
 
     loadJob();
   }, [jobId, jobLoaded]);
 
-  // Save current canvas state back to artboard when leaving editor
   const handleBackToWorkspace = useCallback(() => {
     if (workspace.editingId) {
       const json = canvasState.getJSON();
@@ -96,7 +91,6 @@ export default function CreativeStudioPage() {
         if (error) throw error;
         toast.success("Salvo com sucesso!");
       } else {
-        // Save to artboard state locally
         if (workspace.editingId) {
           const thumb = canvasState.exportPNG();
           workspace.updateArtboard(workspace.editingId, {
@@ -141,9 +135,9 @@ export default function CreativeStudioPage() {
       <div className="flex flex-1 overflow-hidden">
         <WorkspaceGrid workspace={workspace} />
         <WorkspacePropertiesPanel
-          artboard={workspace.selectedArtboard}
-          onUpdate={workspace.updateArtboard}
-          onRemove={workspace.removeArtboard}
+          element={workspace.selectedElement}
+          onUpdate={workspace.updateElement}
+          onRemove={workspace.removeElement}
           onEdit={(id) => workspace.setEditingId(id)}
         />
       </div>
