@@ -1,64 +1,53 @@
 
 
-## Reformular o Estúdio Criativo: Workspace com Grid Infinito + Múltiplos Artboards
+## Adicionar Ferramentas de Mapa Mental ao Workspace do Estúdio Criativo
 
-Transformar o Creative Studio de um editor de canvas único para um workspace estilo Figma, com fundo quadriculado infinito onde o usuário pode criar e organizar múltiplos criativos. Clicar em um criativo abre o editor completo com as ferramentas de edição.
-
-### Arquitetura
-
-```text
-┌─────────────────────────────────────────────────┐
-│  StudioHeader (zoom, salvar, novo artboard)      │
-├──────┬──────────────────────────────┬───────────┤
-│      │                              │           │
-│ Tools│   Infinite Grid Workspace    │ Properties│
-│ Side │   ┌──────┐    ┌──────┐      │  Panel    │
-│ bar  │   │ Art 1│    │ Art 2│      │ (contexto │
-│      │   └──────┘    └──────┘      │  do item  │
-│      │        ┌──────┐             │ selecion.)│
-│      │        │ Art 3│             │           │
-│      │        └──────┘             │           │
-├──────┴──────────────────────────────┴───────────┤
-│  Ao dar duplo-clique num artboard:              │
-│  → Abre modal/view com FabricCanvas full editor │
-└─────────────────────────────────────────────────┘
-```
+Transformar o workspace em um espaço híbrido de mapa mental + criativos, com setas de conexão, notas adesivas, textos livres e cores personalizáveis.
 
 ### O que será feito
 
-1. **Criar sistema de Artboards**
-   - Novo tipo `Artboard` com id, nome, posição no workspace (x, y), formato, thumbnail, e estado do canvas (layers_state)
-   - Estado gerenciado via `useWorkspaceState` hook que controla lista de artboards, seleção, pan e zoom do workspace
+1. **Expandir o modelo de dados do workspace** (`useWorkspaceState.ts`)
+   - Adicionar tipos para novos elementos: `StickyNote` (nota adesiva com texto, cor, posição), `WorkspaceText` (texto livre com tamanho, cor, posição), `Arrow` (seta conectando dois elementos por ID ou posição livre)
+   - Union type `WorkspaceElement` que engloba artboards + notas + textos + setas
+   - CRUD para cada tipo de elemento (add/update/remove)
+   - Seleção unificada: qualquer elemento pode ser selecionado e mostrar propriedades no painel direito
 
-2. **Criar o Workspace com grid infinito**
-   - Fundo quadriculado (CSS pattern ou SVG) com pan (arrastar) e zoom (scroll)
-   - Artboards renderizados como cards/thumbnails posicionados livremente no grid
-   - Selecionar artboard mostra propriedades básicas (nome, formato) no painel direito
-   - Botão "+" para criar novo artboard (escolher formato)
+2. **Renderizar novos elementos no WorkspaceGrid** (`WorkspaceGrid.tsx`)
+   - `StickyNoteCard`: retângulo colorido com texto editável (inline), redimensionável, arrastável
+   - `WorkspaceTextNode`: texto livre posicionado no canvas, com fonte/tamanho/cor configuráveis
+   - `ArrowConnector`: SVG `<line>` ou `<path>` entre dois pontos/elementos, com opções de estilo (seta simples, bidirecional, tracejada), cor configurável
+   - Todos os elementos seguem o mesmo sistema de pan/zoom dos artboards
 
-3. **Editor de Artboard em modo focado**
-   - Duplo-clique em um artboard abre o editor completo (FabricCanvas + ToolsSidebar + PropertiesPanel)
-   - Botão "Voltar ao Workspace" para retornar à visão geral
-   - O canvas existente (useCanvasState, FabricCanvas) continua funcionando igual, mas agora vinculado a um artboard específico
+3. **Toolbar no header do workspace** (`StudioHeader.tsx`)
+   - Adicionar botões ao lado do "Novo Artboard": "Nova Nota", "Texto", "Seta"
+   - Para setas: modo de criação onde o usuário clica em elemento de origem e depois no destino
+   - Dropdown de cores rápidas para o elemento selecionado
 
-4. **Atualizar StudioHeader**
-   - No modo workspace: zoom do workspace, botão "Novo Artboard"
-   - No modo editor: ferramentas atuais (formato, undo/redo, zoom do canvas, salvar, exportar)
+4. **Painel de propriedades expandido** (`WorkspacePropertiesPanel.tsx`)
+   - Quando nota selecionada: editar texto, cor de fundo (palette de cores), tamanho
+   - Quando texto selecionado: editar conteúdo, fonte size, cor, negrito/itálico
+   - Quando seta selecionada: estilo (sólida/tracejada), cor, direcional/bidirecional
+   - Manter propriedades de artboard como já existe
 
-5. **Persistência**
-   - Cada artboard salva seu layers_state independentemente
-   - O workspace salva posições dos artboards
+5. **Drag para mover elementos** (`WorkspaceGrid.tsx`)
+   - Click+drag em qualquer elemento (nota, texto, artboard) para reposicionar no workspace
+   - Setas conectadas a elementos acompanham automaticamente a posição
+
+### Novos arquivos
+- `src/components/creative-studio/StickyNoteCard.tsx`
+- `src/components/creative-studio/WorkspaceTextNode.tsx`
+- `src/components/creative-studio/ArrowConnector.tsx`
+
+### Arquivos editados
+- `useWorkspaceState.ts` — novos tipos e CRUD
+- `WorkspaceGrid.tsx` — renderizar novos elementos + drag
+- `StudioHeader.tsx` — botões de ferramentas
+- `WorkspacePropertiesPanel.tsx` — propriedades contextuais
+- `CreativeStudioPage.tsx` — passar novos handlers
 
 ### Detalhes técnicos
-
-- **Workspace pan/zoom**: Implementado via CSS transform no container + event handlers para mousewheel (zoom) e middle-click/space+drag (pan)
-- **Grid background**: CSS `background-image` com `repeating-linear-gradient` para performance (sem SVG animado)
-- **Thumbnails**: Canvas miniatura gerado via `canvas.toDataURL()` em escala reduzida ao sair do editor
-- **Estado**: Dois modos na página — `"workspace"` e `"editor"` — controlados por estado local
-- **Componentes reutilizados**: `useCanvasState`, `FabricCanvas`, `ToolsSidebar`, `PropertiesPanel` permanecem inalterados, apenas usados dentro do modo editor
-- **Novos arquivos**:
-  - `src/components/creative-studio/useWorkspaceState.ts`
-  - `src/components/creative-studio/WorkspaceGrid.tsx`
-  - `src/components/creative-studio/ArtboardCard.tsx`
-  - Atualizar `CreativeStudioPage.tsx` e `StudioHeader.tsx`
+- Setas renderizadas via SVG overlay no workspace (mesma camada de transform)
+- Conexões armazenam `fromId`/`toId` e calculam posição central dos elementos para desenhar a seta
+- Cores: palette pré-definida (amarelo, rosa, azul, verde, roxo, laranja) + input hex livre
+- Drag implementado com mousedown/mousemove no elemento, atualiza x/y no estado
 
