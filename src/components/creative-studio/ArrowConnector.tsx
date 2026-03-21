@@ -12,6 +12,33 @@ type Props = {
 };
 
 export const ArrowConnector = memo(function ArrowConnector({ arrow, from, to, isSelected, onSelect, onUpdateEndpoint, wsZoom = 1 }: Props) {
+  // Freeform endpoint drag (must be before early return)
+  const handleEndpointDrag = useCallback((which: "start" | "end", e: React.MouseEvent) => {
+    if (arrow.arrowMode !== "freeform" || !onUpdateEndpoint) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const startMX = e.clientX;
+    const startMY = e.clientY;
+    const origX = which === "start" ? arrow.x1 : arrow.x2;
+    const origY = which === "start" ? arrow.y1 : arrow.y2;
+
+    const handleMove = (ev: MouseEvent) => {
+      const dx = (ev.clientX - startMX) / wsZoom;
+      const dy = (ev.clientY - startMY) / wsZoom;
+      const updates: Partial<Arrow> = which === "start"
+        ? { x1: origX + dx, y1: origY + dy }
+        : { x2: origX + dx, y2: origY + dy };
+      onUpdateEndpoint(arrow.id, updates);
+    };
+
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  }, [arrow, onUpdateEndpoint, wsZoom]);
+
   // Determine start/end points
   let p1: { x: number; y: number } | null;
   let p2: { x: number; y: number } | null;
