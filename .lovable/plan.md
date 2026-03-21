@@ -1,53 +1,52 @@
 
 
-## Adicionar Ferramentas de Mapa Mental ao Workspace do Estúdio Criativo
-
-Transformar o workspace em um espaço híbrido de mapa mental + criativos, com setas de conexão, notas adesivas, textos livres e cores personalizáveis.
+## Melhorias no Estúdio Criativo: Redimensionamento, Z-Index, Setas Livres e UX
 
 ### O que será feito
 
-1. **Expandir o modelo de dados do workspace** (`useWorkspaceState.ts`)
-   - Adicionar tipos para novos elementos: `StickyNote` (nota adesiva com texto, cor, posição), `WorkspaceText` (texto livre com tamanho, cor, posição), `Arrow` (seta conectando dois elementos por ID ou posição livre)
-   - Union type `WorkspaceElement` que engloba artboards + notas + textos + setas
-   - CRUD para cada tipo de elemento (add/update/remove)
-   - Seleção unificada: qualquer elemento pode ser selecionado e mostrar propriedades no painel direito
+1. **Z-Index (profundidade) para todos os elementos**
+   - Adicionar campo `zIndex` em `StickyNote`, `WorkspaceText` e `Artboard`
+   - No `WorkspacePropertiesPanel`, adicionar botões "Trazer para frente" / "Enviar para trás" para o elemento selecionado
+   - No `WorkspaceGrid`, aplicar `style.zIndex` em cada elemento
+   - Atalho: também adicionar botões no header ou context actions
 
-2. **Renderizar novos elementos no WorkspaceGrid** (`WorkspaceGrid.tsx`)
-   - `StickyNoteCard`: retângulo colorido com texto editável (inline), redimensionável, arrastável
-   - `WorkspaceTextNode`: texto livre posicionado no canvas, com fonte/tamanho/cor configuráveis
-   - `ArrowConnector`: SVG `<line>` ou `<path>` entre dois pontos/elementos, com opções de estilo (seta simples, bidirecional, tracejada), cor configurável
-   - Todos os elementos seguem o mesmo sistema de pan/zoom dos artboards
+2. **Redimensionamento visual de notas (handles de resize)**
+   - No `StickyNoteCard`, adicionar um handle no canto inferior-direito (drag para redimensionar)
+   - Ao arrastar o handle, atualizar `width` e `height` no estado
+   - Manter os inputs numéricos no painel de propriedades como alternativa
 
-3. **Toolbar no header do workspace** (`StudioHeader.tsx`)
-   - Adicionar botões ao lado do "Novo Artboard": "Nova Nota", "Texto", "Seta"
-   - Para setas: modo de criação onde o usuário clica em elemento de origem e depois no destino
-   - Dropdown de cores rápidas para o elemento selecionado
+3. **Setas livres (freeform arrows)**
+   - Mudar o modelo de `Arrow` para suportar dois modos: `connected` (fromId/toId, como hoje) e `freeform` (pontos x1,y1 → x2,y2 posicionados livremente)
+   - Adicionar campos opcionais `x1, y1, x2, y2` ao tipo `Arrow`
+   - Modo de criação freeform: o usuário clica em um ponto vazio do workspace para definir o início, depois clica em outro ponto para o fim
+   - Setas freeform podem ser arrastadas pelas extremidades (dois handles nos pontos de início e fim)
+   - Manter o modo connected existente como opção (clique em dois elementos)
+   - No header, split do botão Seta em duas opções: "Conectar elementos" e "Seta livre"
 
-4. **Painel de propriedades expandido** (`WorkspacePropertiesPanel.tsx`)
-   - Quando nota selecionada: editar texto, cor de fundo (palette de cores), tamanho
-   - Quando texto selecionado: editar conteúdo, fonte size, cor, negrito/itálico
-   - Quando seta selecionada: estilo (sólida/tracejada), cor, direcional/bidirecional
-   - Manter propriedades de artboard como já existe
+4. **Setas curvas (melhoria visual)**
+   - Adicionar estilo `curved` além de `solid` e `dashed`
+   - Renderizar com `<path>` SVG usando curva quadrática em vez de `<line>`, dando visual mais orgânico
 
-5. **Drag para mover elementos** (`WorkspaceGrid.tsx`)
-   - Click+drag em qualquer elemento (nota, texto, artboard) para reposicionar no workspace
-   - Setas conectadas a elementos acompanham automaticamente a posição
-
-### Novos arquivos
-- `src/components/creative-studio/StickyNoteCard.tsx`
-- `src/components/creative-studio/WorkspaceTextNode.tsx`
-- `src/components/creative-studio/ArrowConnector.tsx`
+5. **Melhorias de UX adicionais**
+   - **Duplicar elemento**: botão no painel de propriedades e atalho Ctrl+D
+   - **Snap to grid**: opção toggle no header para alinhar elementos à grade de 40px
+   - **Minimap**: pequeno retângulo no canto inferior-direito mostrando a visão geral do workspace com indicador de viewport
+   - **Seleção múltipla**: Shift+click para selecionar vários elementos e mover em grupo
+   - **Delete com tecla**: pressionar Delete/Backspace remove o elemento selecionado
 
 ### Arquivos editados
-- `useWorkspaceState.ts` — novos tipos e CRUD
-- `WorkspaceGrid.tsx` — renderizar novos elementos + drag
-- `StudioHeader.tsx` — botões de ferramentas
-- `WorkspacePropertiesPanel.tsx` — propriedades contextuais
-- `CreativeStudioPage.tsx` — passar novos handlers
+- `useWorkspaceState.ts` — zIndex, freeform arrow fields, duplicate, keyboard delete
+- `StickyNoteCard.tsx` — resize handles
+- `ArrowConnector.tsx` — freeform mode, curved style, draggable endpoints
+- `WorkspaceGrid.tsx` — zIndex rendering, keyboard events, shift-select
+- `WorkspacePropertiesPanel.tsx` — z-index controls, freeform arrow props
+- `StudioHeader.tsx` — split arrow tool, snap toggle, duplicate button
 
 ### Detalhes técnicos
-- Setas renderizadas via SVG overlay no workspace (mesma camada de transform)
-- Conexões armazenam `fromId`/`toId` e calculam posição central dos elementos para desenhar a seta
-- Cores: palette pré-definida (amarelo, rosa, azul, verde, roxo, laranja) + input hex livre
-- Drag implementado com mousedown/mousemove no elemento, atualiza x/y no estado
+
+- **Z-index**: Mantido como número simples (0-999). "Trazer frente" pega o maior zIndex de todos elementos + 1. "Enviar trás" pega o menor - 1.
+- **Resize handle**: Um `<div>` de 8x8px no corner SE do StickyNote com `cursor: nwse-resize`, usando `mousedown` + `mousemove` global.
+- **Freeform arrows**: Quando `fromId` e `toId` são null, usam `x1,y1,x2,y2` direto. O `ArrowConnector` verifica qual modo usar. Endpoints arrastáveis via pequenos círculos SVG clicáveis.
+- **Curved arrows**: `<path d="M x1,y1 Q cx,cy x2,y2">` onde o control point é calculado como ponto médio deslocado perpendicularmente à linha.
+- **Keyboard**: `useEffect` com `keydown` listener no `WorkspaceGrid` para Delete e Ctrl+D.
 
