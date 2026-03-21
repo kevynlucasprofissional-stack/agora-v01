@@ -9,10 +9,11 @@ type Props = {
   onUpdate: (id: string, updates: Partial<WorkspaceText>) => void;
   onDragStart: (id: string, e: React.MouseEvent) => void;
   onArrowClick: (id: string) => void;
+  zIndex?: number;
 };
 
 export const WorkspaceTextNode = memo(function WorkspaceTextNode({
-  node, isSelected, isArrowTarget, onSelect, onUpdate, onDragStart, onArrowClick,
+  node, isSelected, isArrowTarget, onSelect, onUpdate, onDragStart, onArrowClick, zIndex,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +29,7 @@ export const WorkspaceTextNode = memo(function WorkspaceTextNode({
       className={`absolute cursor-grab active:cursor-grabbing select-none ${
         isArrowTarget ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded" : ""
       }`}
-      style={{ left: node.x, top: node.y }}
+      style={{ left: node.x, top: node.y, zIndex: zIndex ?? node.zIndex }}
       onClick={(e) => { e.stopPropagation(); onSelect(); onArrowClick(node.id); }}
       onDoubleClick={handleDoubleClick}
       onMouseDown={(e) => { if (e.button === 0 && !e.altKey && !editing) { e.stopPropagation(); onDragStart(node.id, e); } }}
