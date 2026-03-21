@@ -84,8 +84,6 @@ export const ArrowConnector = memo(function ArrowConnector({ arrow, from, to, is
     pathD = `M ${lx1},${ly1} Q ${cx},${cy} ${lx2},${ly2}`;
   }
 
-  // Freeform endpoint drag
-  const handleEndpointDrag = useCallback((which: "start" | "end", e: React.MouseEvent) => {
     if (arrow.arrowMode !== "freeform" || !onUpdateEndpoint) return;
     e.stopPropagation();
     e.preventDefault();
