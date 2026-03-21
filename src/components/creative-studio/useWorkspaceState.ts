@@ -2,8 +2,9 @@ import { useCallback, useState, useRef } from "react";
 import type { CanvasFormat } from "./useCanvasState";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
-export type ArrowStyle = "solid" | "dashed";
+export type ArrowStyle = "solid" | "dashed" | "curved";
 export type ArrowDirection = "one-way" | "two-way";
+export type ArrowMode = "connected" | "freeform";
 
 export interface Artboard {
   id: string;
@@ -11,6 +12,7 @@ export interface Artboard {
   name: string;
   x: number;
   y: number;
+  zIndex: number;
   format: CanvasFormat;
   layersState: any | null;
   thumbnail: string | null;
@@ -23,6 +25,7 @@ export interface StickyNote {
   y: number;
   width: number;
   height: number;
+  zIndex: number;
   text: string;
   color: NoteColor;
 }
@@ -32,6 +35,7 @@ export interface WorkspaceText {
   type: "text";
   x: number;
   y: number;
+  zIndex: number;
   text: string;
   fontSize: number;
   color: string;
@@ -42,8 +46,15 @@ export interface WorkspaceText {
 export interface Arrow {
   id: string;
   type: "arrow";
-  fromId: string;
-  toId: string;
+  arrowMode: ArrowMode;
+  // Connected mode
+  fromId: string | null;
+  toId: string | null;
+  // Freeform mode
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
   color: string;
   style: ArrowStyle;
   direction: ArrowDirection;
@@ -75,10 +86,25 @@ export function useWorkspaceState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [wsZoom, setWsZoom] = useState(1);
-  const [arrowMode, setArrowMode] = useState(false);
+  const [arrowToolMode, setArrowToolMode] = useState<"connected" | "freeform" | null>(null);
   const [arrowFromId, setArrowFromId] = useState<string | null>(null);
+  const [freeformStart, setFreeformStart] = useState<{ x: number; y: number } | null>(null);
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  const nextZIndex = useCallback(() => {
+    const maxZ = elements.reduce((m, e) => {
+      const z = (e as any).zIndex ?? 0;
+      return z > m ? z : m;
+    }, 0);
+    return maxZ + 1;
+  }, [elements]);
+
+  const snapValue = useCallback((v: number) => {
+    if (!snapToGrid) return v;
+    return Math.round(v / 40) * 40;
+  }, [snapToGrid]);
 
   // Derived lists
   const artboards = elements.filter((e): e is Artboard => e.type === "artboard");
@@ -98,73 +124,79 @@ export function useWorkspaceState() {
     const y = row * (dims.h * THUMB_SCALE + spacing + 40) + 60;
 
     const artboard: Artboard = {
-      id,
-      type: "artboard",
+      id, type: "artboard",
       name: name || `Artboard ${count + 1}`,
-      x,
-      y,
-      format,
-      layersState: null,
-      thumbnail: null,
+      x, y, zIndex: nextZIndex(),
+      format, layersState: null, thumbnail: null,
     };
     setElements((prev) => [...prev, artboard]);
     setSelectedId(id);
     return id;
-  }, [elements]);
+  }, [elements, nextZIndex]);
 
   // ---- StickyNote CRUD ----
   const addStickyNote = useCallback((color: NoteColor = "yellow") => {
     const id = crypto.randomUUID();
     const note: StickyNote = {
-      id,
-      type: "sticky-note",
+      id, type: "sticky-note",
       x: -pan.x / wsZoom + 200,
       y: -pan.y / wsZoom + 200,
-      width: 200,
-      height: 160,
-      text: "",
-      color,
+      width: 200, height: 160,
+      zIndex: nextZIndex(),
+      text: "", color,
     };
     setElements((prev) => [...prev, note]);
     setSelectedId(id);
     return id;
-  }, [pan, wsZoom]);
+  }, [pan, wsZoom, nextZIndex]);
 
   // ---- Text CRUD ----
   const addText = useCallback(() => {
     const id = crypto.randomUUID();
     const text: WorkspaceText = {
-      id,
-      type: "text",
+      id, type: "text",
       x: -pan.x / wsZoom + 200,
       y: -pan.y / wsZoom + 200,
-      text: "Texto",
-      fontSize: 16,
+      zIndex: nextZIndex(),
+      text: "Texto", fontSize: 16,
       color: "hsl(var(--foreground))",
-      bold: false,
-      italic: false,
+      bold: false, italic: false,
     };
     setElements((prev) => [...prev, text]);
     setSelectedId(id);
     return id;
-  }, [pan, wsZoom]);
+  }, [pan, wsZoom, nextZIndex]);
 
   // ---- Arrow CRUD ----
-  const addArrow = useCallback((fromId: string, toId: string) => {
+  const addConnectedArrow = useCallback((fromId: string, toId: string) => {
     const id = crypto.randomUUID();
     const arrow: Arrow = {
-      id,
-      type: "arrow",
-      fromId,
-      toId,
+      id, type: "arrow", arrowMode: "connected",
+      fromId, toId,
+      x1: 0, y1: 0, x2: 0, y2: 0,
       color: "hsl(var(--foreground) / 0.5)",
-      style: "solid",
-      direction: "one-way",
+      style: "solid", direction: "one-way",
     };
     setElements((prev) => [...prev, arrow]);
     setSelectedId(id);
-    setArrowMode(false);
+    setArrowToolMode(null);
     setArrowFromId(null);
+    return id;
+  }, []);
+
+  const addFreeformArrow = useCallback((x1: number, y1: number, x2: number, y2: number) => {
+    const id = crypto.randomUUID();
+    const arrow: Arrow = {
+      id, type: "arrow", arrowMode: "freeform",
+      fromId: null, toId: null,
+      x1, y1, x2, y2,
+      color: "hsl(var(--foreground) / 0.5)",
+      style: "solid", direction: "one-way",
+    };
+    setElements((prev) => [...prev, arrow]);
+    setSelectedId(id);
+    setArrowToolMode(null);
+    setFreeformStart(null);
     return id;
   }, []);
 
@@ -181,7 +213,28 @@ export function useWorkspaceState() {
     );
   }, []);
 
-  // Legacy compatibility aliases
+  // ---- Z-Index ----
+  const bringToFront = useCallback((id: string) => {
+    const maxZ = elements.reduce((m, e) => Math.max(m, (e as any).zIndex ?? 0), 0);
+    updateElement(id, { zIndex: maxZ + 1 });
+  }, [elements, updateElement]);
+
+  const sendToBack = useCallback((id: string) => {
+    const minZ = elements.reduce((m, e) => Math.min(m, (e as any).zIndex ?? 0), 0);
+    updateElement(id, { zIndex: minZ - 1 });
+  }, [elements, updateElement]);
+
+  // ---- Duplicate ----
+  const duplicateElement = useCallback((id: string) => {
+    const el = elements.find((e) => e.id === id);
+    if (!el || el.type === "arrow") return;
+    const newId = crypto.randomUUID();
+    const clone = { ...el, id: newId, x: (el as any).x + 30, y: (el as any).y + 30, zIndex: nextZIndex() };
+    setElements((prev) => [...prev, clone as WorkspaceElement]);
+    setSelectedId(newId);
+  }, [elements, nextZIndex]);
+
+  // Legacy compatibility
   const updateArtboard = updateElement;
   const removeArtboard = removeElement;
 
@@ -208,17 +261,27 @@ export function useWorkspaceState() {
 
   // Arrow mode handlers
   const handleArrowClick = useCallback((elementId: string) => {
-    if (!arrowMode) return;
+    if (arrowToolMode !== "connected") return;
     if (!arrowFromId) {
       setArrowFromId(elementId);
     } else if (elementId !== arrowFromId) {
-      addArrow(arrowFromId, elementId);
+      addConnectedArrow(arrowFromId, elementId);
     }
-  }, [arrowMode, arrowFromId, addArrow]);
+  }, [arrowToolMode, arrowFromId, addConnectedArrow]);
+
+  const handleFreeformClick = useCallback((worldX: number, worldY: number) => {
+    if (arrowToolMode !== "freeform") return;
+    if (!freeformStart) {
+      setFreeformStart({ x: worldX, y: worldY });
+    } else {
+      addFreeformArrow(freeformStart.x, freeformStart.y, worldX, worldY);
+    }
+  }, [arrowToolMode, freeformStart, addFreeformArrow]);
 
   const cancelArrowMode = useCallback(() => {
-    setArrowMode(false);
+    setArrowToolMode(null);
     setArrowFromId(null);
+    setFreeformStart(null);
   }, []);
 
   // Pan handlers
@@ -267,17 +330,26 @@ export function useWorkspaceState() {
     addArtboard,
     addStickyNote,
     addText,
-    addArrow,
+    addConnectedArrow,
+    addFreeformArrow,
     removeElement,
     updateElement,
     updateArtboard,
     removeArtboard,
     getElementCenter,
-    arrowMode,
-    setArrowMode,
+    bringToFront,
+    sendToBack,
+    duplicateElement,
+    arrowToolMode,
+    setArrowToolMode,
     arrowFromId,
+    freeformStart,
     handleArrowClick,
+    handleFreeformClick,
     cancelArrowMode,
+    snapToGrid,
+    setSnapToGrid,
+    snapValue,
     pan,
     setPan,
     wsZoom,

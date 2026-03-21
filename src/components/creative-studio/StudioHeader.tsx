@@ -1,4 +1,4 @@
-import { Undo2, Redo2, Download, ZoomIn, ZoomOut, Save, Loader2, Plus, ArrowLeft, StickyNote, Type, ArrowRight } from "lucide-react";
+import { Undo2, Redo2, Download, ZoomIn, ZoomOut, Save, Loader2, Plus, ArrowLeft, StickyNote, Type, ArrowRight, Link, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -6,6 +6,9 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import type { useCanvasState, CanvasFormat } from "./useCanvasState";
 import type { useWorkspaceState, NoteColor } from "./useWorkspaceState";
@@ -60,9 +63,7 @@ export function StudioHeader(props: Props) {
           <Slider
             value={[workspace.wsZoom * 100]}
             onValueChange={([v]) => workspace.setWsZoom(v / 100)}
-            min={20}
-            max={300}
-            step={5}
+            min={20} max={300} step={5}
             className="w-24"
           />
           <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
@@ -80,19 +81,11 @@ export function StudioHeader(props: Props) {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Novo Artboard</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Novo Artboard</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3 pt-2">
                 {Object.entries(FORMAT_LABELS).map(([k, label]) => (
-                  <Button
-                    key={k}
-                    variant="outline"
-                    className="h-auto py-3 flex flex-col gap-1"
-                    onClick={() => {
-                      workspace.addArtboard(k as CanvasFormat);
-                      setNewArtboardOpen(false);
-                    }}
+                  <Button key={k} variant="outline" className="h-auto py-3 flex flex-col gap-1"
+                    onClick={() => { workspace.addArtboard(k as CanvasFormat); setNewArtboardOpen(false); }}
                   >
                     <span className="text-xs font-medium">{label}</span>
                     <span className="text-[10px] text-muted-foreground">{k}</span>
@@ -110,19 +103,13 @@ export function StudioHeader(props: Props) {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-xs">
-              <DialogHeader>
-                <DialogTitle>Nova Nota</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Nova Nota</DialogTitle></DialogHeader>
               <div className="grid grid-cols-3 gap-2 pt-2">
                 {NOTE_COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c.value}
+                  <button key={c.value}
                     className="h-12 rounded-lg border border-border/50 hover:ring-2 hover:ring-primary transition-all duration-150 active:scale-95"
                     style={{ backgroundColor: c.bg }}
-                    onClick={() => {
-                      workspace.addStickyNote(c.value);
-                      setNoteColorOpen(false);
-                    }}
+                    onClick={() => { workspace.addStickyNote(c.value); setNoteColorOpen(false); }}
                     title={c.label}
                   />
                 ))}
@@ -131,29 +118,48 @@ export function StudioHeader(props: Props) {
           </Dialog>
 
           {/* New Text */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => workspace.addText()}
-          >
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => workspace.addText()}>
             <Type className="h-3.5 w-3.5" /> Texto
           </Button>
 
-          {/* Arrow tool */}
+          {/* Arrow tool dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={workspace.arrowToolMode ? "default" : "outline"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+              >
+                <ArrowRight className="h-3.5 w-3.5" /> Seta
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => {
+                if (workspace.arrowToolMode === "connected") { workspace.cancelArrowMode(); }
+                else { workspace.cancelArrowMode(); workspace.setArrowToolMode("connected"); }
+              }}>
+                <Link className="h-3.5 w-3.5 mr-2" /> Conectar elementos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                if (workspace.arrowToolMode === "freeform") { workspace.cancelArrowMode(); }
+                else { workspace.cancelArrowMode(); workspace.setArrowToolMode("freeform"); }
+              }}>
+                <ArrowRight className="h-3.5 w-3.5 mr-2" /> Seta livre
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          {/* Snap toggle */}
           <Button
-            variant={workspace.arrowMode ? "default" : "outline"}
+            variant={workspace.snapToGrid ? "default" : "outline"}
             size="sm"
             className="gap-1.5 h-8 text-xs"
-            onClick={() => {
-              if (workspace.arrowMode) {
-                workspace.cancelArrowMode();
-              } else {
-                workspace.setArrowMode(true);
-              }
-            }}
+            onClick={() => workspace.setSnapToGrid(!workspace.snapToGrid)}
+            title="Snap to grid"
           >
-            <ArrowRight className="h-3.5 w-3.5" /> Seta
+            <Grid3X3 className="h-3.5 w-3.5" />
           </Button>
         </div>
 
@@ -179,51 +185,33 @@ export function StudioHeader(props: Props) {
       <Button variant="ghost" size="sm" className="gap-1.5 h-8" onClick={onBack}>
         <ArrowLeft className="h-3.5 w-3.5" /> Workspace
       </Button>
-
       {artboardName && (
         <span className="text-xs text-muted-foreground truncate max-w-[120px]">{artboardName}</span>
       )}
-
       <Separator orientation="vertical" className="h-6" />
-
       <Select value={state.format} onValueChange={(v) => state.changeFormat(v as CanvasFormat)}>
-        <SelectTrigger className="w-[160px] h-8 text-xs">
-          <SelectValue />
-        </SelectTrigger>
+        <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           {Object.entries(FORMAT_LABELS).map(([k, label]) => (
             <SelectItem key={k} value={k}>{label}</SelectItem>
           ))}
         </SelectContent>
       </Select>
-
       <Separator orientation="vertical" className="h-6" />
-
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={state.undo} title="Desfazer (Ctrl+Z)">
         <Undo2 className="h-4 w-4" />
       </Button>
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={state.redo} title="Refazer (Ctrl+Shift+Z)">
         <Redo2 className="h-4 w-4" />
       </Button>
-
       <Separator orientation="vertical" className="h-6" />
-
       <div className="flex items-center gap-2">
         <ZoomOut className="h-3.5 w-3.5 text-muted-foreground" />
-        <Slider
-          value={[state.zoom * 100]}
-          onValueChange={([v]) => state.setZoom(v / 100)}
-          min={10}
-          max={150}
-          step={5}
-          className="w-24"
-        />
+        <Slider value={[state.zoom * 100]} onValueChange={([v]) => state.setZoom(v / 100)} min={10} max={150} step={5} className="w-24" />
         <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs text-muted-foreground w-10">{Math.round(state.zoom * 100)}%</span>
       </div>
-
       <div className="flex-1" />
-
       <Button variant="outline" size="sm" className="gap-2 h-8" onClick={onSave} disabled={saving}>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
         Salvar

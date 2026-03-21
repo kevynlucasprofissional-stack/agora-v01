@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import type { useWorkspaceState } from "./useWorkspaceState";
 import { ArtboardCard } from "./ArtboardCard";
 import { StickyNoteCard } from "./StickyNoteCard";
@@ -10,7 +10,8 @@ type Props = {
 };
 
 export function WorkspaceGrid({ workspace }: Props) {
-  const { pan, wsZoom, artboards, stickyNotes, texts, arrows, selectedId, arrowMode, arrowFromId } = workspace;
+  const { pan, wsZoom, artboards, stickyNotes, texts, arrows, selectedId, arrowToolMode, arrowFromId, freeformStart } = workspace;
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Drag state
   const dragRef = useRef<{ id: string; startX: number; startY: number; elX: number; elY: number } | null>(null);
@@ -25,10 +26,9 @@ export function WorkspaceGrid({ workspace }: Props) {
       if (!dragRef.current) return;
       const dx = (ev.clientX - dragRef.current.startX) / wsZoom;
       const dy = (ev.clientY - dragRef.current.startY) / wsZoom;
-      workspace.updateElement(dragRef.current.id, {
-        x: dragRef.current.elX + dx,
-        y: dragRef.current.elY + dy,
-      });
+      const newX = workspace.snapValue(dragRef.current.elX + dx);
+      const newY = workspace.snapValue(dragRef.current.elY + dy);
+      workspace.updateElement(dragRef.current.id, { x: newX, y: newY });
       forceUpdate((n) => n + 1);
     };
 
@@ -46,21 +46,62 @@ export function WorkspaceGrid({ workspace }: Props) {
     workspace.handleArrowClick(id);
   }, [workspace]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && workspace.selectedId) {
+        workspace.removeElement(workspace.selectedId);
+      }
+      if (e.key === "d" && (e.ctrlKey || e.metaKey) && workspace.selectedId) {
+        e.preventDefault();
+        workspace.duplicateElement(workspace.selectedId);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [workspace.selectedId, workspace.removeElement, workspace.duplicateElement]);
+
+  // Handle workspace click for freeform arrows
+  const handleWorkspaceClick = useCallback((e: React.MouseEvent) => {
+    if (arrowToolMode === "freeform") {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const worldX = (e.clientX - rect.left - pan.x) / wsZoom;
+      const worldY = (e.clientY - rect.top - pan.y) / wsZoom;
+      workspace.handleFreeformClick(worldX, worldY);
+      return;
+    }
+    workspace.setSelectedId(null);
+    if (arrowToolMode) workspace.cancelArrowMode();
+  }, [arrowToolMode, pan, wsZoom, workspace]);
+
+  // Sort non-arrow elements by zIndex for rendering
+  const nonArrowElements = workspace.elements
+    .filter((e) => e.type !== "arrow")
+    .sort((a, b) => ((a as any).zIndex ?? 0) - ((b as any).zIndex ?? 0));
+
   return (
     <div
+      ref={containerRef}
       className="flex-1 overflow-hidden relative select-none"
-      style={{ cursor: arrowMode ? "crosshair" : "grab" }}
+      style={{ cursor: arrowToolMode ? "crosshair" : "grab" }}
       onMouseDown={workspace.handlePanStart}
       onMouseMove={workspace.handlePanMove}
       onMouseUp={workspace.handlePanEnd}
       onMouseLeave={workspace.handlePanEnd}
       onWheel={workspace.handleWheel}
-      onClick={() => { workspace.setSelectedId(null); if (arrowMode) workspace.cancelArrowMode(); }}
+      onClick={handleWorkspaceClick}
+      tabIndex={0}
     >
       {/* Arrow mode indicator */}
-      {arrowMode && (
+      {arrowToolMode && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
-          {arrowFromId ? "Clique no elemento de destino" : "Clique no elemento de origem"}
+          {arrowToolMode === "connected"
+            ? (arrowFromId ? "Clique no elemento de destino" : "Clique no elemento de origem")
+            : (freeformStart ? "Clique no ponto final da seta" : "Clique no ponto inicial da seta")
+          }
           <button
             className="ml-2 underline opacity-80 hover:opacity-100"
             onClick={(e) => { e.stopPropagation(); workspace.cancelArrowMode(); }}
@@ -91,60 +132,76 @@ export function WorkspaceGrid({ workspace }: Props) {
           willChange: "transform",
         }}
       >
-        {/* Arrows first (behind other elements) */}
+        {/* Arrows (rendered first, behind) */}
         {arrows.map((arrow) => (
           <ArrowConnector
             key={arrow.id}
             arrow={arrow}
-            from={workspace.getElementCenter(arrow.fromId)}
-            to={workspace.getElementCenter(arrow.toId)}
+            from={arrow.arrowMode === "connected" && arrow.fromId ? workspace.getElementCenter(arrow.fromId) : null}
+            to={arrow.arrowMode === "connected" && arrow.toId ? workspace.getElementCenter(arrow.toId) : null}
             isSelected={selectedId === arrow.id}
             onSelect={() => workspace.setSelectedId(arrow.id)}
+            onUpdateEndpoint={workspace.updateElement}
+            wsZoom={wsZoom}
           />
         ))}
 
-        {/* Artboards */}
-        {artboards.map((ab) => (
-          <ArtboardCard
-            key={ab.id}
-            artboard={ab}
-            isSelected={selectedId === ab.id}
-            isArrowTarget={arrowMode && arrowFromId !== null && arrowFromId !== ab.id}
-            onSelect={() => workspace.setSelectedId(ab.id)}
-            onDoubleClick={() => workspace.setEditingId(ab.id)}
-            onDragStart={handleDragStart}
-            onArrowClick={handleArrowClick}
-          />
-        ))}
-
-        {/* Sticky Notes */}
-        {stickyNotes.map((note) => (
-          <StickyNoteCard
-            key={note.id}
-            note={note}
-            isSelected={selectedId === note.id}
-            isArrowTarget={arrowMode && arrowFromId !== null && arrowFromId !== note.id}
-            onSelect={() => workspace.setSelectedId(note.id)}
-            onUpdate={workspace.updateElement}
-            onDragStart={handleDragStart}
-            onArrowClick={handleArrowClick}
-          />
-        ))}
-
-        {/* Texts */}
-        {texts.map((node) => (
-          <WorkspaceTextNode
-            key={node.id}
-            node={node}
-            isSelected={selectedId === node.id}
-            isArrowTarget={arrowMode && arrowFromId !== null && arrowFromId !== node.id}
-            onSelect={() => workspace.setSelectedId(node.id)}
-            onUpdate={workspace.updateElement}
-            onDragStart={handleDragStart}
-            onArrowClick={handleArrowClick}
-          />
-        ))}
+        {/* All non-arrow elements sorted by zIndex */}
+        {nonArrowElements.map((el) => {
+          if (el.type === "artboard") {
+            const ab = el as any;
+            return (
+              <ArtboardCard
+                key={ab.id}
+                artboard={ab}
+                isSelected={selectedId === ab.id}
+                isArrowTarget={arrowToolMode === "connected" && arrowFromId !== null && arrowFromId !== ab.id}
+                onSelect={() => workspace.setSelectedId(ab.id)}
+                onDoubleClick={() => workspace.setEditingId(ab.id)}
+                onDragStart={handleDragStart}
+                onArrowClick={handleArrowClick}
+                zIndex={ab.zIndex}
+              />
+            );
+          }
+          if (el.type === "sticky-note") {
+            const note = el as any;
+            return (
+              <StickyNoteCard
+                key={note.id}
+                note={note}
+                isSelected={selectedId === note.id}
+                isArrowTarget={arrowToolMode === "connected" && arrowFromId !== null && arrowFromId !== note.id}
+                onSelect={() => workspace.setSelectedId(note.id)}
+                onUpdate={workspace.updateElement}
+                onDragStart={handleDragStart}
+                onArrowClick={handleArrowClick}
+                wsZoom={wsZoom}
+              />
+            );
+          }
+          if (el.type === "text") {
+            const node = el as any;
+            return (
+              <WorkspaceTextNode
+                key={node.id}
+                node={node}
+                isSelected={selectedId === node.id}
+                isArrowTarget={arrowToolMode === "connected" && arrowFromId !== null && arrowFromId !== node.id}
+                onSelect={() => workspace.setSelectedId(node.id)}
+                onUpdate={workspace.updateElement}
+                onDragStart={handleDragStart}
+                onArrowClick={handleArrowClick}
+                zIndex={node.zIndex}
+              />
+            );
+          }
+          return null;
+        })}
       </div>
+
+      {/* Minimap */}
+      <Minimap workspace={workspace} containerRef={containerRef} />
 
       {/* Empty state */}
       {workspace.elements.length === 0 && (
@@ -157,6 +214,65 @@ export function WorkspaceGrid({ workspace }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---- Minimap ----
+function Minimap({ workspace, containerRef }: { workspace: ReturnType<typeof useWorkspaceState>; containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const els = workspace.elements.filter((e) => e.type !== "arrow");
+  if (els.length === 0) return null;
+
+  const mmW = 140;
+  const mmH = 100;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  els.forEach((e) => {
+    const ex = (e as any).x ?? 0;
+    const ey = (e as any).y ?? 0;
+    const ew = (e as any).width ?? 200;
+    const eh = (e as any).height ?? 160;
+    if (ex < minX) minX = ex;
+    if (ey < minY) minY = ey;
+    if (ex + ew > maxX) maxX = ex + ew;
+    if (ey + eh > maxY) maxY = ey + eh;
+  });
+
+  const worldW = Math.max(maxX - minX, 100);
+  const worldH = Math.max(maxY - minY, 100);
+  const scale = Math.min(mmW / worldW, mmH / worldH) * 0.8;
+
+  const rect = containerRef.current?.getBoundingClientRect();
+  const vpW = rect ? rect.width / workspace.wsZoom : 800;
+  const vpH = rect ? rect.height / workspace.wsZoom : 600;
+  const vpX = (-workspace.pan.x / workspace.wsZoom - minX) * scale;
+  const vpY = (-workspace.pan.y / workspace.wsZoom - minY) * scale;
+
+  return (
+    <div className="absolute bottom-3 right-3 z-20 rounded-lg border border-border bg-card/80 backdrop-blur-sm p-1.5 pointer-events-none"
+      style={{ width: mmW, height: mmH }}
+    >
+      <svg width="100%" height="100%" viewBox={`0 0 ${mmW} ${mmH}`}>
+        {els.map((e) => {
+          const ex = ((e as any).x - minX) * scale;
+          const ey = ((e as any).y - minY) * scale;
+          const ew = Math.max(((e as any).width ?? 200) * scale, 3);
+          const eh = Math.max(((e as any).height ?? 160) * scale, 3);
+          const fill = e.type === "artboard" ? "hsl(var(--primary) / 0.4)"
+            : e.type === "sticky-note" ? "hsl(48, 96%, 70%)"
+            : "hsl(var(--foreground) / 0.3)";
+          return <rect key={e.id} x={ex} y={ey} width={ew} height={eh} fill={fill} rx={1} />;
+        })}
+        <rect
+          x={vpX} y={vpY}
+          width={vpW * scale} height={vpH * scale}
+          fill="none"
+          stroke="hsl(var(--primary))"
+          strokeWidth={1.5}
+          rx={1}
+          opacity={0.6}
+        />
+      </svg>
     </div>
   );
 }

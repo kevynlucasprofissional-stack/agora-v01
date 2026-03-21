@@ -18,10 +18,11 @@ type Props = {
   onDoubleClick: () => void;
   onDragStart: (id: string, e: React.MouseEvent) => void;
   onArrowClick: (id: string) => void;
+  zIndex?: number;
 };
 
 export const ArtboardCard = memo(function ArtboardCard({
-  artboard, isSelected, isArrowTarget, onSelect, onDoubleClick, onDragStart, onArrowClick,
+  artboard, isSelected, isArrowTarget, onSelect, onDoubleClick, onDragStart, onArrowClick, zIndex,
 }: Props) {
   const dims = FORMAT_DIMS[artboard.format] || { w: 1080, h: 1080 };
   const w = dims.w * THUMB_SCALE;
@@ -32,12 +33,11 @@ export const ArtboardCard = memo(function ArtboardCard({
       className={`absolute group cursor-grab active:cursor-grabbing ${
         isArrowTarget ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg" : ""
       }`}
-      style={{ left: artboard.x, top: artboard.y }}
+      style={{ left: artboard.x, top: artboard.y, zIndex: zIndex ?? artboard.zIndex }}
       onClick={(e) => { e.stopPropagation(); onSelect(); onArrowClick(artboard.id); }}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
       onMouseDown={(e) => { if (e.button === 0 && !e.altKey) { e.stopPropagation(); onDragStart(artboard.id, e); } }}
     >
-      {/* Label */}
       <div className="mb-1.5 flex items-center gap-1.5">
         <span className="text-[11px] font-medium text-foreground/70 truncate max-w-[160px]">
           {artboard.name}
@@ -47,7 +47,6 @@ export const ArtboardCard = memo(function ArtboardCard({
         </span>
       </div>
 
-      {/* Card */}
       <div
         className={`rounded-lg overflow-hidden transition-shadow duration-200 ${
           isSelected
@@ -57,12 +56,7 @@ export const ArtboardCard = memo(function ArtboardCard({
         style={{ width: w, height: h }}
       >
         {artboard.thumbnail ? (
-          <img
-            src={artboard.thumbnail}
-            alt={artboard.name}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
+          <img src={artboard.thumbnail} alt={artboard.name} className="w-full h-full object-cover" draggable={false} />
         ) : (
           <div className="w-full h-full bg-white flex items-center justify-center">
             <span className="text-[10px] text-muted-foreground/40">Vazio</span>

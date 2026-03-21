@@ -22,45 +22,28 @@ export default function CreativeStudioPage() {
   const [saving, setSaving] = useState(false);
   const [jobLoaded, setJobLoaded] = useState(false);
 
-  // When entering editor mode, load artboard's layersState into canvas
   useEffect(() => {
     if (!workspace.editingId || !canvasState.canvasReady) return;
     const ab = workspace.editingArtboard;
     if (!ab) return;
-
-    if (ab.format !== canvasState.format) {
-      canvasState.changeFormat(ab.format);
-    }
-
-    if (ab.layersState && ab.layersState.objects?.length > 0) {
-      canvasState.loadJSON(ab.layersState);
-    }
+    if (ab.format !== canvasState.format) canvasState.changeFormat(ab.format);
+    if (ab.layersState && ab.layersState.objects?.length > 0) canvasState.loadJSON(ab.layersState);
   }, [workspace.editingId, canvasState.canvasReady]);
 
-  // Load creative_job data when jobId is present (legacy flow)
   useEffect(() => {
     if (!jobId || jobLoaded) return;
-
     const loadJob = async () => {
       const { data: job } = await supabase
         .from("creative_jobs")
         .select("image_url, strategist_output, layers_state, format")
-        .eq("id", jobId)
-        .single();
-
+        .eq("id", jobId).single();
       if (!job) return;
       setJobLoaded(true);
-
       const format = (job.format as any) || "1080x1080";
       const id = workspace.addArtboard(format, "Criativo importado");
-
-      if (job.layers_state) {
-        workspace.updateArtboard(id, { layersState: job.layers_state });
-      }
-
+      if (job.layers_state) workspace.updateArtboard(id, { layersState: job.layers_state });
       workspace.setEditingId(id);
     };
-
     loadJob();
   }, [jobId, jobLoaded]);
 
@@ -69,9 +52,7 @@ export default function CreativeStudioPage() {
       const json = canvasState.getJSON();
       const thumb = canvasState.exportPNG();
       workspace.updateArtboard(workspace.editingId, {
-        layersState: json,
-        thumbnail: thumb || null,
-        format: canvasState.format,
+        layersState: json, thumbnail: thumb || null, format: canvasState.format,
       });
     }
     workspace.setEditingId(null);
@@ -80,23 +61,17 @@ export default function CreativeStudioPage() {
   const handleSave = useCallback(async () => {
     const json = canvasState.getJSON();
     if (!json) return;
-
     setSaving(true);
     try {
       if (jobId) {
-        const { error } = await supabase
-          .from("creative_jobs")
-          .update({ layers_state: json as any })
-          .eq("id", jobId);
+        const { error } = await supabase.from("creative_jobs")
+          .update({ layers_state: json as any }).eq("id", jobId);
         if (error) throw error;
         toast.success("Salvo com sucesso!");
       } else {
         if (workspace.editingId) {
           const thumb = canvasState.exportPNG();
-          workspace.updateArtboard(workspace.editingId, {
-            layersState: json,
-            thumbnail: thumb || null,
-          });
+          workspace.updateArtboard(workspace.editingId, { layersState: json, thumbnail: thumb || null });
         }
         toast.success("Artboard salvo!");
       }
@@ -107,18 +82,11 @@ export default function CreativeStudioPage() {
     }
   }, [canvasState, jobId, workspace]);
 
-  // Editor mode
   if (workspace.editingId) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
-        <StudioHeader
-          mode="editor"
-          state={canvasState}
-          onSave={handleSave}
-          saving={saving}
-          onBack={handleBackToWorkspace}
-          artboardName={workspace.editingArtboard?.name}
-        />
+        <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
+          onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} />
         <div className="flex flex-1 overflow-hidden">
           <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} />
           <FabricCanvas state={canvasState} />
@@ -128,7 +96,6 @@ export default function CreativeStudioPage() {
     );
   }
 
-  // Workspace mode
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)]">
       <StudioHeader mode="workspace" workspace={workspace} />
@@ -139,6 +106,9 @@ export default function CreativeStudioPage() {
           onUpdate={workspace.updateElement}
           onRemove={workspace.removeElement}
           onEdit={(id) => workspace.setEditingId(id)}
+          onBringToFront={workspace.bringToFront}
+          onSendToBack={workspace.sendToBack}
+          onDuplicate={workspace.duplicateElement}
         />
       </div>
     </div>
