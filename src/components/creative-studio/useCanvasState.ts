@@ -274,6 +274,7 @@ export function useCanvasState() {
     addImage,
     setBackgroundImage,
     exportPNG,
+    exportThumbnail,
     getJSON,
     loadJSON,
     updateSelectedObject,

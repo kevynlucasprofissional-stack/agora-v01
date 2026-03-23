@@ -25,8 +25,13 @@ export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    state.addImage(url);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        state.addImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAIGenerate = async () => {
