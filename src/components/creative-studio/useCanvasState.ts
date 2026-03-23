@@ -105,6 +105,8 @@ export function useCanvasState() {
         redo();
       }
       if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const active = canvas.getActiveObject();
