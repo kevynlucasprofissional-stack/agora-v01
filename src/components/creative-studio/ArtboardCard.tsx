@@ -48,7 +48,7 @@ export const ArtboardCard = memo(function ArtboardCard({
       </div>
 
       <div
-        className={`rounded-lg overflow-hidden transition-shadow duration-200 ${
+        className={`rounded-lg overflow-hidden transition-shadow duration-200 relative ${
           isSelected
             ? "ring-2 ring-primary shadow-lg shadow-primary/20"
             : "ring-1 ring-border/50 shadow-md hover:shadow-lg hover:ring-border"
