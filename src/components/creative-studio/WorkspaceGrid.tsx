@@ -49,7 +49,7 @@ export function WorkspaceGrid({ workspace }: Props) {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
+      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
 
       if ((e.key === "Delete" || e.key === "Backspace") && workspace.selectedId) {
         workspace.removeElement(workspace.selectedId);

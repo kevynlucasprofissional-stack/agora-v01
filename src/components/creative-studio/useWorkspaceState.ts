@@ -90,8 +90,20 @@ export function useWorkspaceState() {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [wsZoom, setWsZoom] = useState(1);
+  const [pan, setPan] = useState(() => {
+    try {
+      const saved = localStorage.getItem("agora-workspace-view");
+      if (saved) { const v = JSON.parse(saved); return { x: v.panX ?? 0, y: v.panY ?? 0 }; }
+    } catch {}
+    return { x: 0, y: 0 };
+  });
+  const [wsZoom, setWsZoom] = useState(() => {
+    try {
+      const saved = localStorage.getItem("agora-workspace-view");
+      if (saved) { const v = JSON.parse(saved); return v.zoom ?? 1; }
+    } catch {}
+    return 1;
+  });
   const [arrowToolMode, setArrowToolMode] = useState<"connected" | "freeform" | null>(null);
   const [arrowFromId, setArrowFromId] = useState<string | null>(null);
   const [freeformStart, setFreeformStart] = useState<{ x: number; y: number } | null>(null);

@@ -96,11 +96,16 @@ export function useCanvasState() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        if (isInput) return;
         e.preventDefault();
         undo();
       }
       if ((e.ctrlKey || e.metaKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        if (isInput) return;
         e.preventDefault();
         redo();
       }
