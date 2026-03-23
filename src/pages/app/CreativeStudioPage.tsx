@@ -39,12 +39,13 @@ export default function CreativeStudioPage() {
 
   useEffect(() => {
     if (!jobId || jobLoaded) return;
+    setJobLoading(true);
     const loadJob = async () => {
       const { data: job } = await supabase
         .from("creative_jobs")
         .select("image_url, strategist_output, layers_state, format")
         .eq("id", jobId).single();
-      if (!job) return;
+      if (!job) { setJobLoading(false); return; }
       setJobLoaded(true);
       const fmt = (job.format as any) || "1080x1080";
       const hasLayers = job.layers_state && typeof job.layers_state === "object" && 
@@ -53,10 +54,10 @@ export default function CreativeStudioPage() {
       if (hasLayers) {
         workspace.updateArtboard(id, { layersState: job.layers_state });
       } else {
-        // Store job data to apply image + text layers after canvas init
         pendingJobRef.current = { image_url: job.image_url, strategist_output: job.strategist_output };
       }
       workspace.setEditingId(id);
+      setJobLoading(false);
     };
     loadJob();
   }, [jobId, jobLoaded]);
