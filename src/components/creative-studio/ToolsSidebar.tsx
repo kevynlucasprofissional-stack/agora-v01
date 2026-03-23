@@ -32,6 +32,7 @@ export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
       }
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleAIGenerate = async () => {

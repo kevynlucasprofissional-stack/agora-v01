@@ -175,7 +175,8 @@ export function StudioHeader(props: Props) {
     const dataUrl = state.exportPNG();
     if (!dataUrl) return;
     const link = document.createElement("a");
-    link.download = `criativo-${state.format}.png`;
+    const safeName = artboardName?.replace(/[^a-zA-Z0-9_-]/g, "_") || "criativo";
+    link.download = `${safeName}-${state.format}.png`;
     link.href = dataUrl;
     link.click();
   };
