@@ -14,7 +14,7 @@ import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; image_url?: string | null; expires_at?: string | null };
 
 const agentOrder: AgentKind[] = ["master_orchestrator", "sociobehavioral", "offer_engineer", "performance_scientist", "chief_strategist"];
 const agentIcons: Record<AgentKind, React.ElementType> = {
@@ -172,14 +172,19 @@ export default function NewAnalysisPage() {
 
       supabase
         .from("chat_messages")
-        .select("role, content")
+        .select("role, content, image_url, expires_at")
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true })
         .then(({ data }) => {
           if (data && data.length > 0) {
-            const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+            const restored = data.map((m: any) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              image_url: m.image_url || null,
+              expires_at: m.expires_at || null,
+            }));
             setMessages(restored);
-            if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
+            if (restored.some((m: any) => m.role === "assistant" && m.content.includes("##READY##"))) {
               setIsReady(true);
             }
           }
@@ -235,8 +240,20 @@ export default function NewAnalysisPage() {
   }, [conversationId, user, setSearchParams]);
 
   // Helper: persist a message to DB
-  const persistMessage = useCallback(async (convId: string, role: string, content: string) => {
-    await supabase.from("chat_messages").insert({ conversation_id: convId, role, content });
+  const persistMessage = useCallback(async (
+    convId: string,
+    role: string,
+    content: string,
+    imageUrl?: string | null,
+    expiresAt?: string | null
+  ) => {
+    await supabase.from("chat_messages").insert({
+      conversation_id: convId,
+      role,
+      content,
+      image_url: imageUrl || null,
+      expires_at: expiresAt || null,
+    } as any);
   }, []);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,19 +356,36 @@ export default function NewAnalysisPage() {
       const data = await resp.json();
 
       if (data?.editable_html) {
+        const imageUrl = data.image_url || null;
+        const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+
         setCreativeData({
           strategist_output: data.strategist_output,
-          image_url: data.image_url,
+          image_url: imageUrl,
           editable_html: data.editable_html,
         });
-        // Replace the generating message
+
+        const imageMessage: ChatMessage = {
+          role: "assistant",
+          content: "✅ Imagem gerada com sucesso!",
+          image_url: imageUrl,
+          expires_at: expiresAt,
+        };
+
+        // Replace the generating message with the image message
         setMessages((prev) =>
           prev.map((m, i) =>
             i === prev.length - 1 && m.content.includes("Gerando imagem")
-              ? { ...m, content: "✅ Imagem gerada! Clique nos textos para editar." }
+              ? imageMessage
               : m
           )
         );
+
+        // Persist to DB with image_url and expires_at
+        if (conversationId) {
+          await persistMessage(conversationId, "assistant", "✅ Imagem gerada com sucesso!", imageUrl, expiresAt);
+        }
+
         toast.success("Imagem gerada! Edite os textos clicando neles.");
       } else {
         throw new Error("Não foi possível gerar a imagem.");
@@ -369,7 +403,7 @@ export default function NewAnalysisPage() {
     } finally {
       setIsGeneratingImage(false);
     }
-  }, [messages, isGeneratingImage]);
+  }, [messages, isGeneratingImage, conversationId]);
 
   const handleSend = async () => {
     if (isStreaming || isGeneratingImage) return;
@@ -754,38 +788,68 @@ export default function NewAnalysisPage() {
           )}
 
           {/* Messages */}
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className="flex flex-col gap-1 max-w-[85%]">
-                <div
-                  className={`rounded-2xl px-4 py-3 text-sm sm:text-base ${
-                    msg.role === "user"
-                      ? "bg-secondary text-secondary-foreground rounded-br-md"
-                      : "bg-card border border-border text-foreground rounded-bl-md"
-                  }`}
-                >
-                  {msg.role === "assistant" ? (
-                    <TypewriterMarkdown
+          {messages.map((msg, idx) => {
+            const hasImage = !!msg.image_url;
+            const expired = hasImage && msg.expires_at ? new Date(msg.expires_at) < new Date() : false;
+
+            return (
+              <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="flex flex-col gap-1 max-w-[85%]">
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm sm:text-base ${
+                      msg.role === "user"
+                        ? "bg-secondary text-secondary-foreground rounded-br-md"
+                        : "bg-card border border-border text-foreground rounded-bl-md"
+                    }`}
+                  >
+                    {msg.role === "assistant" ? (
+                      <>
+                        <TypewriterMarkdown
+                          content={msg.content.replace("##READY##", "").trim()}
+                          isStreaming={isStreaming && idx === messages.length - 1}
+                          className="prose prose-sm max-w-none text-foreground"
+                        />
+                        {/* Inline image */}
+                        {hasImage && !expired && (
+                          <div className="mt-3">
+                            <img
+                              src={msg.image_url!}
+                              alt="Imagem gerada"
+                              className="w-full max-w-[320px] rounded-lg border border-border/50"
+                            />
+                            <div className="mt-2 flex justify-center">
+                              <AdobeExpressEditor
+                                imageUrl={msg.image_url!}
+                                onPublish={() => toast.success("Criativo salvo do Adobe Express!")}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {/* Expired image */}
+                        {hasImage && expired && (
+                          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs">
+                            <ImageIcon className="h-4 w-4 shrink-0" />
+                            <span>Imagem expirada</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                  </div>
+                  <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <ChatMessageActions
                       content={msg.content.replace("##READY##", "").trim()}
-                      isStreaming={isStreaming && idx === messages.length - 1}
-                      className="prose prose-sm max-w-none text-foreground"
+                      messageIndex={idx}
+                      role={msg.role}
+                      onFeedback={handleFeedback}
+                      feedback={feedbacks[idx] || null}
                     />
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  )}
-                </div>
-                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <ChatMessageActions
-                    content={msg.content.replace("##READY##", "").trim()}
-                    messageIndex={idx}
-                    role={msg.role}
-                    onFeedback={handleFeedback}
-                    feedback={feedbacks[idx] || null}
-                  />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="mb-4 flex justify-start">
@@ -815,39 +879,6 @@ export default function NewAnalysisPage() {
                 Iniciar Análise Completa
               </Button>
             </motion.div>
-          )}
-
-          {/* Creative - Adobe Express */}
-          {creativeData && !isGeneratingImage && (
-            <div className="mb-4 relative">
-              <div className="glass-card p-4 rounded-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-foreground">✅ Imagem gerada com sucesso!</p>
-                  <button
-                    onClick={() => setCreativeData(null)}
-                    className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    title="Fechar"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                {creativeData.image_url && (
-                  <img
-                    src={creativeData.image_url}
-                    alt="Criativo gerado"
-                    className="w-full max-w-[320px] mx-auto rounded-lg border border-border/50 mb-3"
-                  />
-                )}
-                <div className="flex justify-center">
-                  <AdobeExpressEditor
-                    imageUrl={creativeData.image_url}
-                    onPublish={(data) => {
-                      toast.success("Criativo salvo do Adobe Express!");
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
           )}
 
           {isGeneratingImage && (

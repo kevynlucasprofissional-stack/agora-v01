@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, ChangeEvent } from "react";
-import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target, ArrowDown } from "lucide-react";
+import { Send, Loader2, Sparkles, Search, BarChart3, Paperclip, X, Target, ArrowDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
@@ -7,28 +7,20 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CreativeEditor } from "@/components/CreativeEditor";
 import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
 import { toast } from "sonner";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  image_url?: string | null;
+  expires_at?: string | null;
 }
 
 interface FileAttachment {
   file: File;
   preview?: string;
 }
-
-interface CreativeData {
-  strategist_output: any;
-  image_url: string;
-  editable_html: string;
-  creative_job_id: string | null;
-}
-
-const CREATIVE_MARKER = "[creative-editor]";
 
 const ACTION_OPTIONS = [
   { label: "Gerar criativos", icon: Sparkles, action: "creative" as const },
@@ -51,7 +43,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
-  const [creativeData, setCreativeData] = useState<CreativeData | null>(null);
   const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
   const isBusy = isStreaming || isGeneratingCreative;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,45 +52,26 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const shouldAutoScrollRef = useRef(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
 
-  const saveMessage = async (convId: string, role: string, content: string) => {
-    await supabase.from("chat_messages" as any).insert({ conversation_id: convId, role, content } as any);
+  const saveMessage = async (
+    convId: string,
+    role: string,
+    content: string,
+    imageUrl?: string | null,
+    expiresAt?: string | null
+  ) => {
+    await supabase.from("chat_messages" as any).insert({
+      conversation_id: convId,
+      role,
+      content,
+      image_url: imageUrl || null,
+      expires_at: expiresAt || null,
+    } as any);
   };
 
-  // Persist creative snapshot
-  const persistCreative = useCallback(async (dataUrl: string) => {
-    if (!conversationId || !creativeData?.creative_job_id) return;
-    await supabase.from("creative_jobs" as any)
-      .update({ image_url: dataUrl, status: "saved" } as any)
-      .eq("id", creativeData.creative_job_id);
-    toast.success("Criativo salvo!");
-  }, [conversationId, creativeData]);
-
-  // Load existing creative for this conversation on mount
-  useEffect(() => {
-    if (!conversationId || !loaded) return;
-    const loadCreative = async () => {
-      const { data } = await supabase
-        .from("creative_jobs" as any)
-        .select("*")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data && (data as any).image_url && (data as any).status !== "pending") {
-        const row = data as any;
-        const isSavedSnapshot = row.status === "saved";
-        setCreativeData({
-          strategist_output: isSavedSnapshot
-            ? { ...(row.strategist_output || {}), editable_layers: [] }
-            : (row.strategist_output || {}),
-          image_url: row.image_url,
-          editable_html: row.editable_html || "",
-          creative_job_id: row.id,
-        });
-      }
-    };
-    loadCreative();
-  }, [conversationId, loaded]);
+  const isImageExpired = (expiresAt: string | null | undefined): boolean => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
 
   useEffect(() => {
     if (!user || loaded) return;
@@ -124,7 +96,12 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           .eq("conversation_id", convId)
           .order("created_at", { ascending: true });
         if (dbMessages && dbMessages.length > 0) {
-          setMessages((dbMessages as any[]).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })));
+          setMessages((dbMessages as any[]).map((m: any) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            image_url: m.image_url || null,
+            expires_at: m.expires_at || null,
+          })));
         } else {
           const greeting = buildGreeting(analysis);
           setMessages([{ role: "assistant", content: greeting }]);
@@ -145,7 +122,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         }
       }
       setLoaded(true);
-      // Scroll to bottom after initial load
       setTimeout(() => {
         const el = scrollContainerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
@@ -161,7 +137,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Track scroll position to show/hide "scroll to bottom" button
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -196,16 +171,18 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
   // Generate creative via edge function
   const generateCreative = useCallback(async (userPrompt?: string) => {
-    if (isGeneratingCreative) return;
+    if (isGeneratingCreative || !conversationId) return;
     shouldAutoScrollRef.current = true;
     setIsGeneratingCreative(true);
-    setCreativeData(null);
 
-    // Clear input if user typed a prompt
     if (userPrompt?.trim()) {
       setInput("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     }
+
+    // Add generating message
+    const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando criativo com IA... Isso pode levar alguns segundos." };
+    setMessages(prev => [...prev, genMsg]);
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
@@ -218,30 +195,48 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
       });
 
       if (error) throw error;
-
       if (data?.error) {
         toast.error(data.error);
         return;
       }
 
-      if (data?.editable_html) {
-        const cd: CreativeData = {
-          strategist_output: data.strategist_output,
-          image_url: data.image_url,
-          editable_html: data.editable_html,
-          creative_job_id: data.creative_job_id,
-        };
-        setCreativeData(cd);
-        // Add a marker message so creative renders inline in chat flow
-        const markerMsg: ChatMessage = { role: "assistant", content: CREATIVE_MARKER };
-        setMessages(prev => [...prev, markerMsg]);
-        if (conversationId) await saveMessage(conversationId, "assistant", CREATIVE_MARKER);
-        toast.success("Criativo gerado! Edite os textos clicando neles.");
-      } else {
-        toast.error("Não foi possível gerar o criativo. Tente novamente.");
+      const imageUrl = data?.image_url || null;
+      const creativeJobId = data?.creative_job_id || null;
+      const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+
+      let msgContent = "✅ Criativo gerado com sucesso!";
+      if (creativeJobId) {
+        msgContent += `\n\n[creative_job_id:${creativeJobId}]`;
       }
+
+      const imageMessage: ChatMessage = {
+        role: "assistant",
+        content: msgContent,
+        image_url: imageUrl,
+        expires_at: expiresAt,
+      };
+
+      setMessages(prev =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando criativo")
+            ? imageMessage
+            : m
+        )
+      );
+
+      await saveMessage(conversationId, "assistant", msgContent, imageUrl, expiresAt);
+      toast.success("Criativo gerado! Edite os textos clicando neles.");
     } catch (err) {
       console.error("Creative generation error:", err);
+      const errorMsg = "❌ Erro ao gerar criativo. Tente novamente.";
+      setMessages(prev =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando criativo")
+            ? { ...m, content: errorMsg }
+            : m
+        )
+      );
+      await saveMessage(conversationId, "assistant", errorMsg);
       toast.error("Erro ao gerar criativo. Tente novamente.");
     } finally {
       setIsGeneratingCreative(false);
@@ -282,7 +277,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     try {
       const apiMessages = newMessages.filter((_, i) => i > 0);
       await streamChat({
-        messages: apiMessages,
+        messages: apiMessages.map(m => ({ role: m.role, content: m.content })),
         functionName: "strategist-chat",
         extraBody: {
           analysisContext: {
@@ -323,6 +318,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
     }
   }, [isStreaming, isGeneratingCreative, messages, analysis, conversationId, attachments]);
 
+  const cleanContent = (content: string): string => {
+    return content.replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim();
+  };
+
   return (
     <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
       {/* Header */}
@@ -338,7 +337,6 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
 
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="relative flex-1 min-h-0 overflow-auto space-y-3 mb-4 pr-1">
-        {/* Scroll to bottom button */}
         {showScrollDown && (
           <button
             onClick={scrollToBottom}
@@ -354,32 +352,9 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           </div>
         ) : (
           messages.map((msg, i) => {
-            // Render creative editor inline at marker position
-            if (msg.content === CREATIVE_MARKER && creativeData && !isGeneratingCreative) {
-              return (
-                <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-                  <CreativeEditor
-                    strategistOutput={creativeData.strategist_output}
-                    imageUrl={creativeData.image_url}
-                    editableHtml={creativeData.editable_html}
-                    creativeJobId={creativeData.creative_job_id}
-                    onRegenerate={() => generateCreative(input)}
-                    isRegenerating={isGeneratingCreative}
-                    onCapture={persistCreative}
-                  />
-                  <div className="mt-2 flex justify-center">
-                    <AdobeExpressEditor
-                      imageUrl={creativeData.image_url}
-                      onPublish={(data) => {
-                        persistCreative(data.imageData);
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              );
-            }
-            // Skip rendering the marker as text
-            if (msg.content === CREATIVE_MARKER) return null;
+            const hasImage = !!msg.image_url;
+            const expired = hasImage && isImageExpired(msg.expires_at);
+            const displayContent = cleanContent(msg.content);
 
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -388,11 +363,34 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                   msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-accent/50 border border-border/50"
                 }`}>
                   {msg.role === "assistant" ? (
-                    <TypewriterMarkdown
-                      content={msg.content}
-                      isStreaming={isStreaming && i === messages.length - 1}
-                      className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
-                    />
+                    <>
+                      <TypewriterMarkdown
+                        content={displayContent}
+                        isStreaming={isStreaming && i === messages.length - 1}
+                        className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+                      />
+                      {hasImage && !expired && (
+                        <div className="mt-3">
+                          <img
+                            src={msg.image_url!}
+                            alt="Criativo gerado"
+                            className="w-full max-w-[280px] rounded-lg border border-border/50"
+                          />
+                          <div className="mt-2 flex justify-center">
+                            <AdobeExpressEditor
+                              imageUrl={msg.image_url!}
+                              onPublish={() => toast.success("Criativo salvo do Adobe Express!")}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {hasImage && expired && (
+                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs">
+                          <ImageIcon className="h-4 w-4 shrink-0" />
+                          <span>Imagem expirada</span>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   )}
@@ -413,10 +411,9 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
         <AnimatePresence>
           {isGeneratingCreative && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-12 gap-3">
+              className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Gerando criativo com IA...</p>
-              <p className="text-xs text-muted-foreground/60">Isso pode levar alguns segundos</p>
             </motion.div>
           )}
         </AnimatePresence>

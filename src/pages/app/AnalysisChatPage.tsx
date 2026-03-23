@@ -14,6 +14,8 @@ import { toast } from "sonner";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  image_url?: string | null;
+  expires_at?: string | null;
 }
 
 export default function AnalysisChatPage() {
@@ -26,8 +28,6 @@ export default function AnalysisChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [generatingCreative, setGeneratingCreative] = useState(false);
-  const [creativeJobId, setCreativeJobId] = useState<string | null>(null);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -75,10 +75,11 @@ export default function AnalysisChatPage() {
             (dbMessages as any[]).map((m: any) => ({
               role: m.role as "user" | "assistant",
               content: m.content,
+              image_url: m.image_url || null,
+              expires_at: m.expires_at || null,
             }))
           );
         } else if (analysisData) {
-          // No messages yet, add greeting
           const greeting = buildGreeting(analysisData);
           setMessages([{ role: "assistant", content: greeting }]);
           await saveMessage(convId, "assistant", greeting);
@@ -114,12 +115,26 @@ export default function AnalysisChatPage() {
   const buildGreeting = (data: AnalysisRequest) =>
     `Olá! Sou o **Estrategista-Chefe** da Ágora. Analisei sua campanha "${data.title || "sem título"}" e o score geral ficou em **${Number(data.score_overall ?? 0).toFixed(0)}/100**.\n\nPosso ajudá-lo com:\n- 🧠 **Neuromarketing** — vieses cognitivos e gatilhos para seu público\n- 🎯 **Oferta** — Fórmula de Hormozi, proposta de valor, pricing\n- 📊 **Performance** — KPIs, funil, canais e segmentação\n- 👥 **Público-alvo** — comportamento geracional e segmentação\n\nO que gostaria de explorar?`;
 
-  const saveMessage = async (convId: string, role: string, content: string) => {
+  const saveMessage = async (
+    convId: string,
+    role: string,
+    content: string,
+    imageUrl?: string | null,
+    expiresAt?: string | null
+  ) => {
     await supabase.from("chat_messages" as any).insert({
       conversation_id: convId,
       role,
       content,
+      image_url: imageUrl || null,
+      expires_at: expiresAt || null,
     } as any);
+  };
+
+  // Check if image is expired
+  const isImageExpired = (expiresAt: string | null | undefined): boolean => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
   };
 
   // Track if user is near bottom
@@ -145,6 +160,67 @@ export default function AnalysisChatPage() {
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
+  const handleGenerateCreative = useCallback(async () => {
+    if (!id || generatingCreative || !conversationId) return;
+    setGeneratingCreative(true);
+
+    // Add generating message
+    const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando criativo com IA... Isso pode levar alguns segundos." };
+    setMessages((prev) => [...prev, genMsg]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-creative", {
+        body: { analysis_id: id, conversation_id: conversationId, format: "1080x1080" },
+      });
+      if (error) throw error;
+
+      const imageUrl = data?.image_url || null;
+      const creativeJobId = data?.creative_job_id || null;
+      const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Build the assistant message content
+      let msgContent = "✅ Imagem gerada com sucesso!";
+      if (creativeJobId) {
+        msgContent += `\n\n[creative_job_id:${creativeJobId}]`;
+      }
+
+      // Replace the generating message with the actual image message
+      const imageMessage: ChatMessage = {
+        role: "assistant",
+        content: msgContent,
+        image_url: imageUrl,
+        expires_at: expiresAt,
+      };
+
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando criativo")
+            ? imageMessage
+            : m
+        )
+      );
+
+      // Save to DB
+      await saveMessage(conversationId, "assistant", msgContent, imageUrl, expiresAt);
+
+      toast.success("Criativo gerado com sucesso!");
+    } catch (e: any) {
+      console.error("Erro ao gerar criativo:", e);
+      const errorMsg = "❌ Erro ao gerar criativo. Tente novamente.";
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.content.includes("Gerando criativo")
+            ? { ...m, content: errorMsg }
+            : m
+        )
+      );
+      await saveMessage(conversationId, "assistant", errorMsg);
+      toast.error("Erro ao gerar criativo.");
+    } finally {
+      setGeneratingCreative(false);
+    }
+  }, [id, generatingCreative, conversationId]);
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || isStreaming || !conversationId) return;
     const userMsg = input.trim();
@@ -165,7 +241,7 @@ export default function AnalysisChatPage() {
       const apiMessages = newMessages.filter((_, i) => i > 0);
 
       await streamChat({
-        messages: apiMessages,
+        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
         functionName: "strategist-chat",
         extraBody: {
           analysisContext: analysis ? {
@@ -207,6 +283,17 @@ export default function AnalysisChatPage() {
     }
   }, [input, isStreaming, conversationId, messages, analysis]);
 
+  // Extract creative_job_id from message content
+  const extractCreativeJobId = (content: string): string | null => {
+    const match = content.match(/\[creative_job_id:([^\]]+)\]/);
+    return match ? match[1] : null;
+  };
+
+  // Clean content for display (remove internal markers)
+  const cleanContent = (content: string): string => {
+    return content.replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim();
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
   return (
@@ -226,26 +313,7 @@ export default function AnalysisChatPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={async () => {
-            if (!id || generatingCreative) return;
-            setGeneratingCreative(true);
-            try {
-              const { data, error } = await supabase.functions.invoke("generate-creative", {
-                body: { analysis_id: id, conversation_id: conversationId, format: "1080x1080" },
-              });
-              if (error) throw error;
-              if (data?.creative_job_id) {
-                setCreativeJobId(data.creative_job_id);
-                if (data?.image_url) {
-                  setGeneratedImageUrl(data.image_url);
-                }
-              }
-            } catch (e: any) {
-              console.error("Erro ao gerar criativo:", e);
-            } finally {
-              setGeneratingCreative(false);
-            }
-          }}
+          onClick={handleGenerateCreative}
           disabled={generatingCreative}
         >
           {generatingCreative ? (
@@ -264,24 +332,63 @@ export default function AnalysisChatPage() {
 
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto py-6 space-y-4">
-        {messages.map((msg, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-              msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card"
-            }`}>
-              {msg.role === "assistant" ? (
-                <TypewriterMarkdown
-                  content={msg.content}
-                  isStreaming={isStreaming && i === messages.length - 1}
-                  className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
-                />
-              ) : (
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              )}
-            </div>
-          </motion.div>
-        ))}
+        {messages.map((msg, i) => {
+          const hasImage = !!msg.image_url;
+          const expired = hasImage && isImageExpired(msg.expires_at);
+          const creativeJobId = extractCreativeJobId(msg.content);
+          const displayContent = cleanContent(msg.content);
+
+          return (
+            <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card"
+              }`}>
+                {msg.role === "assistant" ? (
+                  <>
+                    <TypewriterMarkdown
+                      content={displayContent}
+                      isStreaming={isStreaming && i === messages.length - 1}
+                      className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
+                    />
+                    {/* Render image inline */}
+                    {hasImage && !expired && (
+                      <div className="mt-3">
+                        <img
+                          src={msg.image_url!}
+                          alt="Criativo gerado"
+                          className="w-full max-w-[320px] rounded-lg border border-border/50"
+                        />
+                        {creativeJobId && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <AdobeExpressEditor
+                              imageUrl={msg.image_url!}
+                              onPublish={() => toast.success("Criativo salvo do Adobe Express!")}
+                            />
+                            <Button variant="hero" size="sm" asChild>
+                              <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
+                                Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                              </Link>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Expired image */}
+                    {hasImage && expired && (
+                      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs">
+                        <ImageIcon className="h-4 w-4 shrink-0" />
+                        <span>Imagem expirada</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
             <div className="glass-card px-4 py-3">
@@ -291,29 +398,6 @@ export default function AnalysisChatPage() {
         )}
         <div ref={bottomRef} />
       </div>
-
-      {/* Creative Banner */}
-      {creativeJobId && (
-        <div className="shrink-0 flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
-          <Sparkles className="h-5 w-5 text-primary shrink-0" />
-          <span className="text-sm text-foreground flex-1">Criativo gerado com sucesso!</span>
-          <div className="flex items-center gap-2">
-            {generatedImageUrl && (
-              <AdobeExpressEditor
-                imageUrl={generatedImageUrl}
-                onPublish={(data) => {
-                  toast.success("Criativo salvo do Adobe Express!");
-                }}
-              />
-            )}
-            <Button variant="hero" size="sm" asChild>
-              <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
-                Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Input */}
       <div className="shrink-0 flex gap-2 pt-4 border-t border-border/50">
