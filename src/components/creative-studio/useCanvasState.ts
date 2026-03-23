@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as fabric from "fabric";
+import * as fabric from "fabric"; // v6
 
 export type CanvasFormat = "1080x1080" | "1080x1920" | "1200x628" | "1080x1350";
 
