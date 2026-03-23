@@ -1,4 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from "react";
+import { MousePointerClick, Move, ZoomIn, Keyboard, X } from "lucide-react";
 import type { useWorkspaceState } from "./useWorkspaceState";
 import { ArtboardCard } from "./ArtboardCard";
 import { StickyNoteCard } from "./StickyNoteCard";
