@@ -75,7 +75,7 @@ export default function CreativeStudioPage() {
           left: dim.w * 0.1,
           top: dim.h * 0.15 + i * (dim.h * 0.2),
           fill: "#ffffff",
-          shadow: new (window as any).fabric?.Shadow?.("2px 2px 6px rgba(0,0,0,0.6)") || undefined,
+          shadow: "2px 2px 6px rgba(0,0,0,0.6)",
         };
         if (layer.type === "headline") {
           opts.fontSize = Math.round(dim.w * 0.065);
