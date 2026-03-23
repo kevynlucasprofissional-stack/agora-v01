@@ -1,75 +1,86 @@
 
 
-## Plano: Corrigir bugs importantes do Estúdio Criativo
+## Plano: Corrigir bugs menores do Estudio Criativo
 
-### Bug 1 — Color picker de texto no WorkspacePropertiesPanel hardcoded
+### Bug 1 — Ctrl+Z intercepta undo do browser em inputs
 
-**Arquivo:** `src/components/creative-studio/WorkspacePropertiesPanel.tsx` (linha 201)
+**Arquivo:** `useCanvasState.ts` (linha 98-106)
 
-O `<Input type="color">` usa `value="#ffffff"` fixo em vez de ler `(element as WorkspaceText).color`. O usuário nunca vê a cor atual do texto.
+O handler de Ctrl+Z/Y não verifica se o foco esta em um input/textarea. Quando o usuario digita no PropertiesPanel ou ToolsSidebar e tenta Ctrl+Z para desfazer texto digitado, o undo do canvas e disparado em vez do undo nativo do browser.
 
-**Correção:** Trocar `value="#ffffff"` por `value={(element as WorkspaceText).color}`.
-
----
-
-### Bug 2 — Atalhos de teclado (Delete/Backspace) disparam durante edição de texto
-
-**Arquivo:** `src/components/creative-studio/useCanvasState.ts` (linhas 96-115)
-
-O handler de Delete/Backspace no canvas não verifica se o alvo do evento é um input/textarea. Ao digitar em campos do PropertiesPanel ou ToolsSidebar, objetos são deletados acidentalmente.
-
-**Correção:** Adicionar guard no início do handler:
-```
-if (target is INPUT, TEXTAREA, or contenteditable) return;
-```
+**Correcao:** Adicionar o mesmo guard de input/textarea/contenteditable que ja existe no handler de Delete (linha 108-109) tambem para Ctrl+Z e Ctrl+Y.
 
 ---
 
-### Bug 3 — Memory leak no upload de imagens (URL.createObjectURL)
+### Bug 2 — Canvas nao faz dispose ao desmontar
 
-**Arquivo:** `src/components/creative-studio/ToolsSidebar.tsx` (linha 28)
+**Arquivo:** `FabricCanvas.tsx`
 
-`URL.createObjectURL(file)` nunca é revogado. Cada upload acumula blobs na memória.
+O useEffect de inicializacao nao chama `canvas.dispose()` no cleanup. Ao trocar artboards ou sair da pagina, o canvas anterior fica vivo na memoria (event listeners, WebGL contexts).
 
-**Correção:** Chamar `URL.revokeObjectURL(url)` no callback `onload` do `addImage`, ou após o fabric processar. Alternativa simples: converter para FileReader data URL (auto-GC).
-
----
-
-### Bug 4 — Workspace não persiste (estado local perdido ao recarregar)
-
-**Arquivo:** `src/components/creative-studio/useWorkspaceState.ts`
-
-Os elementos do workspace (sticky notes, textos, artboards manuais) ficam apenas em `useState`. Ao recarregar a página, tudo é perdido.
-
-**Correção:** Salvar/carregar `elements` no `localStorage` com debounce. Usar `useEffect` para hidratar no mount e salvar a cada mudança (excluindo thumbnails base64 grandes).
+**Correcao:** No cleanup do useEffect, chamar `state.canvasRef.current?.dispose()` antes de resetar `initialized`.
 
 ---
 
-### Bug 5 — Thumbnail exportado com multiplier alto causa lag
+### Bug 3 — File input nao reseta apos upload
 
-**Arquivo:** `src/components/creative-studio/useCanvasState.ts`
+**Arquivo:** `ToolsSidebar.tsx` (linha 25-35)
 
-`exportPNG` usa `multiplier: 2`, gerando imagens enormes para thumbnails de preview. Para artboards 1080x1920, gera 2160x3840 data URIs.
+Apos enviar uma imagem, o `<input type="file">` mantem o valor. Se o usuario tentar enviar o mesmo arquivo novamente, `onChange` nao dispara.
 
-**Correção:** Adicionar um método `exportThumbnail()` separado com `multiplier: 0.2` (ou escala fixa para ~200px) para uso nos thumbnails do workspace. Manter `exportPNG` com multiplier 2 para exportação final.
+**Correcao:** Resetar `e.target.value = ""` no final do handler `handleUpload`.
+
+---
+
+### Bug 4 — Export PNG usa nome generico
+
+**Arquivo:** `StudioHeader.tsx` (linha 178)
+
+O download usa `criativo-${state.format}.png`. Nao inclui o nome do artboard, dificultando identificar multiplas exportacoes.
+
+**Correcao:** Receber `artboardName` (ja disponivel como prop) e usar no filename: `${artboardName}-${format}.png`.
+
+---
+
+### Bug 5 — Nenhum loading state ao carregar job do banco
+
+**Arquivo:** `CreativeStudioPage.tsx`
+
+Quando o usuario abre `/app/creative-studio/:jobId`, a pagina mostra o workspace vazio enquanto o job carrega do banco. Nao ha indicacao visual de loading.
+
+**Correcao:** Adicionar estado `jobLoading` e exibir um spinner centralizado enquanto o job esta sendo carregado.
+
+---
+
+### Bug 6 — WorkspaceGrid keyboard handler nao verifica contenteditable
+
+**Arquivo:** `WorkspaceGrid.tsx` (linha 52)
+
+O handler verifica `INPUT` e `TEXTAREA` mas nao `contenteditable`. Se algum elemento futuro usar contenteditable, Delete/Backspace vai deletar o elemento do workspace.
+
+**Correcao:** Adicionar `|| (e.target as HTMLElement).isContentEditable` no guard.
+
+---
+
+### Bug 7 — Workspace pan state resetado ao recarregar
+
+**Arquivo:** `useWorkspaceState.ts`
+
+Os elements sao persistidos no localStorage, mas `pan` e `wsZoom` nao. Ao recarregar, o usuario perde a posicao de visualizacao e tem que navegar de volta.
+
+**Correcao:** Persistir `pan` e `wsZoom` no localStorage junto com os elements.
 
 ---
 
 ### Arquivos editados
 
-| Arquivo | Mudança |
+| Arquivo | Mudanca |
 |---|---|
-| `src/components/creative-studio/WorkspacePropertiesPanel.tsx` | Ler cor real do elemento no color picker |
-| `src/components/creative-studio/useCanvasState.ts` | Guard de input nos atalhos + método `exportThumbnail` |
-| `src/components/creative-studio/ToolsSidebar.tsx` | Revogar objectURL após uso |
-| `src/components/creative-studio/useWorkspaceState.ts` | Persistir elements no localStorage |
-| `src/pages/app/CreativeStudioPage.tsx` | Usar `exportThumbnail` em vez de `exportPNG` para thumbnails |
-
-### Ordem de execução
-
-1. Bug 2 (atalhos deletando durante digitação) — UX quebrada
-2. Bug 1 (color picker hardcoded) — UI incorreta
-3. Bug 5 (thumbnail otimizado) — Performance
-4. Bug 3 (memory leak) — Limpeza
-5. Bug 4 (persistência localStorage) — Qualidade de vida
+| `useCanvasState.ts` | Guard de input no Ctrl+Z/Y |
+| `FabricCanvas.tsx` | Dispose canvas no cleanup |
+| `ToolsSidebar.tsx` | Reset file input apos upload |
+| `StudioHeader.tsx` | Nome do artboard no filename de export |
+| `CreativeStudioPage.tsx` | Loading state ao carregar job |
+| `WorkspaceGrid.tsx` | Guard contenteditable no keyboard handler |
+| `useWorkspaceState.ts` | Persistir pan/zoom no localStorage |
 
