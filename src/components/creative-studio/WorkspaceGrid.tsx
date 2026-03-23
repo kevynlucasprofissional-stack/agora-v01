@@ -219,28 +219,51 @@ export function WorkspaceGrid({ workspace }: Props) {
 }
 
 // ---- Minimap ----
+const MINIMAP_FORMAT_DIMS: Record<string, { w: number; h: number }> = {
+  "1080x1080": { w: 1080, h: 1080 },
+  "1080x1920": { w: 1080, h: 1920 },
+  "1200x628": { w: 1200, h: 628 },
+  "1080x1350": { w: 1080, h: 1350 },
+};
+const MM_THUMB_SCALE = 0.18;
+
+function getElementBounds(e: any): { x: number; y: number; w: number; h: number } {
+  const x = e.x ?? 0;
+  const y = e.y ?? 0;
+  if (e.type === "artboard") {
+    const dims = MINIMAP_FORMAT_DIMS[e.format] || { w: 1080, h: 1080 };
+    return { x, y, w: dims.w * MM_THUMB_SCALE, h: dims.h * MM_THUMB_SCALE };
+  }
+  if (e.type === "sticky-note") {
+    return { x, y, w: e.width ?? 200, h: e.height ?? 160 };
+  }
+  // text
+  return { x, y, w: 100, h: 24 };
+}
+
 function Minimap({ workspace, containerRef }: { workspace: ReturnType<typeof useWorkspaceState>; containerRef: React.RefObject<HTMLDivElement | null> }) {
   const els = workspace.elements.filter((e) => e.type !== "arrow");
   if (els.length === 0) return null;
 
-  const mmW = 140;
-  const mmH = 100;
+  const mmW = 160;
+  const mmH = 110;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   els.forEach((e) => {
-    const ex = (e as any).x ?? 0;
-    const ey = (e as any).y ?? 0;
-    const ew = (e as any).width ?? 200;
-    const eh = (e as any).height ?? 160;
-    if (ex < minX) minX = ex;
-    if (ey < minY) minY = ey;
-    if (ex + ew > maxX) maxX = ex + ew;
-    if (ey + eh > maxY) maxY = ey + eh;
+    const b = getElementBounds(e);
+    if (b.x < minX) minX = b.x;
+    if (b.y < minY) minY = b.y;
+    if (b.x + b.w > maxX) maxX = b.x + b.w;
+    if (b.y + b.h > maxY) maxY = b.y + b.h;
   });
 
-  const worldW = Math.max(maxX - minX, 100);
-  const worldH = Math.max(maxY - minY, 100);
-  const scale = Math.min(mmW / worldW, mmH / worldH) * 0.8;
+  // Add padding around world bounds
+  const pad = 100;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+  const worldW = Math.max(maxX - minX, 200);
+  const worldH = Math.max(maxY - minY, 200);
+  const scale = Math.min(mmW / worldW, mmH / worldH) * 0.85;
 
   const rect = containerRef.current?.getBoundingClientRect();
   const vpW = rect ? rect.width / workspace.wsZoom : 800;
@@ -249,28 +272,42 @@ function Minimap({ workspace, containerRef }: { workspace: ReturnType<typeof use
   const vpY = (-workspace.pan.y / workspace.wsZoom - minY) * scale;
 
   return (
-    <div className="absolute bottom-3 right-3 z-20 rounded-lg border border-border bg-card/80 backdrop-blur-sm p-1.5 pointer-events-none"
-      style={{ width: mmW, height: mmH }}
+    <div className="absolute bottom-3 right-3 z-20 rounded-lg border border-border bg-card/90 backdrop-blur-sm p-2"
+      style={{ width: mmW, height: mmH, pointerEvents: "auto", cursor: "pointer" }}
+      title="Minimapa — visão geral do workspace"
+      onClick={(e) => {
+        e.stopPropagation();
+        const mmRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const clickX = (e.clientX - mmRect.left - 8) / scale + minX;
+        const clickY = (e.clientY - mmRect.top - 8) / scale + minY;
+        const cRect = containerRef.current?.getBoundingClientRect();
+        if (!cRect) return;
+        workspace.setPan({
+          x: -(clickX - cRect.width / workspace.wsZoom / 2) * workspace.wsZoom,
+          y: -(clickY - cRect.height / workspace.wsZoom / 2) * workspace.wsZoom,
+        });
+      }}
     >
       <svg width="100%" height="100%" viewBox={`0 0 ${mmW} ${mmH}`}>
         {els.map((e) => {
-          const ex = ((e as any).x - minX) * scale;
-          const ey = ((e as any).y - minY) * scale;
-          const ew = Math.max(((e as any).width ?? 200) * scale, 3);
-          const eh = Math.max(((e as any).height ?? 160) * scale, 3);
-          const fill = e.type === "artboard" ? "hsl(var(--primary) / 0.4)"
+          const b = getElementBounds(e);
+          const ex = (b.x - minX) * scale;
+          const ey = (b.y - minY) * scale;
+          const ew = Math.max(b.w * scale, 4);
+          const eh = Math.max(b.h * scale, 4);
+          const fill = e.type === "artboard" ? "hsl(var(--primary) / 0.5)"
             : e.type === "sticky-note" ? "hsl(48, 96%, 70%)"
             : "hsl(var(--foreground) / 0.3)";
-          return <rect key={e.id} x={ex} y={ey} width={ew} height={eh} fill={fill} rx={1} />;
+          return <rect key={e.id} x={ex} y={ey} width={ew} height={eh} fill={fill} rx={2} />;
         })}
         <rect
           x={vpX} y={vpY}
-          width={vpW * scale} height={vpH * scale}
-          fill="none"
+          width={Math.max(vpW * scale, 10)} height={Math.max(vpH * scale, 10)}
+          fill="hsl(var(--primary) / 0.08)"
           stroke="hsl(var(--primary))"
           strokeWidth={1.5}
-          rx={1}
-          opacity={0.6}
+          rx={2}
+          opacity={0.8}
         />
       </svg>
     </div>
