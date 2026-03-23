@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCanvasState } from "@/components/creative-studio/useCanvasState";
 import { useWorkspaceState } from "@/components/creative-studio/useWorkspaceState";
