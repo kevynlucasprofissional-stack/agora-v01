@@ -99,6 +99,22 @@ export function useWorkspaceState() {
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
+  // Persist elements to localStorage (debounced, strip large thumbnails)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const stripped = elements.map((e) => {
+          if (e.type === "artboard") {
+            return { ...e, thumbnail: null, layersState: null };
+          }
+          return e;
+        });
+        localStorage.setItem("agora-workspace-elements", JSON.stringify(stripped));
+      } catch {}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [elements]);
+
   const nextZIndex = useCallback(() => {
     const maxZ = elements.reduce((m, e) => {
       const z = (e as any).zIndex ?? 0;
