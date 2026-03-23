@@ -15,6 +15,9 @@ export function FabricCanvas({ state }: Props) {
       initialized.current = true;
       state.initCanvas(canvasElRef.current);
     }
+    return () => {
+      initialized.current = false;
+    };
   }, [state.initCanvas]);
 
   // Apply zoom via CSS transform for performance

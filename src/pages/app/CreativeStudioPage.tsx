@@ -27,7 +27,9 @@ export default function CreativeStudioPage() {
     const ab = workspace.editingArtboard;
     if (!ab) return;
     if (ab.format !== canvasState.format) canvasState.changeFormat(ab.format);
-    if (ab.layersState && ab.layersState.objects?.length > 0) canvasState.loadJSON(ab.layersState);
+    if (ab.layersState && typeof ab.layersState === "object" && (ab.layersState as any).objects?.length > 0) {
+      canvasState.loadJSON(ab.layersState);
+    }
   }, [workspace.editingId, canvasState.canvasReady]);
 
   // Store job data to apply after canvas is ready

@@ -819,7 +819,10 @@ export default function NewAnalysisPage() {
                             />
                             <div className="mt-2 flex justify-center">
                               <Button variant="outline" size="sm" asChild>
-                                <Link to="/app/creative-studio">
+                                <Link to={(() => {
+                                  const match = msg.content.match(/\[creative_job_id:([^\]]+)\]/);
+                                  return match ? `/app/creative-studio/${match[1]}` : "/app/creative-studio";
+                                })()}>
                                   Abrir no Estúdio Criativo <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                                 </Link>
                               </Button>
