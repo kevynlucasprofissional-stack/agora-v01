@@ -204,13 +204,19 @@ export function WorkspaceGrid({ workspace }: Props) {
       {/* Minimap */}
       <Minimap workspace={workspace} containerRef={containerRef} />
 
+      {/* Onboarding hints (dismissible) */}
+      <OnboardingHints hasElements={workspace.elements.length > 0} />
+
       {/* Empty state */}
       {workspace.elements.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Nenhum elemento ainda</p>
-            <p className="text-xs text-muted-foreground/60">
-              Adicione artboards, notas ou textos para começar
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+              <MousePointerClick className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Nenhum elemento ainda</p>
+            <p className="text-xs text-muted-foreground/70 max-w-[240px]">
+              Clique em <strong>+ Artboard</strong> na barra acima para criar seu primeiro criativo
             </p>
           </div>
         </div>
