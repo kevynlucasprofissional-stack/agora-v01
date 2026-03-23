@@ -105,6 +105,8 @@ export function useCanvasState() {
         redo();
       }
       if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const active = canvas.getActiveObject();
@@ -209,6 +211,12 @@ export function useCanvasState() {
     return canvas.toDataURL({ format: "png", multiplier: 2 });
   }, []);
 
+  const exportThumbnail = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return "";
+    return canvas.toDataURL({ format: "png", multiplier: 0.2 });
+  }, []);
+
   const getJSON = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -266,6 +274,7 @@ export function useCanvasState() {
     addImage,
     setBackgroundImage,
     exportPNG,
+    exportThumbnail,
     getJSON,
     loadJSON,
     updateSelectedObject,

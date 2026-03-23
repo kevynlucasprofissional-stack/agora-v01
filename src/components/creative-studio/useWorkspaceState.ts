@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { CanvasFormat } from "./useCanvasState";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
@@ -81,7 +81,13 @@ const NOTE_COLORS: Record<NoteColor, string> = {
 };
 
 export function useWorkspaceState() {
-  const [elements, setElements] = useState<WorkspaceElement[]>([]);
+  const [elements, setElements] = useState<WorkspaceElement[]>(() => {
+    try {
+      const saved = localStorage.getItem("agora-workspace-elements");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -92,6 +98,22 @@ export function useWorkspaceState() {
   const [snapToGrid, setSnapToGrid] = useState(false);
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  // Persist elements to localStorage (debounced, strip large thumbnails)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const stripped = elements.map((e) => {
+          if (e.type === "artboard") {
+            return { ...e, thumbnail: null, layersState: null };
+          }
+          return e;
+        });
+        localStorage.setItem("agora-workspace-elements", JSON.stringify(stripped));
+      } catch {}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [elements]);
 
   const nextZIndex = useCallback(() => {
     const maxZ = elements.reduce((m, e) => {

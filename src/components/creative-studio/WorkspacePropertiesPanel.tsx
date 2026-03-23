@@ -198,7 +198,7 @@ export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, 
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Cor</Label>
-            <Input type="color" value="#ffffff"
+            <Input type="color" value={(element as WorkspaceText).color || "#ffffff"}
               onChange={(e) => onUpdate(element.id, { color: e.target.value })} className="h-8 w-full cursor-pointer" />
           </div>
         </>
