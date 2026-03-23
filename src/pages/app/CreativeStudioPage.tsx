@@ -121,7 +121,7 @@ export default function CreativeStudioPage() {
         toast.success("Salvo com sucesso!");
       } else {
         if (workspace.editingId) {
-          const thumb = canvasState.exportPNG();
+          const thumb = canvasState.exportThumbnail();
           workspace.updateArtboard(workspace.editingId, { layersState: json, thumbnail: thumb || null });
         }
         toast.success("Artboard salvo!");

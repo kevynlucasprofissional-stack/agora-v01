@@ -81,7 +81,13 @@ const NOTE_COLORS: Record<NoteColor, string> = {
 };
 
 export function useWorkspaceState() {
-  const [elements, setElements] = useState<WorkspaceElement[]>([]);
+  const [elements, setElements] = useState<WorkspaceElement[]>(() => {
+    try {
+      const saved = localStorage.getItem("agora-workspace-elements");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
