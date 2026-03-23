@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCanvasState } from "@/components/creative-studio/useCanvasState";
 import { useWorkspaceState } from "@/components/creative-studio/useWorkspaceState";
@@ -30,6 +30,9 @@ export default function CreativeStudioPage() {
     if (ab.layersState && ab.layersState.objects?.length > 0) canvasState.loadJSON(ab.layersState);
   }, [workspace.editingId, canvasState.canvasReady]);
 
+  // Store job data to apply after canvas is ready
+  const pendingJobRef = useRef<any>(null);
+
   useEffect(() => {
     if (!jobId || jobLoaded) return;
     const loadJob = async () => {
@@ -39,13 +42,59 @@ export default function CreativeStudioPage() {
         .eq("id", jobId).single();
       if (!job) return;
       setJobLoaded(true);
-      const format = (job.format as any) || "1080x1080";
-      const id = workspace.addArtboard(format, "Criativo importado");
-      if (job.layers_state) workspace.updateArtboard(id, { layersState: job.layers_state });
+      const fmt = (job.format as any) || "1080x1080";
+      const hasLayers = job.layers_state && typeof job.layers_state === "object" && 
+        (job.layers_state as any).objects?.length > 0;
+      const id = workspace.addArtboard(fmt, "Criativo importado");
+      if (hasLayers) {
+        workspace.updateArtboard(id, { layersState: job.layers_state });
+      } else {
+        // Store job data to apply image + text layers after canvas init
+        pendingJobRef.current = { image_url: job.image_url, strategist_output: job.strategist_output };
+      }
       workspace.setEditingId(id);
     };
     loadJob();
   }, [jobId, jobLoaded]);
+
+  // Apply pending job image + layers once canvas is ready
+  useEffect(() => {
+    if (!canvasState.canvasReady || !pendingJobRef.current) return;
+    const { image_url, strategist_output } = pendingJobRef.current;
+    pendingJobRef.current = null;
+
+    if (image_url) {
+      canvasState.setBackgroundImage(image_url);
+    }
+
+    if (strategist_output?.editable_layers) {
+      const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
+      const dim = canvasState.dimensions;
+      layers.forEach((layer, i) => {
+        const opts: Record<string, any> = {
+          left: dim.w * 0.1,
+          top: dim.h * 0.15 + i * (dim.h * 0.2),
+          fill: "#ffffff",
+          shadow: "2px 2px 6px rgba(0,0,0,0.6)",
+        };
+        if (layer.type === "headline") {
+          opts.fontSize = Math.round(dim.w * 0.065);
+          opts.fontWeight = "bold";
+          opts.fontFamily = "Arial Black";
+        } else if (layer.type === "cta") {
+          opts.fontSize = Math.round(dim.w * 0.04);
+          opts.fontWeight = "bold";
+          opts.fontFamily = "Arial";
+          opts.backgroundColor = "hsl(220,80%,55%)";
+          opts.padding = 12;
+        } else {
+          opts.fontSize = Math.round(dim.w * 0.04);
+          opts.fontFamily = "Arial";
+        }
+        canvasState.addText(layer.content || "", opts);
+      });
+    }
+  }, [canvasState.canvasReady]);
 
   const handleBackToWorkspace = useCallback(() => {
     if (workspace.editingId) {
