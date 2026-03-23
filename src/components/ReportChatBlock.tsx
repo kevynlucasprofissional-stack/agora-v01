@@ -7,7 +7,8 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -377,10 +378,11 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                             className="w-full max-w-[280px] rounded-lg border border-border/50"
                           />
                           <div className="mt-2 flex justify-center">
-                            <AdobeExpressEditor
-                              imageUrl={msg.image_url!}
-                              onPublish={() => toast.success("Criativo salvo do Adobe Express!")}
-                            />
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to="/app/creative-studio">
+                                Abrir no Estúdio Criativo <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                              </Link>
+                            </Button>
                           </div>
                         </div>
                       )}

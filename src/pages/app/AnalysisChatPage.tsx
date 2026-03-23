@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
-import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
+
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -361,10 +361,6 @@ export default function AnalysisChatPage() {
                         />
                         {creativeJobId && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <AdobeExpressEditor
-                              imageUrl={msg.image_url!}
-                              onPublish={() => toast.success("Criativo salvo do Adobe Express!")}
-                            />
                             <Button variant="hero" size="sm" asChild>
                               <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
                                 Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
