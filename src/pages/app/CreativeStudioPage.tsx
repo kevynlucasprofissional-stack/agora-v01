@@ -150,6 +150,14 @@ export default function CreativeStudioPage() {
     );
   }
 
+  if (jobLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-2rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)]">
       <StudioHeader mode="workspace" workspace={workspace} />
