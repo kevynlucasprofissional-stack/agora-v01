@@ -351,19 +351,36 @@ export default function NewAnalysisPage() {
       const data = await resp.json();
 
       if (data?.editable_html) {
+        const imageUrl = data.image_url || null;
+        const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+
         setCreativeData({
           strategist_output: data.strategist_output,
-          image_url: data.image_url,
+          image_url: imageUrl,
           editable_html: data.editable_html,
         });
-        // Replace the generating message
+
+        const imageMessage: ChatMessage = {
+          role: "assistant",
+          content: "✅ Imagem gerada com sucesso!",
+          image_url: imageUrl,
+          expires_at: expiresAt,
+        };
+
+        // Replace the generating message with the image message
         setMessages((prev) =>
           prev.map((m, i) =>
             i === prev.length - 1 && m.content.includes("Gerando imagem")
-              ? { ...m, content: "✅ Imagem gerada! Clique nos textos para editar." }
+              ? imageMessage
               : m
           )
         );
+
+        // Persist to DB with image_url and expires_at
+        if (conversationId) {
+          await persistMessage(conversationId, "assistant", "✅ Imagem gerada com sucesso!", imageUrl, expiresAt);
+        }
+
         toast.success("Imagem gerada! Edite os textos clicando neles.");
       } else {
         throw new Error("Não foi possível gerar a imagem.");
@@ -381,7 +398,7 @@ export default function NewAnalysisPage() {
     } finally {
       setIsGeneratingImage(false);
     }
-  }, [messages, isGeneratingImage]);
+  }, [messages, isGeneratingImage, conversationId]);
 
   const handleSend = async () => {
     if (isStreaming || isGeneratingImage) return;
