@@ -235,8 +235,20 @@ export default function NewAnalysisPage() {
   }, [conversationId, user, setSearchParams]);
 
   // Helper: persist a message to DB
-  const persistMessage = useCallback(async (convId: string, role: string, content: string) => {
-    await supabase.from("chat_messages").insert({ conversation_id: convId, role, content });
+  const persistMessage = useCallback(async (
+    convId: string,
+    role: string,
+    content: string,
+    imageUrl?: string | null,
+    expiresAt?: string | null
+  ) => {
+    await supabase.from("chat_messages").insert({
+      conversation_id: convId,
+      role,
+      content,
+      image_url: imageUrl || null,
+      expires_at: expiresAt || null,
+    } as any);
   }, []);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
