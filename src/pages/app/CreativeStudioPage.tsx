@@ -22,6 +22,7 @@ export default function CreativeStudioPage() {
   const canvasState = useCanvasState();
   const [saving, setSaving] = useState(false);
   const [jobLoaded, setJobLoaded] = useState(false);
+  const [jobLoading, setJobLoading] = useState(!!jobId);
 
   useEffect(() => {
     if (!workspace.editingId || !canvasState.canvasReady) return;
