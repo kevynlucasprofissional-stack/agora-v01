@@ -172,14 +172,19 @@ export default function NewAnalysisPage() {
 
       supabase
         .from("chat_messages")
-        .select("role, content")
+        .select("role, content, image_url, expires_at")
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true })
         .then(({ data }) => {
           if (data && data.length > 0) {
-            const restored = data.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+            const restored = data.map((m: any) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              image_url: m.image_url || null,
+              expires_at: m.expires_at || null,
+            }));
             setMessages(restored);
-            if (restored.some((m) => m.role === "assistant" && m.content.includes("##READY##"))) {
+            if (restored.some((m: any) => m.role === "assistant" && m.content.includes("##READY##"))) {
               setIsReady(true);
             }
           }
