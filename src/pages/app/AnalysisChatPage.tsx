@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
-import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
+
 import { toast } from "sonner";
 
 interface ChatMessage {
