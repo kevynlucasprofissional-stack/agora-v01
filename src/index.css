@@ -207,3 +207,5 @@
   display: table;
   min-width: 100%;
 }
+
+#lovable-badge { display: none !important; }
