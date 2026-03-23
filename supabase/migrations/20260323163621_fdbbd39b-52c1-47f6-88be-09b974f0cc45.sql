@@ -1,0 +1,4 @@
+
+ALTER TABLE public.chat_messages
+ADD COLUMN image_url TEXT DEFAULT NULL,
+ADD COLUMN expires_at TIMESTAMPTZ DEFAULT NULL;
