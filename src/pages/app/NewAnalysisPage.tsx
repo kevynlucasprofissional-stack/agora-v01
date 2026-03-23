@@ -14,7 +14,7 @@ import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; image_url?: string | null; expires_at?: string | null };
 
 const agentOrder: AgentKind[] = ["master_orchestrator", "sociobehavioral", "offer_engineer", "performance_scientist", "chief_strategist"];
 const agentIcons: Record<AgentKind, React.ElementType> = {
