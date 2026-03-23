@@ -101,7 +101,7 @@ export default function CreativeStudioPage() {
   const handleBackToWorkspace = useCallback(() => {
     if (workspace.editingId) {
       const json = canvasState.getJSON();
-      const thumb = canvasState.exportPNG();
+      const thumb = canvasState.exportThumbnail();
       workspace.updateArtboard(workspace.editingId, {
         layersState: json, thumbnail: thumb || null, format: canvasState.format,
       });
