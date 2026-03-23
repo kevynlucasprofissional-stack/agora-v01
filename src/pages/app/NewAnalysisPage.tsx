@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
