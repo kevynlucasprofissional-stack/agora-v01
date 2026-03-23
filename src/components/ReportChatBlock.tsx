@@ -7,7 +7,8 @@ import { streamChat } from "@/lib/streamChat";
 import { AnalysisRequest } from "@/types/database";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { AdobeExpressEditor } from "@/components/AdobeExpressEditor";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChatMessage {
