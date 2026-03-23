@@ -225,6 +225,50 @@ export function WorkspaceGrid({ workspace }: Props) {
   );
 }
 
+// ---- Onboarding Hints ----
+const HINTS_STORAGE_KEY = "agora-studio-hints-dismissed";
+
+function OnboardingHints({ hasElements }: { hasElements: boolean }) {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(HINTS_STORAGE_KEY) === "true"; } catch { return false; }
+  });
+
+  if (dismissed || !hasElements) return null;
+
+  const hints = [
+    { icon: MousePointerClick, text: "Duplo clique no artboard para abrir o editor" },
+    { icon: Move, text: "Alt + arrastar ou botão do meio para mover o canvas" },
+    { icon: ZoomIn, text: "Ctrl + scroll para zoom" },
+    { icon: Keyboard, text: "Delete para remover · Ctrl+D para duplicar" },
+  ];
+
+  return (
+    <div className="absolute top-3 right-3 z-20 bg-card/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg max-w-[220px] animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-semibold text-foreground/80">Dicas rápidas</span>
+        <button
+          className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDismissed(true);
+            try { localStorage.setItem(HINTS_STORAGE_KEY, "true"); } catch {}
+          }}
+        >
+          <X className="h-3 w-3 text-muted-foreground" />
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {hints.map((h, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <h.icon className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+            <span className="text-[10px] text-muted-foreground leading-tight">{h.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---- Minimap ----
 const MINIMAP_FORMAT_DIMS: Record<string, { w: number; h: number }> = {
   "1080x1080": { w: 1080, h: 1080 },
