@@ -48,7 +48,7 @@ export const ArtboardCard = memo(function ArtboardCard({
       </div>
 
       <div
-        className={`rounded-lg overflow-hidden transition-shadow duration-200 ${
+        className={`rounded-lg overflow-hidden transition-shadow duration-200 relative ${
           isSelected
             ? "ring-2 ring-primary shadow-lg shadow-primary/20"
             : "ring-1 ring-border/50 shadow-md hover:shadow-lg hover:ring-border"
@@ -62,6 +62,13 @@ export const ArtboardCard = memo(function ArtboardCard({
             <span className="text-[10px] text-muted-foreground/40">Vazio</span>
           </div>
         )}
+
+        {/* Double-click hint overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors duration-200 rounded-lg">
+          <span className="text-[10px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/60 px-2 py-1 rounded-md pointer-events-none">
+            Duplo clique para editar
+          </span>
+        </div>
       </div>
     </div>
   );
