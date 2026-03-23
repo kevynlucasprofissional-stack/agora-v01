@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { CanvasFormat } from "./useCanvasState";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
