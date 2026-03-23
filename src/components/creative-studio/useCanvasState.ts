@@ -211,6 +211,12 @@ export function useCanvasState() {
     return canvas.toDataURL({ format: "png", multiplier: 2 });
   }, []);
 
+  const exportThumbnail = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return "";
+    return canvas.toDataURL({ format: "png", multiplier: 0.2 });
+  }, []);
+
   const getJSON = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
