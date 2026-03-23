@@ -127,6 +127,16 @@ export function useWorkspaceState() {
     return () => clearTimeout(timer);
   }, [elements]);
 
+  // Persist pan/zoom to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem("agora-workspace-view", JSON.stringify({ panX: pan.x, panY: pan.y, zoom: wsZoom }));
+      } catch {}
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pan, wsZoom]);
+
   const nextZIndex = useCallback(() => {
     const maxZ = elements.reduce((m, e) => {
       const z = (e as any).zIndex ?? 0;
