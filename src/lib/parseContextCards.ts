@@ -1,17 +1,22 @@
 /**
  * Parses [CONTEXT_OPTIONS] blocks from AI responses.
- * Format: [CONTEXT_OPTIONS]{"question":"...","options":["...","..."]}[/CONTEXT_OPTIONS]
+ * Supports:
+ *   - Multiple choice: {"question":"...","options":["...",".."]}
+ *   - Text input:      {"question":"...","type":"text","placeholder":"..."}
  */
 
 export interface ContextCardData {
   question: string;
-  options: string[];
+  /** If present, show multiple-choice options */
+  options?: string[];
+  /** "choice" (default) or "text" for open-ended input */
+  type?: "choice" | "text";
+  /** Placeholder for text inputs */
+  placeholder?: string;
 }
 
 export interface ParsedContent {
-  /** Text before/after context cards, with the card block removed */
   textWithoutCards: string;
-  /** Parsed context cards (may be empty) */
   cards: ContextCardData[];
 }
 
@@ -25,8 +30,22 @@ export function parseContextCards(content: string): ParsedContent {
   for (const match of matches) {
     try {
       const parsed = JSON.parse(match[1].trim());
-      if (parsed.question && Array.isArray(parsed.options) && parsed.options.length > 0) {
-        cards.push({ question: parsed.question, options: parsed.options });
+      if (!parsed.question) continue;
+
+      const cardType = parsed.type === "text" ? "text" : "choice";
+
+      if (cardType === "text") {
+        cards.push({
+          question: parsed.question,
+          type: "text",
+          placeholder: parsed.placeholder || "Digite sua resposta...",
+        });
+      } else if (Array.isArray(parsed.options) && parsed.options.length > 0) {
+        cards.push({
+          question: parsed.question,
+          options: parsed.options,
+          type: "choice",
+        });
       }
     } catch {
       // Not valid JSON, skip
