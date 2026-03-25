@@ -130,16 +130,28 @@ export function useCanvasState() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const hasWidth = options.width && options.width > 0;
-    const TextClass = hasWidth ? fabric.Textbox : fabric.IText;
-    const t = new TextClass(text, {
-      left: dimensions.w / 2 - 100,
-      top: dimensions.h / 2 - 20,
-      fontSize: 40,
-      fontFamily: "Arial",
-      fill: "#000000",
-      centeredRotation: true,
-      ...options,
-    });
+    let t: fabric.IText | fabric.Textbox;
+    if (hasWidth) {
+      t = new fabric.Textbox(text, {
+        left: dimensions.w / 2 - 100,
+        top: dimensions.h / 2 - 20,
+        fontSize: 40,
+        fontFamily: "Arial",
+        fill: "#000000",
+        centeredRotation: true,
+        ...options,
+      });
+    } else {
+      t = new fabric.IText(text, {
+        left: dimensions.w / 2 - 100,
+        top: dimensions.h / 2 - 20,
+        fontSize: 40,
+        fontFamily: "Arial",
+        fill: "#000000",
+        centeredRotation: true,
+        ...options,
+      });
+    }
     // Enforce canvas margins — clamp position
     const margin = dimensions.w * 0.05;
     if ((t.left || 0) < margin) t.set("left", margin);
