@@ -17,12 +17,7 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
   const [textInputValue, setTextInputValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const card = cards[currentIdx];
-  const isLast = currentIdx === cards.length - 1;
-  const answeredCount = Object.keys(answers).length;
-  const isTextType = card?.type === "text";
-
-  const selectAnswer = useCallback((answer: string) => {
+  const card = cards[currentIdx] ?? null;
   const isLast = currentIdx === cards.length - 1;
   const answeredCount = Object.keys(answers).length;
   const isTextType = card?.type === "text";
@@ -34,31 +29,27 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
     setCustomText("");
     setTextInputValue("");
 
-    if (isLast) {
-      // All answered — build combined message and send
+    if (currentIdx >= cards.length - 1) {
       const parts = cards.map((c, i) => {
         const a = i === currentIdx ? answer : newAnswers[i];
         return `**${c.question}**\n${a}`;
       });
-      const combined = parts.join("\n\n");
       setSubmitted(true);
-      onSelect(combined);
+      onSelect(parts.join("\n\n"));
     } else {
       setCurrentIdx((prev) => prev + 1);
     }
-  }, [answers, currentIdx, isLast, cards, onSelect]);
+  }, [answers, currentIdx, cards, onSelect]);
 
-  const submitCustom = () => {
-    if (customText.trim()) {
-      selectAnswer(customText.trim());
-    }
-  };
+  const submitCustom = useCallback(() => {
+    if (customText.trim()) selectAnswer(customText.trim());
+  }, [customText, selectAnswer]);
 
-  const submitTextInput = () => {
-    if (textInputValue.trim()) {
-      selectAnswer(textInputValue.trim());
-    }
-  };
+  const submitTextInput = useCallback(() => {
+    if (textInputValue.trim()) selectAnswer(textInputValue.trim());
+  }, [textInputValue, selectAnswer]);
+
+  if (cards.length === 0 || submitted || !card) return null;
 
   return (
     <div className="mt-4 space-y-2">
@@ -110,9 +101,7 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
                   autoFocus
                   value={textInputValue}
                   onChange={(e) => setTextInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitTextInput();
-                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") submitTextInput(); }}
                   placeholder={card.placeholder || "Digite sua resposta..."}
                   disabled={disabled}
                   className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
@@ -147,7 +136,6 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
                 </button>
               ))}
 
-              {/* Custom answer toggle */}
               {customInputIdx === currentIdx ? (
                 <div className="flex items-center gap-2 mx-3 my-2 rounded-xl border border-border/50 bg-background/50 px-3 py-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
                   <input
@@ -156,10 +144,7 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
                     onChange={(e) => setCustomText(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") submitCustom();
-                      if (e.key === "Escape") {
-                        setCustomInputIdx(null);
-                        setCustomText("");
-                      }
+                      if (e.key === "Escape") { setCustomInputIdx(null); setCustomText(""); }
                     }}
                     placeholder="Escreva sua resposta..."
                     className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
