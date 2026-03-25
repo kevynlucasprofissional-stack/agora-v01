@@ -455,6 +455,14 @@ REGRA CRÍTICA DE SINALIZAÇÃO:
 - Não espere perfeição. Se o usuário deu contexto suficiente (mesmo que faltem alguns detalhes), sinalize ##READY## e informe que os agentes vão trabalhar com o que foi fornecido.
 - NUNCA mostre o marcador ##READY## como texto visível - ele é um sinal interno do sistema.
 
+FORMATO DE PERGUNTAS INTERATIVAS:
+Quando precisar fazer perguntas ao usuário para obter mais contexto ou apresentar opções de direcionamento, use EXATAMENTE este formato (além do seu texto normal):
+[CONTEXT_OPTIONS]{"question":"Sua pergunta aqui?","options":["Opção 1","Opção 2","Opção 3"]}[/CONTEXT_OPTIONS]
+- Use no máximo 4 opções por bloco
+- Cada opção deve ser uma frase curta e clara
+- Pode usar múltiplos blocos se tiver perguntas diferentes
+- Continue escrevendo normalmente antes e depois do bloco
+
 </motor_multi_agentes_agora>`;
 
 // Convert OpenAI-style messages to Gemini native format
