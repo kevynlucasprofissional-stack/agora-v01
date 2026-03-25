@@ -407,24 +407,11 @@ export default function NewAnalysisPage() {
     }
   }, [messages, isGeneratingImage, conversationId]);
 
+  const pendingCardTextRef = useRef<string | null>(null);
+
   const handleContextCardSelect = useCallback((text: string) => {
+    pendingCardTextRef.current = text;
     setInput(text);
-    // Trigger send on next tick
-    setTimeout(() => {
-      const textarea = textareaRef.current;
-      if (textarea) {
-        textarea.value = text;
-        const event = new Event("input", { bubbles: true });
-        textarea.dispatchEvent(event);
-      }
-      // Directly call handleSend logic
-      setInput(prev => {
-        if (prev.trim()) {
-          // Will be picked up by the send
-        }
-        return prev;
-      });
-    }, 0);
   }, []);
 
   const handleSend = async () => {
