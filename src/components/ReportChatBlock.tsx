@@ -361,7 +361,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
           messages.map((msg, i) => {
             const hasImage = !!msg.image_url;
             const expired = hasImage && isImageExpired(msg.expires_at);
-            const displayContent = cleanContent(msg.content);
+            const rawContent = cleanContent(msg.content);
+            const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
+            const displayContent = parsed ? parsed.textWithoutCards : rawContent;
+            const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
 
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -373,9 +376,16 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                     <>
                       <TypewriterMarkdown
                         content={displayContent}
-                        isStreaming={isStreaming && i === messages.length - 1}
+                        isStreaming={isStreaming && isLastAssistant}
                         className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
                       />
+                      {parsed && parsed.cards.length > 0 && !isStreaming && (
+                        <ContextCards
+                          cards={parsed.cards}
+                          onSelect={handleContextCardSelect}
+                          disabled={isBusy}
+                        />
+                      )}
                       {hasImage && !expired && (
                         <div className="mt-3">
                           <img
