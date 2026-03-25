@@ -810,6 +810,10 @@ export default function NewAnalysisPage() {
           {messages.map((msg, idx) => {
             const hasImage = !!msg.image_url;
             const expired = hasImage && msg.expires_at ? new Date(msg.expires_at) < new Date() : false;
+            const rawContent = msg.role === "assistant" ? msg.content.replace("##READY##", "").trim() : msg.content;
+            const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
+            const displayContent = parsed ? parsed.textWithoutCards : rawContent;
+            const isLastAssistant = msg.role === "assistant" && idx === messages.length - 1;
 
             return (
               <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -824,10 +828,17 @@ export default function NewAnalysisPage() {
                     {msg.role === "assistant" ? (
                       <>
                         <TypewriterMarkdown
-                          content={msg.content.replace("##READY##", "").trim()}
-                          isStreaming={isStreaming && idx === messages.length - 1}
+                          content={displayContent}
+                          isStreaming={isStreaming && isLastAssistant}
                           className="prose prose-sm max-w-none text-foreground"
                         />
+                        {parsed && parsed.cards.length > 0 && !isStreaming && (
+                          <ContextCards
+                            cards={parsed.cards}
+                            onSelect={handleContextCardSelect}
+                            disabled={isStreaming || isGeneratingImage}
+                          />
+                        )}
                         {/* Inline image */}
                         {hasImage && !expired && (
                           <div className="mt-3">
