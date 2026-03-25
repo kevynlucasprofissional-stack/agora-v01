@@ -129,7 +129,9 @@ export function useCanvasState() {
   const addText = useCallback((text: string, options: Partial<fabric.ITextProps> = {}) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const t = new fabric.IText(text, {
+    const hasWidth = options.width && options.width > 0;
+    const TextClass = hasWidth ? fabric.Textbox : fabric.IText;
+    const t = new TextClass(text, {
       left: dimensions.w / 2 - 100,
       top: dimensions.h / 2 - 20,
       fontSize: 40,
@@ -138,6 +140,10 @@ export function useCanvasState() {
       centeredRotation: true,
       ...options,
     });
+    // Enforce canvas margins — clamp position
+    const margin = dimensions.w * 0.05;
+    if ((t.left || 0) < margin) t.set("left", margin);
+    if ((t.top || 0) < margin) t.set("top", margin);
     canvas.add(t);
     canvas.setActiveObject(t);
     canvas.renderAll();
