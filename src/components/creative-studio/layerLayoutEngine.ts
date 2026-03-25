@@ -58,7 +58,7 @@ function createShadow(type: "headline" | "body" | "cta"): fabric.Shadow {
 function layoutHeroBottom(layers: LayerInput[], dim: LayoutConfig): fabric.ITextProps[] {
   const results: fabric.ITextProps[] = [];
   const pad = dim.w * 0.08;
-  const maxTextWidth = dim.w * 0.85;
+  const maxTextWidth = dim.w - pad * 2; // Enforce margins on both sides
 
   // Sort: headline first, then body/subheadline, then CTA last
   const sorted = [...layers].sort((a, b) => {
@@ -149,8 +149,9 @@ function layoutHeroBottom(layers: LayerInput[], dim: LayoutConfig): fabric.IText
  */
 function layoutCenteredImpact(layers: LayerInput[], dim: LayoutConfig): fabric.ITextProps[] {
   const results: fabric.ITextProps[] = [];
-  const centerX = dim.w * 0.1;
-  const maxTextWidth = dim.w * 0.8;
+  const pad = dim.w * 0.1;
+  const centerX = pad;
+  const maxTextWidth = dim.w - pad * 2;
 
   const sorted = [...layers].sort((a, b) => {
     const order: Record<string, number> = { headline: 0, subheadline: 1, body: 1, cta: 2 };
