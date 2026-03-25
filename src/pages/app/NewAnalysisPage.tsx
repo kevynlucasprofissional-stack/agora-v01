@@ -414,6 +414,16 @@ export default function NewAnalysisPage() {
     setInput(text);
   }, []);
 
+  // Auto-send when a context card option is selected
+  useEffect(() => {
+    if (pendingCardTextRef.current && input === pendingCardTextRef.current && !isStreaming && !isGeneratingImage) {
+      pendingCardTextRef.current = null;
+      handleSendDirect();
+    }
+  }, [input]);
+
+  const handleSendDirect = () => handleSend();
+
   const handleSend = async () => {
     if (isStreaming || isGeneratingImage) return;
 
