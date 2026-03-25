@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/AppLayout";
 
 // Public pages
 import LandingPage from "@/pages/LandingPage";
+import PetraMixPage from "@/pages/PetraMixPage";
 import LoginPage from "@/pages/LoginPage";
 import PricingPage from "@/pages/PricingPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
