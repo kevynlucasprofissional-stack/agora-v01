@@ -137,7 +137,7 @@ Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\
 }
 
 REGRAS:
-- O headline, body_copy e CTA devem refletir os insights da análise
+- O headline, body_copy, CTA e TODOS os textos em editable_layers devem ser escritos NO MESMO IDIOMA da campanha original (raw_prompt). Se a campanha foi escrita em português, TODOS os textos devem ser em português. NUNCA traduza para inglês.
 - O nano_banana_prompt deve ser em INGLÊS e descrever APENAS o visual de fundo, SEM texto
 - O visual deve ser coerente com a indústria e público-alvo
 - Inclua compliance_warnings se houver restrições identificadas na análise`;
