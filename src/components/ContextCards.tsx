@@ -17,9 +17,12 @@ export function ContextCards({ cards, onSelect, disabled }: ContextCardsProps) {
   const [textInputValue, setTextInputValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  if (cards.length === 0 || submitted) return null;
-
   const card = cards[currentIdx];
+  const isLast = currentIdx === cards.length - 1;
+  const answeredCount = Object.keys(answers).length;
+  const isTextType = card?.type === "text";
+
+  const selectAnswer = useCallback((answer: string) => {
   const isLast = currentIdx === cards.length - 1;
   const answeredCount = Object.keys(answers).length;
   const isTextType = card?.type === "text";
