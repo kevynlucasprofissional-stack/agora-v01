@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline, Trash2 } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline, Trash2, EyeOff } from "lucide-react";
 import type { useCanvasState } from "./useCanvasState";
 import * as fabric from "fabric";
 
@@ -29,10 +29,12 @@ export function PropertiesPanel({ state }: Props) {
       setProps({});
       return;
     }
+    const fillVal = obj.fill;
+    const strokeVal = obj.stroke;
     setProps({
-      fill: (obj.fill as string) || "#000000",
-      stroke: (obj.stroke as string) || "",
-      strokeWidth: obj.strokeWidth || 0,
+      fill: fillVal === "transparent" || fillVal === null || fillVal === undefined ? "transparent" : (fillVal as string),
+      stroke: strokeVal ?? "transparent",
+      strokeWidth: obj.strokeWidth ?? 0,
       opacity: obj.opacity ?? 1,
       left: Math.round(obj.left || 0),
       top: Math.round(obj.top || 0),
@@ -49,10 +51,15 @@ export function PropertiesPanel({ state }: Props) {
     });
   }, [obj]);
 
-  const update = (key: string, value: any) => {
+  const update = useCallback((key: string, value: any) => {
     setProps((p) => ({ ...p, [key]: value }));
-    state.updateSelectedObject({ [key]: value });
-  };
+    if (key === "angle") {
+      // Rotate around center
+      state.updateSelectedObject({ [key]: value, centeredRotation: true });
+    } else {
+      state.updateSelectedObject({ [key]: value });
+    }
+  }, [state]);
 
   const deleteObject = () => {
     const canvas = state.canvasRef.current;
@@ -93,9 +100,20 @@ export function PropertiesPanel({ state }: Props) {
   }
 
   const isText = obj instanceof fabric.IText || obj instanceof fabric.Textbox || (obj as any).fontSize !== undefined;
+  const fillIsTransparent = props.fill === "transparent" || props.fill === "" || props.fill === null;
+  const strokeIsTransparent = props.stroke === "transparent" || props.stroke === "" || props.stroke === null;
+
+  // Get the display color for the color input (can't show "transparent" in color input)
+  const fillColorDisplay = fillIsTransparent ? "#ffffff" : props.fill;
+  const strokeColorDisplay = strokeIsTransparent ? "#000000" : props.stroke;
 
   return (
-    <div className="w-60 border-l border-border bg-card flex flex-col">
+    <div
+      className="w-60 border-l border-border bg-card flex flex-col"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+    >
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -109,8 +127,34 @@ export function PropertiesPanel({ state }: Props) {
           <div className="space-y-1.5">
             <Label className="text-xs">Cor de preenchimento</Label>
             <div className="flex gap-2 items-center">
-              <input type="color" value={props.fill || "#000000"} onChange={(e) => update("fill", e.target.value)} className="h-8 w-12 rounded cursor-pointer border border-border" />
-              <Input value={props.fill || ""} onChange={(e) => update("fill", e.target.value)} className="h-8 text-xs flex-1" />
+              <div className="relative">
+                <input
+                  type="color"
+                  value={fillColorDisplay}
+                  onChange={(e) => update("fill", e.target.value)}
+                  className="h-8 w-12 rounded cursor-pointer border border-border"
+                />
+                {fillIsTransparent && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/80 rounded">
+                    <EyeOff className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <Input
+                value={fillIsTransparent ? "" : props.fill}
+                onChange={(e) => update("fill", e.target.value || "transparent")}
+                className="h-8 text-xs flex-1"
+                placeholder="transparent"
+              />
+              <Button
+                variant={fillIsTransparent ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => update("fill", fillIsTransparent ? "#000000" : "transparent")}
+                title="Preenchimento transparente"
+              >
+                <EyeOff className="h-3 w-3" />
+              </Button>
             </div>
           </div>
 
@@ -118,15 +162,53 @@ export function PropertiesPanel({ state }: Props) {
           <div className="space-y-1.5">
             <Label className="text-xs">Borda</Label>
             <div className="flex gap-2 items-center">
-              <input type="color" value={props.stroke || "#000000"} onChange={(e) => update("stroke", e.target.value)} className="h-8 w-12 rounded cursor-pointer border border-border" />
-              <Input type="number" value={props.strokeWidth || 0} onChange={(e) => update("strokeWidth", Number(e.target.value))} className="h-8 text-xs w-16" min={0} max={20} />
+              <div className="relative">
+                <input
+                  type="color"
+                  value={strokeColorDisplay}
+                  onChange={(e) => {
+                    update("stroke", e.target.value);
+                    // Auto-set strokeWidth if it's 0
+                    if ((props.strokeWidth || 0) === 0) {
+                      update("strokeWidth", 1);
+                    }
+                  }}
+                  className="h-8 w-12 rounded cursor-pointer border border-border"
+                />
+                {strokeIsTransparent && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/80 rounded">
+                    <EyeOff className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <Input
+                type="number"
+                value={props.strokeWidth ?? 0}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  update("strokeWidth", v);
+                  // If strokeWidth > 0 and no stroke color, set black
+                  if (v > 0 && strokeIsTransparent) {
+                    update("stroke", "#000000");
+                  }
+                }}
+                className="h-8 text-xs w-16"
+                min={0}
+                max={20}
+              />
             </div>
           </div>
 
           {/* Opacity */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Opacidade: {Math.round((props.opacity || 1) * 100)}%</Label>
-            <Slider value={[(props.opacity || 1) * 100]} onValueChange={([v]) => update("opacity", v / 100)} min={0} max={100} step={1} />
+            <Label className="text-xs">Opacidade: {Math.round((props.opacity ?? 1) * 100)}%</Label>
+            <Slider
+              value={[Math.round((props.opacity ?? 1) * 100)]}
+              onValueChange={([v]) => update("opacity", v / 100)}
+              min={0}
+              max={100}
+              step={1}
+            />
           </div>
 
           <Separator />
@@ -137,19 +219,25 @@ export function PropertiesPanel({ state }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <span className="text-[10px] text-muted-foreground">X</span>
-                <Input type="number" value={props.left || 0} onChange={(e) => update("left", Number(e.target.value))} className="h-7 text-xs" />
+                <Input type="number" value={props.left ?? 0} onChange={(e) => update("left", Number(e.target.value))} className="h-7 text-xs" />
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground">Y</span>
-                <Input type="number" value={props.top || 0} onChange={(e) => update("top", Number(e.target.value))} className="h-7 text-xs" />
+                <Input type="number" value={props.top ?? 0} onChange={(e) => update("top", Number(e.target.value))} className="h-7 text-xs" />
               </div>
             </div>
           </div>
 
           {/* Rotation */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Rotação: {props.angle || 0}°</Label>
-            <Slider value={[props.angle || 0]} onValueChange={([v]) => update("angle", v)} min={0} max={360} step={1} />
+            <Label className="text-xs">Rotação: {props.angle ?? 0}°</Label>
+            <Slider
+              value={[props.angle ?? 0]}
+              onValueChange={([v]) => update("angle", v)}
+              min={0}
+              max={360}
+              step={1}
+            />
           </div>
 
           {/* Text-specific properties */}
