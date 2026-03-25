@@ -150,7 +150,7 @@ export default function AnalysisChatPage() {
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (isUserNearBottomRef.current && el) {
-      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
     }
   }, [messages]);
 
@@ -409,7 +409,7 @@ export default function AnalysisChatPage() {
                       isStreaming={isStreaming && isLastAssistant}
                       className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
                     />
-                    {parsed && parsed.cards.length > 0 && !isStreaming && (
+                    {parsed && parsed.cards.length > 0 && !isStreaming && isLastAssistant && (
                       <ContextCards
                         cards={parsed.cards}
                         onSelect={handleContextCardSelect}

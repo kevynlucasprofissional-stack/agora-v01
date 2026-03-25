@@ -379,7 +379,7 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
                         isStreaming={isStreaming && isLastAssistant}
                         className="prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
                       />
-                      {parsed && parsed.cards.length > 0 && !isStreaming && (
+                      {parsed && parsed.cards.length > 0 && !isStreaming && isLastAssistant && (
                         <ContextCards
                           cards={parsed.cards}
                           onSelect={handleContextCardSelect}
