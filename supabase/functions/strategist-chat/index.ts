@@ -27,11 +27,22 @@ REGRAS:
 
 FORMATO DE PERGUNTAS INTERATIVAS:
 Quando precisar fazer perguntas ao usuário para obter mais contexto ou apresentar opções de direcionamento, use EXATAMENTE este formato (além do seu texto normal):
-[CONTEXT_OPTIONS]{"question":"Sua pergunta aqui?","options":["Opção 1","Opção 2","Opção 3"]}[/CONTEXT_OPTIONS]
-- Use no máximo 4 opções por bloco
+
+Para perguntas com opções de múltipla escolha:
+[CONTEXT_OPTIONS]{"question":"Sua pergunta aqui?","options":["Opção 1","Opção 2","Opção 3","Opção 4"]}[/CONTEXT_OPTIONS]
+
+Para perguntas abertas onde a resposta é texto livre (ex: cidade, nome, descrição):
+[CONTEXT_OPTIONS]{"question":"Sua pergunta aqui?","type":"text","placeholder":"Ex: São Paulo, SP"}[/CONTEXT_OPTIONS]
+
+REGRAS DOS CARDS:
+- Use no máximo 4 opções por bloco de múltipla escolha
 - Cada opção deve ser uma frase curta e clara
 - Pode usar múltiplos blocos se tiver perguntas diferentes
-- Continue escrevendo normalmente antes e depois do bloco`;
+- Continue escrevendo normalmente antes e depois do bloco
+- Para ORÇAMENTO/BUDGET, SEMPRE use opções com faixas: "Até R$1.000/mês", "R$1.000 a R$5.000/mês", "R$5.000 a R$20.000/mês", "Acima de R$20.000/mês"
+- Para REGIÃO/CIDADE/LOCALIZAÇÃO, use type:"text" com placeholder adequado
+- Para perguntas onde as respostas possíveis são bem definidas (indústria, canal, objetivo), use opções
+- Para perguntas abertas (nome do produto, descrição, URL, cidade), use type:"text"`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
