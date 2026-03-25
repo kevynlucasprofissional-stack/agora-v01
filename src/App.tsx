@@ -46,6 +46,7 @@ const App = () => (
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/petramix" element={<PetraMixPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
