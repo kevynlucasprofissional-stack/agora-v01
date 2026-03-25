@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -61,9 +62,7 @@ export default function LoginPage() {
 
         <div className="glass-card p-8">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Zap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <AgoraIcon size={40} className="shrink-0 rounded-xl" />
             <span className="font-display text-2xl font-bold">Ágora</span>
           </div>
 
