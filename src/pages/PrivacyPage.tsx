@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Zap, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 import { Button } from "@/components/ui/button";
 
 export default function PrivacyPage() {
@@ -8,9 +9,7 @@ export default function PrivacyPage() {
       <nav className="border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <AgoraIcon size={32} className="shrink-0 rounded-lg" />
             <span className="font-display text-xl font-bold">Ágora</span>
           </Link>
           <Button variant="ghost" size="sm" asChild>
@@ -80,7 +79,7 @@ export default function PrivacyPage() {
       <footer className="border-t border-border/30 py-8">
         <div className="container flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
+            <AgoraIcon size={20} className="shrink-0 rounded" />
             <span className="font-display font-semibold text-foreground">Ágora</span>
           </div>
           <div className="flex gap-4">
