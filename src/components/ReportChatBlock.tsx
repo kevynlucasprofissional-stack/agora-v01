@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { parseContextCards } from "@/lib/parseContextCards";
+import { ContextCards } from "@/components/ContextCards";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -322,6 +324,10 @@ export function ReportChatBlock({ analysis }: ReportChatBlockProps) {
   const cleanContent = (content: string): string => {
     return content.replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim();
   };
+
+  const handleContextCardSelect = useCallback((text: string) => {
+    sendMessage(text);
+  }, [sendMessage]);
 
   return (
     <div className="glass-card p-6 flex flex-col" style={{ maxHeight: "750px" }}>
