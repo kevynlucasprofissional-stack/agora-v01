@@ -135,6 +135,7 @@ export function useCanvasState() {
       fontSize: 40,
       fontFamily: "Arial",
       fill: "#000000",
+      centeredRotation: true,
       ...options,
     });
     canvas.add(t);
@@ -151,13 +152,13 @@ export function useCanvasState() {
     let obj: fabric.FabricObject;
     switch (type) {
       case "rect":
-        obj = new fabric.Rect({ left: cx - 75, top: cy - 75, width: 150, height: 150, fill: "hsl(220,80%,55%)", rx: 8, ry: 8 });
+        obj = new fabric.Rect({ left: cx - 75, top: cy - 75, width: 150, height: 150, fill: "hsl(220,80%,55%)", rx: 8, ry: 8, centeredRotation: true });
         break;
       case "circle":
-        obj = new fabric.Circle({ left: cx - 75, top: cy - 75, radius: 75, fill: "hsl(155,50%,55%)" });
+        obj = new fabric.Circle({ left: cx - 75, top: cy - 75, radius: 75, fill: "hsl(155,50%,55%)", centeredRotation: true });
         break;
       case "triangle":
-        obj = new fabric.Triangle({ left: cx - 75, top: cy - 75, width: 150, height: 150, fill: "hsl(40,80%,60%)" });
+        obj = new fabric.Triangle({ left: cx - 75, top: cy - 75, width: 150, height: 150, fill: "hsl(40,80%,60%)", centeredRotation: true });
         break;
       case "line":
         obj = new fabric.Line([cx - 100, cy, cx + 100, cy], { stroke: "#000000", strokeWidth: 3 });
