@@ -57,39 +57,20 @@ export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
       }
       const output = data?.strategist_output;
       if (output) {
-        // Add text layers from AI
-        const h = state.dimensions.h;
-        const w = state.dimensions.w;
-        if (output.headline) {
-          state.addText(output.headline, {
-            fontSize: 64,
-            fontWeight: "bold",
-            fill: "#FFFFFF",
-            left: w * 0.1,
-            top: h * 0.3,
-            width: w * 0.8,
-            shadow: new (await import("fabric")).Shadow({ color: "rgba(0,0,0,0.5)", blur: 10, offsetX: 0, offsetY: 2 }),
-          });
+        const dim = state.dimensions;
+        const canvas = state.canvasRef.current;
+        const layers: Array<{ type: string; content: string }> = [];
+        if (output.headline) layers.push({ type: "headline", content: output.headline });
+        if (output.body_copy) layers.push({ type: "subheadline", content: output.body_copy });
+        if (output.cta) layers.push({ type: "cta", content: output.cta });
+        if (output.editable_layers) {
+          layers.length = 0;
+          layers.push(...(output.editable_layers as Array<{ type: string; content: string }>));
         }
-        if (output.body_copy) {
-          state.addText(output.body_copy, {
-            fontSize: 28,
-            fill: "#FFFFFF",
-            left: w * 0.1,
-            top: h * 0.5,
-            width: w * 0.8,
-            shadow: new (await import("fabric")).Shadow({ color: "rgba(0,0,0,0.4)", blur: 6, offsetX: 0, offsetY: 1 }),
-          });
-        }
-        if (output.cta) {
-          state.addText(output.cta, {
-            fontSize: 24,
-            fontWeight: "bold",
-            fill: "#FFFFFF",
-            backgroundColor: "hsl(220,80%,55%)",
-            left: w * 0.3,
-            top: h * 0.7,
-            padding: 16,
+        if (canvas && layers.length > 0) {
+          addImpactfulLayers(canvas, layers, dim, state.addText, {
+            addOverlay: true,
+            layout: "hero-bottom",
           });
         }
       }

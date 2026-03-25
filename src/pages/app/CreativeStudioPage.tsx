@@ -10,6 +10,7 @@ import { WorkspaceGrid } from "@/components/creative-studio/WorkspaceGrid";
 import { WorkspacePropertiesPanel } from "@/components/creative-studio/WorkspacePropertiesPanel";
 import { StudioHeader } from "@/components/creative-studio/StudioHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { addImpactfulLayers } from "@/components/creative-studio/layerLayoutEngine";
 import { toast } from "sonner";
 
 export default function CreativeStudioPage() {
@@ -75,29 +76,13 @@ export default function CreativeStudioPage() {
     if (strategist_output?.editable_layers) {
       const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
       const dim = canvasState.dimensions;
-      layers.forEach((layer, i) => {
-        const opts: Record<string, any> = {
-          left: dim.w * 0.1,
-          top: dim.h * 0.15 + i * (dim.h * 0.2),
-          fill: "#ffffff",
-          shadow: "2px 2px 6px rgba(0,0,0,0.6)",
-        };
-        if (layer.type === "headline") {
-          opts.fontSize = Math.round(dim.w * 0.065);
-          opts.fontWeight = "bold";
-          opts.fontFamily = "Arial Black";
-        } else if (layer.type === "cta") {
-          opts.fontSize = Math.round(dim.w * 0.04);
-          opts.fontWeight = "bold";
-          opts.fontFamily = "Arial";
-          opts.backgroundColor = "hsl(220,80%,55%)";
-          opts.padding = 12;
-        } else {
-          opts.fontSize = Math.round(dim.w * 0.04);
-          opts.fontFamily = "Arial";
-        }
-        canvasState.addText(layer.content || "", opts);
-      });
+      const canvas = canvasState.canvasRef.current;
+      if (canvas) {
+        addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
+          addOverlay: true,
+          layout: "hero-bottom",
+        });
+      }
     }
   }, [canvasState.canvasReady]);
 
