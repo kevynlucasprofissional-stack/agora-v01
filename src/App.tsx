@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/AppLayout";
 
 // Public pages
 import LandingPage from "@/pages/LandingPage";
+import PetraMixPage from "@/pages/PetraMixPage";
 import LoginPage from "@/pages/LoginPage";
 import PricingPage from "@/pages/PricingPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
@@ -45,6 +46,7 @@ const App = () => (
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/petramix" element={<PetraMixPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
