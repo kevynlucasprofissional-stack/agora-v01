@@ -204,7 +204,7 @@ export default function NewAnalysisPage() {
   useEffect(() => {
     const el = chatScrollRef.current;
     if (isUserNearBottomRef.current && el) {
-      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
     }
   }, [messages]);
 
@@ -832,7 +832,7 @@ export default function NewAnalysisPage() {
                           isStreaming={isStreaming && isLastAssistant}
                           className="prose prose-sm max-w-none text-foreground"
                         />
-                        {parsed && parsed.cards.length > 0 && !isStreaming && (
+                        {parsed && parsed.cards.length > 0 && !isStreaming && isLastAssistant && (
                           <ContextCards
                             cards={parsed.cards}
                             onSelect={handleContextCardSelect}
