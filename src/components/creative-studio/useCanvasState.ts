@@ -244,7 +244,18 @@ export function useCanvasState() {
     if (!canvas) return;
     const obj = canvas.getActiveObject();
     if (!obj) return;
-    obj.set(props);
+
+    // Handle rotation around center
+    if ("angle" in props && props.angle !== undefined) {
+      const center = obj.getCenterPoint();
+      obj.set({ angle: props.angle, originX: "center", originY: "center", left: center.x, top: center.y });
+      // Remove angle from the rest
+      const { angle, centeredRotation, ...rest } = props;
+      if (Object.keys(rest).length > 0) obj.set(rest);
+    } else {
+      obj.set(props);
+    }
+
     canvas.renderAll();
     saveState();
     // Update state to trigger re-render
