@@ -8,8 +8,9 @@ import { motion } from "framer-motion";
 import { streamChat } from "@/lib/streamChat";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
-
 import { toast } from "sonner";
+import { parseContextCards } from "@/lib/parseContextCards";
+import { ContextCards } from "@/components/ContextCards";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -294,6 +295,60 @@ export default function AnalysisChatPage() {
     return content.replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim();
   };
 
+  const handleContextCardSelect = useCallback((text: string) => {
+    setInput(text);
+    // Auto-send
+    setTimeout(() => {
+      const fakeMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+      setMessages(fakeMessages);
+      setIsStreaming(true);
+      if (conversationId) {
+        saveMessage(conversationId, "user", text);
+      }
+      let assistantContent = "";
+      const apiMessages = fakeMessages.filter((_, i) => i > 0);
+      streamChat({
+        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
+        functionName: "strategist-chat",
+        extraBody: {
+          analysisContext: analysis ? {
+            title: analysis.title,
+            score_overall: analysis.score_overall,
+            score_sociobehavioral: analysis.score_sociobehavioral,
+            score_offer: analysis.score_offer,
+            score_performance: analysis.score_performance,
+            industry: analysis.industry,
+            primary_channel: analysis.primary_channel,
+            declared_target_audience: analysis.declared_target_audience,
+            raw_prompt: analysis.raw_prompt,
+            normalized_payload: analysis.normalized_payload,
+          } : undefined,
+        },
+        onDelta: (chunk) => {
+          assistantContent += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "user") {
+              return [...prev, { role: "assistant", content: assistantContent }];
+            }
+            return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
+          });
+        },
+        onDone: async () => {
+          setIsStreaming(false);
+          if (assistantContent && conversationId) {
+            await saveMessage(conversationId, "assistant", assistantContent);
+          }
+        },
+      }).catch((e) => {
+        setIsStreaming(false);
+        const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA."}`;
+        setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+      });
+    }, 0);
+    setInput("");
+  }, [messages, analysis, conversationId, isStreaming]);
+
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
   return (
@@ -336,7 +391,10 @@ export default function AnalysisChatPage() {
           const hasImage = !!msg.image_url;
           const expired = hasImage && isImageExpired(msg.expires_at);
           const creativeJobId = extractCreativeJobId(msg.content);
-          const displayContent = cleanContent(msg.content);
+          const rawContent = cleanContent(msg.content);
+          const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
+          const displayContent = parsed ? parsed.textWithoutCards : rawContent;
+          const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
 
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
@@ -348,9 +406,16 @@ export default function AnalysisChatPage() {
                   <>
                     <TypewriterMarkdown
                       content={displayContent}
-                      isStreaming={isStreaming && i === messages.length - 1}
+                      isStreaming={isStreaming && isLastAssistant}
                       className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
                     />
+                    {parsed && parsed.cards.length > 0 && !isStreaming && (
+                      <ContextCards
+                        cards={parsed.cards}
+                        onSelect={handleContextCardSelect}
+                        disabled={isStreaming || generatingCreative}
+                      />
+                    )}
                     {/* Render image inline */}
                     {hasImage && !expired && (
                       <div className="mt-3">

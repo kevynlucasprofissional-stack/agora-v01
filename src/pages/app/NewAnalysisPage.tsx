@@ -12,6 +12,8 @@ import { AGENT_INFO, AgentKind } from "@/types/database";
 import { ExternalLink } from "lucide-react";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
+import { parseContextCards } from "@/lib/parseContextCards";
+import { ContextCards } from "@/components/ContextCards";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
 type ChatMessage = { role: "user" | "assistant"; content: string; image_url?: string | null; expires_at?: string | null };
@@ -405,6 +407,23 @@ export default function NewAnalysisPage() {
     }
   }, [messages, isGeneratingImage, conversationId]);
 
+  const pendingCardTextRef = useRef<string | null>(null);
+
+  const handleContextCardSelect = useCallback((text: string) => {
+    pendingCardTextRef.current = text;
+    setInput(text);
+  }, []);
+
+  // Auto-send when a context card option is selected
+  useEffect(() => {
+    if (pendingCardTextRef.current && input === pendingCardTextRef.current && !isStreaming && !isGeneratingImage) {
+      pendingCardTextRef.current = null;
+      handleSendDirect();
+    }
+  }, [input]);
+
+  const handleSendDirect = () => handleSend();
+
   const handleSend = async () => {
     if (isStreaming || isGeneratingImage) return;
 
@@ -791,6 +810,10 @@ export default function NewAnalysisPage() {
           {messages.map((msg, idx) => {
             const hasImage = !!msg.image_url;
             const expired = hasImage && msg.expires_at ? new Date(msg.expires_at) < new Date() : false;
+            const rawContent = msg.role === "assistant" ? msg.content.replace("##READY##", "").trim() : msg.content;
+            const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
+            const displayContent = parsed ? parsed.textWithoutCards : rawContent;
+            const isLastAssistant = msg.role === "assistant" && idx === messages.length - 1;
 
             return (
               <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -805,10 +828,17 @@ export default function NewAnalysisPage() {
                     {msg.role === "assistant" ? (
                       <>
                         <TypewriterMarkdown
-                          content={msg.content.replace("##READY##", "").trim()}
-                          isStreaming={isStreaming && idx === messages.length - 1}
+                          content={displayContent}
+                          isStreaming={isStreaming && isLastAssistant}
                           className="prose prose-sm max-w-none text-foreground"
                         />
+                        {parsed && parsed.cards.length > 0 && !isStreaming && (
+                          <ContextCards
+                            cards={parsed.cards}
+                            onSelect={handleContextCardSelect}
+                            disabled={isStreaming || isGeneratingImage}
+                          />
+                        )}
                         {/* Inline image */}
                         {hasImage && !expired && (
                           <div className="mt-3">

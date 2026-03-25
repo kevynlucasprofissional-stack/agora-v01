@@ -23,7 +23,15 @@ REGRAS:
 - Dê recomendações acionáveis com prioridades claras
 - Use formatação Markdown (bold, listas, headers) para clareza
 - Não invente dados numéricos específicos - use ranges e referências de benchmark quando aplicável
-- Quando relevante, cite qual viés cognitivo ou framework está usando`;
+- Quando relevante, cite qual viés cognitivo ou framework está usando
+
+FORMATO DE PERGUNTAS INTERATIVAS:
+Quando precisar fazer perguntas ao usuário para obter mais contexto ou apresentar opções de direcionamento, use EXATAMENTE este formato (além do seu texto normal):
+[CONTEXT_OPTIONS]{"question":"Sua pergunta aqui?","options":["Opção 1","Opção 2","Opção 3"]}[/CONTEXT_OPTIONS]
+- Use no máximo 4 opções por bloco
+- Cada opção deve ser uma frase curta e clara
+- Pode usar múltiplos blocos se tiver perguntas diferentes
+- Continue escrevendo normalmente antes e depois do bloco`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
