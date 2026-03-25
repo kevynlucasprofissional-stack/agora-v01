@@ -391,7 +391,10 @@ export default function AnalysisChatPage() {
           const hasImage = !!msg.image_url;
           const expired = hasImage && isImageExpired(msg.expires_at);
           const creativeJobId = extractCreativeJobId(msg.content);
-          const displayContent = cleanContent(msg.content);
+          const rawContent = cleanContent(msg.content);
+          const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
+          const displayContent = parsed ? parsed.textWithoutCards : rawContent;
+          const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
 
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
@@ -403,9 +406,16 @@ export default function AnalysisChatPage() {
                   <>
                     <TypewriterMarkdown
                       content={displayContent}
-                      isStreaming={isStreaming && i === messages.length - 1}
+                      isStreaming={isStreaming && isLastAssistant}
                       className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
                     />
+                    {parsed && parsed.cards.length > 0 && !isStreaming && (
+                      <ContextCards
+                        cards={parsed.cards}
+                        onSelect={handleContextCardSelect}
+                        disabled={isStreaming || generatingCreative}
+                      />
+                    )}
                     {/* Render image inline */}
                     {hasImage && !expired && (
                       <div className="mt-3">
