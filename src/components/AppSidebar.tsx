@@ -5,7 +5,7 @@ import {
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarBody, SidebarLink, useSidebar,
 } from "@/components/ui/hover-sidebar";
@@ -30,11 +30,19 @@ export function AppSidebar() {
   const { signOut, profile } = useAuth();
   const { isEnterprise } = usePlanAccess();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
 
   const isActive = (href: string) => {
     if (href === "/app") return currentPath === "/app";
+    if (href === "/app/new-analysis") return false; // never show as active
     return currentPath.startsWith(href);
+  };
+
+  const handleNewChat = (e?: React.MouseEvent) => {
+    e?.preventDefault?.();
+    // Navigate with a unique key to force remount even if already on the page
+    navigate(`/app/new-analysis?t=${Date.now()}`);
   };
 
   const enterpriseNav = isEnterprise
@@ -50,9 +58,19 @@ export function AppSidebar() {
 
           {/* Main nav */}
           <div className="mt-6 flex flex-col gap-1">
-            {mainNav.map((link) => (
-              <SidebarLink key={link.href} link={link} active={isActive(link.href)} />
-            ))}
+            {mainNav.map((link) =>
+              link.href === "/app/new-analysis" ? (
+                <SidebarLink
+                  key={link.href}
+                  link={link}
+                  active={false}
+                  onClick={handleNewChat}
+                  className="bg-primary/10 text-primary hover:bg-primary/20 font-medium"
+                />
+              ) : (
+                <SidebarLink key={link.href} link={link} active={isActive(link.href)} />
+              )
+            )}
           </div>
 
           {/* Enterprise nav */}
