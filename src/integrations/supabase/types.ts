@@ -800,6 +800,59 @@ export type Database = {
           },
         ]
       }
+      workspace_artboards: {
+        Row: {
+          created_at: string
+          creative_job_id: string | null
+          format: string
+          id: string
+          layers_state: Json | null
+          name: string
+          thumbnail: string | null
+          updated_at: string
+          user_id: string
+          x: number
+          y: number
+          z_index: number
+        }
+        Insert: {
+          created_at?: string
+          creative_job_id?: string | null
+          format?: string
+          id?: string
+          layers_state?: Json | null
+          name?: string
+          thumbnail?: string | null
+          updated_at?: string
+          user_id: string
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Update: {
+          created_at?: string
+          creative_job_id?: string | null
+          format?: string
+          id?: string
+          layers_state?: Json | null
+          name?: string
+          thumbnail?: string | null
+          updated_at?: string
+          user_id?: string
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_artboards_creative_job_id_fkey"
+            columns: ["creative_job_id"]
+            isOneToOne: false
+            referencedRelation: "creative_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
