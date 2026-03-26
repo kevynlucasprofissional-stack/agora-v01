@@ -225,8 +225,8 @@ serve(async (req) => {
 
   try {
     const { rawPrompt, title, files } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // ── IBGE Enrichment ──
     // Try to extract region from the prompt
@@ -276,208 +276,200 @@ ${ibgeSection}
 
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "analysis_result",
-              description: "Retorna o resultado completo da análise da campanha.",
-              parameters: {
-                type: "object",
-                properties: {
-                  score_overall: { type: "number", description: "Score geral (0-100)" },
-                  score_sociobehavioral: { type: "number", description: "Score sociocomportamental (0-100)" },
-                  score_offer: { type: "number", description: "Score da oferta (0-100)" },
-                  score_performance: { type: "number", description: "Score de performance (0-100)" },
-                  industry: { type: "string", description: "Indústria/setor identificado" },
-                  primary_channel: { type: "string", description: "Canal principal identificado" },
-                  declared_target_audience: { type: "string", description: "Público-alvo identificado" },
-                  region: { type: "string", description: "Região/mercado" },
-                  executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
-                  marketing_era: {
-                    type: "object",
-                    properties: {
-                      era: { type: "string", description: "1.0, 2.0, 3.0 ou 4.0" },
-                      description: { type: "string", description: "Por que esta campanha está nesta era" },
-                      recommendation: { type: "string", description: "O que fazer para evoluir para a próxima era" },
-                    },
-                    required: ["era", "description", "recommendation"],
-                  },
-                  cognitive_biases: {
-                    type: "array",
-                    items: {
+    // Helper to call the AI gateway with retry + fallback
+    const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+    let response: Response | null = null;
+    let lastError = "";
+
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: userPrompt },
+              ],
+              tools: [
+                {
+                  type: "function",
+                  function: {
+                    name: "analysis_result",
+                    description: "Retorna o resultado completo da análise da campanha.",
+                    parameters: {
                       type: "object",
                       properties: {
-                        bias: { type: "string", description: "Nome do viés cognitivo" },
-                        status: { type: "string", description: "'presente', 'ausente' ou 'mal aplicado'" },
-                        application: { type: "string", description: "Como está sendo usado ou como deveria ser usado" },
+                        score_overall: { type: "number", description: "Score geral (0-100)" },
+                        score_sociobehavioral: { type: "number", description: "Score sociocomportamental (0-100)" },
+                        score_offer: { type: "number", description: "Score da oferta (0-100)" },
+                        score_performance: { type: "number", description: "Score de performance (0-100)" },
+                        industry: { type: "string", description: "Indústria/setor identificado" },
+                        primary_channel: { type: "string", description: "Canal principal identificado" },
+                        declared_target_audience: { type: "string", description: "Público-alvo identificado" },
+                        region: { type: "string", description: "Região/mercado" },
+                        executive_summary: { type: "string", description: "Resumo executivo em 2-3 parágrafos" },
+                        marketing_era: {
+                          type: "object",
+                          properties: {
+                            era: { type: "string", description: "1.0, 2.0, 3.0 ou 4.0" },
+                            description: { type: "string", description: "Por que esta campanha está nesta era" },
+                            recommendation: { type: "string", description: "O que fazer para evoluir para a próxima era" },
+                          },
+                          required: ["era", "description", "recommendation"],
+                        },
+                        cognitive_biases: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              bias: { type: "string", description: "Nome do viés cognitivo" },
+                              status: { type: "string", description: "'presente', 'ausente' ou 'mal aplicado'" },
+                              application: { type: "string", description: "Como está sendo usado ou como deveria ser usado" },
+                            },
+                            required: ["bias", "status", "application"],
+                          },
+                          description: "Vieses cognitivos identificados na campanha",
+                        },
+                        hormozi_analysis: {
+                          type: "object",
+                          properties: {
+                            dream_outcome: { type: "number", description: "Nota 1-5 para o resultado sonhado prometido" },
+                            perceived_likelihood: { type: "number", description: "Nota 1-5 para probabilidade percebida de alcançar" },
+                            time_delay: { type: "number", description: "Nota 1-5 para tempo de espera (5=rápido)" },
+                            effort_sacrifice: { type: "number", description: "Nota 1-5 para esforço percebido (5=fácil)" },
+                            overall_value: { type: "string", description: "Diagnóstico geral do valor percebido" },
+                          },
+                          required: ["dream_outcome", "perceived_likelihood", "time_delay", "effort_sacrifice", "overall_value"],
+                        },
+                        kpi_analysis: {
+                          type: "object",
+                          properties: {
+                            vanity_metrics: { type: "array", items: { type: "string" }, description: "Métricas de vaidade identificadas" },
+                            recommended_north_star: { type: "string", description: "North Star Metric recomendada" },
+                            recommended_kpis: { type: "array", items: { type: "string" }, description: "KPIs recomendados" },
+                          },
+                          required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"],
+                        },
+                        timing_analysis: {
+                          type: "object",
+                          properties: {
+                            demand_momentum: { type: "string", description: "Subindo, estável ou caindo" },
+                            context_shock: { type: "string", description: "Avaliação de diferenciação no feed" },
+                            seasonality: { type: "string", description: "Observações sobre timing e sazonalidade" },
+                          },
+                          required: ["demand_momentum", "context_shock", "seasonality"],
+                        },
+                        improvements: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              category: { type: "string" },
+                              items: { type: "array", items: { type: "string" } },
+                            },
+                            required: ["category", "items"],
+                          },
+                        },
+                        strengths: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              category: { type: "string" },
+                              items: { type: "array", items: { type: "string" } },
+                            },
+                            required: ["category", "items"],
+                          },
+                        },
+                        audience_insights: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              generation: { type: "string" },
+                              emoji: { type: "string" },
+                              feedback: { type: "string" },
+                            },
+                            required: ["generation", "emoji", "feedback"],
+                          },
+                        },
+                        market_references: { type: "array", items: { type: "string" } },
+                        brand_sentiment: {
+                          type: "object",
+                          properties: {
+                            overall: { type: "string" },
+                            analysis: { type: "string" },
+                          },
+                          required: ["overall", "analysis"],
+                        },
+                        ibge_insights: {
+                          type: "object",
+                          properties: {
+                            region_fit: { type: "string" },
+                            demographic_notes: { type: "string" },
+                          },
+                        },
                       },
-                      required: ["bias", "status", "application"],
-                    },
-                    description: "Vieses cognitivos identificados na campanha",
-                  },
-                  hormozi_analysis: {
-                    type: "object",
-                    properties: {
-                      dream_outcome: { type: "number", description: "Nota 1-5 para o resultado sonhado prometido" },
-                      perceived_likelihood: {
-                        type: "number",
-                        description: "Nota 1-5 para probabilidade percebida de alcançar",
-                      },
-                      time_delay: { type: "number", description: "Nota 1-5 para tempo de espera (5=rápido)" },
-                      effort_sacrifice: { type: "number", description: "Nota 1-5 para esforço percebido (5=fácil)" },
-                      overall_value: { type: "string", description: "Diagnóstico geral do valor percebido" },
-                    },
-                    required: [
-                      "dream_outcome",
-                      "perceived_likelihood",
-                      "time_delay",
-                      "effort_sacrifice",
-                      "overall_value",
-                    ],
-                  },
-                  kpi_analysis: {
-                    type: "object",
-                    properties: {
-                      vanity_metrics: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Métricas de vaidade identificadas",
-                      },
-                      recommended_north_star: { type: "string", description: "North Star Metric recomendada" },
-                      recommended_kpis: { type: "array", items: { type: "string" }, description: "KPIs recomendados" },
-                    },
-                    required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"],
-                  },
-                  timing_analysis: {
-                    type: "object",
-                    properties: {
-                      demand_momentum: { type: "string", description: "Subindo, estável ou caindo" },
-                      context_shock: { type: "string", description: "Avaliação de diferenciação no feed" },
-                      seasonality: { type: "string", description: "Observações sobre timing e sazonalidade" },
-                    },
-                    required: ["demand_momentum", "context_shock", "seasonality"],
-                  },
-                  improvements: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        category: { type: "string", description: "Nome da categoria do gargalo (ex: Estratégia de Oferta, Segmentação, Métricas, Canais, Criativo, Posicionamento)" },
-                        items: { type: "array", items: { type: "string" }, description: "Lista de gargalos específicos desta categoria" },
-                      },
-                      required: ["category", "items"],
-                    },
-                    description: "Lista de gargalos categorizados. Agrupe as melhorias em 3-6 categorias temáticas com subcategorias específicas.",
-                  },
-                  strengths: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        category: { type: "string", description: "Nome da categoria do ponto forte (ex: Posicionamento, Canais, Público-Alvo, Criativo)" },
-                        items: { type: "array", items: { type: "string" }, description: "Lista de pontos fortes específicos desta categoria" },
-                      },
-                      required: ["category", "items"],
-                    },
-                    description: "Lista de pontos fortes categorizados. Agrupe em 2-4 categorias temáticas.",
-                  },
-                  audience_insights: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        generation: { type: "string" },
-                        emoji: { type: "string" },
-                        feedback: { type: "string" },
-                      },
-                      required: ["generation", "emoji", "feedback"],
-                    },
-                    description: "Feedback de audiência sintética por geração",
-                  },
-                  market_references: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Referências de mercado e benchmarks",
-                  },
-                  brand_sentiment: {
-                    type: "object",
-                    properties: {
-                      overall: { type: "string", description: "Positivo, Neutro ou Negativo" },
-                      analysis: { type: "string", description: "Análise do sentimento baseado nos dados disponíveis" },
-                    },
-                    required: ["overall", "analysis"],
-                  },
-                  ibge_insights: {
-                    type: "object",
-                    properties: {
-                      region_fit: { type: "string", description: "Adequação da região para o produto/campanha" },
-                      demographic_notes: {
-                        type: "string",
-                        description: "Observações demográficas relevantes baseadas nos dados IBGE",
-                      },
+                      required: [
+                        "score_overall", "score_sociobehavioral", "score_offer", "score_performance",
+                        "industry", "primary_channel", "declared_target_audience", "executive_summary",
+                        "improvements", "strengths", "audience_insights", "market_references",
+                        "marketing_era", "cognitive_biases", "hormozi_analysis", "kpi_analysis",
+                        "timing_analysis", "brand_sentiment",
+                      ],
+                      additionalProperties: false,
                     },
                   },
                 },
-                required: [
-                  "score_overall",
-                  "score_sociobehavioral",
-                  "score_offer",
-                  "score_performance",
-                  "industry",
-                  "primary_channel",
-                  "declared_target_audience",
-                  "executive_summary",
-                  "improvements",
-                  "strengths",
-                  "audience_insights",
-                  "market_references",
-                  "marketing_era",
-                  "cognitive_biases",
-                  "hormozi_analysis",
-                  "kpi_analysis",
-                  "timing_analysis",
-                  "brand_sentiment",
-                ],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "analysis_result" } },
-      }),
-    });
+              ],
+              tool_choice: { type: "function", function: { name: "analysis_result" } },
+            }),
+          });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+          if (response!.ok) break;
+
+          if (response!.status === 429) {
+            return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
+              status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (response!.status === 402) {
+            return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
+              status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const errText = await response!.text();
+          lastError = `Model ${model} attempt ${attempt + 1}: ${response!.status} - ${errText}`;
+          console.warn(lastError);
+
+          // If 503/500, wait briefly then retry or try next model
+          if (response!.status >= 500) {
+            await new Promise(r => setTimeout(r, 2000));
+            response = null;
+            continue;
+          }
+          break;
+        } catch (fetchErr) {
+          lastError = `Fetch error for ${model}: ${fetchErr}`;
+          console.warn(lastError);
+          response = null;
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (response?.ok) break;
+    }
+
+    if (!response || !response.ok) {
+      console.error("All AI models failed:", lastError);
+      return new Response(JSON.stringify({ error: "Serviço de IA temporariamente indisponível. Tente novamente em alguns instantes." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
