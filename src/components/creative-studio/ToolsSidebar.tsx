@@ -77,6 +77,10 @@ export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
       }
       toast.success("Criativo gerado com sucesso!");
       setAiPrompt("");
+      // Notify parent to save artboard state after generation settles
+      if (state.onAfterGenerate) {
+        setTimeout(() => state.onAfterGenerate?.(), 1500);
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao gerar criativo");
     } finally {
