@@ -539,7 +539,7 @@ export default function NewAnalysisPage() {
     persistMessage(convId, "user", userDisplayContent);
 
     // Update conversation title from first user message (use raw input, not file-appended)
-    if (messages.length === 0 || chatTitle === "Novo chat" || chatTitle === "Nova Análise") {
+    if (currentMessages.length === 0 || chatTitle === "Novo chat" || chatTitle === "Nova Análise") {
       const titleText = (input.trim() || userDisplayContent).slice(0, 80);
       setChatTitle(titleText);
       supabase.from("conversations").update({ title: titleText }).eq("id", convId);
