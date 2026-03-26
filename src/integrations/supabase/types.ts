@@ -330,7 +330,7 @@ export type Database = {
       }
       creative_jobs: {
         Row: {
-          analysis_request_id: string
+          analysis_request_id: string | null
           conversation_id: string | null
           created_at: string
           editable_html: string | null
@@ -345,7 +345,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          analysis_request_id: string
+          analysis_request_id?: string | null
           conversation_id?: string | null
           created_at?: string
           editable_html?: string | null
@@ -360,7 +360,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          analysis_request_id?: string
+          analysis_request_id?: string | null
           conversation_id?: string | null
           created_at?: string
           editable_html?: string | null

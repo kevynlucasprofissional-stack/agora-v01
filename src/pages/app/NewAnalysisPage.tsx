@@ -370,21 +370,18 @@ export default function NewAnalysisPage() {
         // Create a creative_job record so it can be linked to an artboard
         let creativeJobId: string | null = null;
         if (user) {
-          // We need an analysis_request_id; use the conversation's linked one or create a placeholder
-          const analysisId = searchParams.get("analysis_id");
-          if (analysisId) {
-            const { data: jobData } = await supabase.from("creative_jobs").insert({
-              user_id: user.id,
-              analysis_request_id: analysisId,
-              conversation_id: conversationId,
-              image_url: imageUrl,
-              strategist_output: data.strategist_output as any,
-              format: "1080x1080",
-              status: "completed",
-              layers_state: {} as any,
-            }).select("id").single();
-            if (jobData) creativeJobId = jobData.id;
-          }
+          const analysisId = searchParams.get("analysis_id") || null;
+          const { data: jobData } = await supabase.from("creative_jobs").insert({
+            user_id: user.id,
+            analysis_request_id: analysisId,
+            conversation_id: conversationId,
+            image_url: imageUrl,
+            strategist_output: data.strategist_output as any,
+            format: "1080x1080",
+            status: "completed",
+            layers_state: {} as any,
+          }).select("id").single();
+          if (jobData) creativeJobId = jobData.id;
         }
 
         const jobTag = creativeJobId ? ` [creative_job_id:${creativeJobId}]` : "";

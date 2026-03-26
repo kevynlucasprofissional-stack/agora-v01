@@ -1,0 +1,1 @@
+ALTER TABLE public.creative_jobs ALTER COLUMN analysis_request_id DROP NOT NULL;
