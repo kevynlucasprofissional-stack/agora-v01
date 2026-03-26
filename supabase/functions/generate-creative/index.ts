@@ -35,88 +35,98 @@ serve(async (req) => {
     }
 
     const { analysis_id, conversation_id, format = "1080x1080", user_prompt } = await req.json();
-    if (!analysis_id) {
-      return new Response(JSON.stringify({ error: "analysis_id é obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+    // ─── 1. Build context (with or without analysis) ───
+    let creativeContext: any;
+
+    if (analysis_id) {
+      const [analysisRes, agentRes, chatRes] = await Promise.all([
+        supabase
+          .from("analysis_requests")
+          .select("*")
+          .eq("id", analysis_id)
+          .single(),
+        supabase
+          .from("agent_responses")
+          .select("agent_id, content_text, content")
+          .eq("analysis_request_id", analysis_id)
+          .eq("success", true)
+          .limit(10),
+        conversation_id
+          ? supabase
+              .from("chat_messages")
+              .select("role, content")
+              .eq("conversation_id", conversation_id)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const campaign = analysisRes.data;
+      if (!campaign) {
+        return new Response(JSON.stringify({ error: "Análise não encontrada" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const agentOutputs = (agentRes.data || []).map((a: any) => ({
+        agent: a.agent_id,
+        summary: a.content_text?.slice(0, 500) || JSON.stringify(a.content)?.slice(0, 500),
+      }));
+
+      const chatHistory = ((chatRes as any).data || []).reverse().map((m: any) => `${m.role}: ${m.content}`).join("\n").slice(0, 2000);
+
+      creativeContext = {
+        campaign: {
+          title: campaign.title,
+          raw_prompt: campaign.raw_prompt,
+          industry: campaign.industry,
+          primary_channel: campaign.primary_channel,
+          target_audience: campaign.declared_target_audience,
+          region: campaign.region,
+        },
+        analysis: {
+          score_overall: campaign.score_overall,
+          score_sociobehavioral: campaign.score_sociobehavioral,
+          score_offer: campaign.score_offer,
+          score_performance: campaign.score_performance,
+          normalized_payload: campaign.normalized_payload,
+        },
+        agents: agentOutputs,
+        chat_history: chatHistory,
+        requested_format: format,
+        user_prompt: user_prompt || null,
+      };
+    } else {
+      // Standalone mode — no analysis, just user prompt
+      creativeContext = {
+        campaign: null,
+        analysis: null,
+        agents: [],
+        chat_history: "",
+        requested_format: format,
+        user_prompt: user_prompt || "Create a professional marketing creative",
+      };
     }
-
-    // ─── 1. Fetch campaign context from DB ───
-    const [analysisRes, agentRes, chatRes] = await Promise.all([
-      supabase
-        .from("analysis_requests")
-        .select("*")
-        .eq("id", analysis_id)
-        .single(),
-      supabase
-        .from("agent_responses")
-        .select("agent_id, content_text, content")
-        .eq("analysis_request_id", analysis_id)
-        .eq("success", true)
-        .limit(10),
-      conversation_id
-        ? supabase
-            .from("chat_messages")
-            .select("role, content")
-            .eq("conversation_id", conversation_id)
-            .order("created_at", { ascending: false })
-            .limit(20)
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    const campaign = analysisRes.data;
-    if (!campaign) {
-      return new Response(JSON.stringify({ error: "Análise não encontrada" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const agentOutputs = (agentRes.data || []).map((a: any) => ({
-      agent: a.agent_id,
-      summary: a.content_text?.slice(0, 500) || JSON.stringify(a.content)?.slice(0, 500),
-    }));
-
-    const chatHistory = ((chatRes as any).data || []).reverse().map((m: any) => `${m.role}: ${m.content}`).join("\n").slice(0, 2000);
-
-    const creativeContext = {
-      campaign: {
-        title: campaign.title,
-        raw_prompt: campaign.raw_prompt,
-        industry: campaign.industry,
-        primary_channel: campaign.primary_channel,
-        target_audience: campaign.declared_target_audience,
-        region: campaign.region,
-      },
-      analysis: {
-        score_overall: campaign.score_overall,
-        score_sociobehavioral: campaign.score_sociobehavioral,
-        score_offer: campaign.score_offer,
-        score_performance: campaign.score_performance,
-        normalized_payload: campaign.normalized_payload,
-      },
-      agents: agentOutputs,
-      chat_history: chatHistory,
-      requested_format: format,
-      user_prompt: user_prompt || null,
-    };
 
     // ─── 2. Gemini Strategist ───
     const userPromptSection = user_prompt
-      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt. O criativo deve refletir o pedido do usuário combinado com os insights da campanha.`
+      ? `\n\nINSTRUÇÃO ESPECÍFICA DO USUÁRIO:\n"${user_prompt}"\n\nLEVE EM CONTA esta instrução como prioridade ao definir headline, body_copy, CTA, visual_direction e nano_banana_prompt. O criativo deve refletir o pedido do usuário.`
       : "";
 
-    const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto completo desta campanha e gere um briefing criativo estruturado para produzir um criativo de marketing.
+    const contextSection = analysis_id
+      ? `CONTEXTO DA CAMPANHA:\n${JSON.stringify(creativeContext, null, 2)}`
+      : `O usuário quer criar um criativo de marketing com base apenas na descrição abaixo. Não há análise de campanha vinculada.\n\nDESCRIÇÃO DO USUÁRIO: "${user_prompt}"`;
 
-CONTEXTO DA CAMPANHA:
-${JSON.stringify(creativeContext, null, 2)}
+    const strategistPrompt = `Você é um estrategista criativo de alto nível. Analise o contexto e gere um briefing criativo estruturado para produzir um criativo de marketing.
 
-${JSON.stringify(creativeContext, null, 2)}${userPromptSection}
+${contextSection}
+${userPromptSection}
 
 Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com este schema:
 {
-  "creative_objective": "objetivo do criativo baseado na campanha",
+  "creative_objective": "objetivo do criativo",
   "target_audience": "público-alvo específico identificado",
   "core_pain_or_desire": "dor ou desejo central do público",
   "main_offer_angle": "ângulo principal da oferta",
@@ -137,10 +147,10 @@ Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\
 }
 
 REGRAS:
-- O headline, body_copy, CTA e TODOS os textos em editable_layers devem ser escritos NO MESMO IDIOMA da campanha original (raw_prompt). Se a campanha foi escrita em português, TODOS os textos devem ser em português. NUNCA traduza para inglês.
+- O headline, body_copy, CTA e TODOS os textos em editable_layers devem ser escritos NO MESMO IDIOMA da instrução do usuário. Se foi escrita em português, TODOS os textos devem ser em português. NUNCA traduza para inglês.
 - O nano_banana_prompt deve ser em INGLÊS e descrever APENAS o visual de fundo, SEM texto
-- O visual deve ser coerente com a indústria e público-alvo
-- Inclua compliance_warnings se houver restrições identificadas na análise`;
+- O visual deve ser coerente com o contexto fornecido
+- Inclua compliance_warnings se houver restrições identificadas`;
 
     const strategistRes = await fetch(GATEWAY, {
       method: "POST",
@@ -297,7 +307,7 @@ IMPORTANT RULES:
       .from("creative_jobs")
       .insert({
         user_id: user.id,
-        analysis_request_id: analysis_id,
+        analysis_request_id: analysis_id || null,
         conversation_id: conversation_id || null,
         prompt_context: creativeContext,
         strategist_output: strategistOutput,

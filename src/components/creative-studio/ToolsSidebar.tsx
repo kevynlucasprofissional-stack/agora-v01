@@ -16,10 +16,12 @@ type Props = {
   state: ReturnType<typeof useCanvasState>;
   analysisId?: string;
   conversationId?: string;
+  /** If true, the artboard is linked to a conversation/job — hide AI generation */
+  isLinkedArtboard?: boolean;
   onAfterGenerate?: () => void;
 };
 
-export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerate }: Props) {
+export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboard, onAfterGenerate }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,15 +41,11 @@ export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerat
 
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) return;
-    if (!analysisId) {
-      toast.error("Selecione uma análise primeiro para gerar com IA.");
-      return;
-    }
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-creative", {
         body: {
-          analysis_id: analysisId,
+          analysis_id: analysisId || null,
           conversation_id: conversationId || null,
           format: state.format,
           user_prompt: aiPrompt,
@@ -78,7 +76,6 @@ export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerat
       }
       toast.success("Criativo gerado com sucesso!");
       setAiPrompt("");
-      // Notify parent to save artboard state after generation settles
       if (onAfterGenerate) {
         setTimeout(() => onAfterGenerate(), 1500);
       }
@@ -88,6 +85,9 @@ export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerat
       setAiLoading(false);
     }
   };
+
+  // Show AI generation only for standalone (unlinked) artboards
+  const showAISection = !isLinkedArtboard;
 
   return (
     <div className="w-64 border-r border-border bg-card flex flex-col">
@@ -141,35 +141,34 @@ export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerat
             </Button>
           </section>
 
-          <Separator />
+          {showAISection && (
+            <>
+              <Separator />
 
-          {/* AI Generation */}
-          <section>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              <Sparkles className="h-3.5 w-3.5 inline mr-1" />
-              Gerar com IA
-            </h3>
-            <Textarea
-              placeholder="Descreva o criativo que deseja..."
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              className="min-h-[80px] text-sm"
-            />
-            <Button
-              size="sm"
-              className="w-full mt-2 gap-2"
-              onClick={handleAIGenerate}
-              disabled={aiLoading || !aiPrompt.trim()}
-            >
-              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {aiLoading ? "Gerando..." : "Gerar Criativo"}
-            </Button>
-            {!analysisId && (
-              <p className="text-[10px] text-muted-foreground mt-1.5">
-                Acesse via uma análise existente para usar a geração por IA.
-              </p>
-            )}
-          </section>
+              {/* AI Generation */}
+              <section>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  <Sparkles className="h-3.5 w-3.5 inline mr-1" />
+                  Gerar com IA
+                </h3>
+                <Textarea
+                  placeholder="Descreva o criativo que deseja..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  className="min-h-[80px] text-sm"
+                />
+                <Button
+                  size="sm"
+                  className="w-full mt-2 gap-2"
+                  onClick={handleAIGenerate}
+                  disabled={aiLoading || !aiPrompt.trim()}
+                >
+                  {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {aiLoading ? "Gerando..." : "Gerar Criativo"}
+                </Button>
+              </section>
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>
