@@ -367,9 +367,32 @@ export default function NewAnalysisPage() {
           editable_html: data.editable_html,
         });
 
+        // Create a creative_job record so it can be linked to an artboard
+        let creativeJobId: string | null = null;
+        if (user) {
+          // We need an analysis_request_id; use the conversation's linked one or create a placeholder
+          const analysisId = searchParams.get("analysis_id");
+          if (analysisId) {
+            const { data: jobData } = await supabase.from("creative_jobs").insert({
+              user_id: user.id,
+              analysis_request_id: analysisId,
+              conversation_id: conversationId,
+              image_url: imageUrl,
+              strategist_output: data.strategist_output as any,
+              format: "1080x1080",
+              status: "completed",
+              layers_state: {} as any,
+            }).select("id").single();
+            if (jobData) creativeJobId = jobData.id;
+          }
+        }
+
+        const jobTag = creativeJobId ? ` [creative_job_id:${creativeJobId}]` : "";
+        const messageContent = `✅ Imagem gerada com sucesso!${jobTag}`;
+
         const imageMessage: ChatMessage = {
           role: "assistant",
-          content: "✅ Imagem gerada com sucesso!",
+          content: messageContent,
           image_url: imageUrl,
           expires_at: expiresAt,
         };
@@ -385,7 +408,7 @@ export default function NewAnalysisPage() {
 
         // Persist to DB with image_url and expires_at
         if (conversationId) {
-          await persistMessage(conversationId, "assistant", "✅ Imagem gerada com sucesso!", imageUrl, expiresAt);
+          await persistMessage(conversationId, "assistant", messageContent, imageUrl, expiresAt);
         }
 
         toast.success("Imagem gerada! Edite os textos clicando neles.");
