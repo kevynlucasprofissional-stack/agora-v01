@@ -69,7 +69,7 @@ const App = () => (
               <Route path="analysis/:id/chat" element={<AnalysisChatPage />} />
               <Route path="analysis/:id/campaign" element={<CampaignDocumentPage />} />
               <Route path="optimizer" element={<CampaignOptimizerPage />} />
-              <Route path="assets" element={<AssetsPage />} />
+              
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="integrations" element={<IntegrationsPage />} />
