@@ -113,7 +113,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: Plus, label: "Nova\nAnálise", to: "/app/new-analysis", primary: true },
-          { icon: History, label: "Histórico", to: "/app/history" },
+          { icon: History, label: "Conversas", to: "/app/conversations" },
           { icon: FolderOpen, label: "Biblioteca", to: "/app/assets" },
           { icon: BarChart3, label: "Conta", to: "/app/account" },
         ].map((a, i) => (
@@ -156,7 +156,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Conversas Recentes</h2>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/app/history">Ver todas</Link>
+              <Link to="/app/conversations">Ver todas</Link>
             </Button>
           </div>
           <div className="space-y-2">
@@ -183,7 +183,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Análises Recentes</h2>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/app/history">Ver todas</Link>
+            <Link to="/app/analyses">Ver todas</Link>
           </Button>
         </div>
         {loading ? (
