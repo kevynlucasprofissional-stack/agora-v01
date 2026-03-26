@@ -258,7 +258,10 @@ export function useCanvasState() {
     });
   }, [saveState]);
 
-  const updateSelectedObject = useCallback((props: Record<string, any>) => {
+  // A version counter so the PropertiesPanel can re-read without unmounting
+  const [propsVersion, setPropsVersion] = useState(0);
+
+  const updateSelectedObject = useCallback((props: Record<string, any>, { skipSave = false } = {}) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const obj = canvas.getActiveObject();
@@ -268,7 +271,6 @@ export function useCanvasState() {
     if ("angle" in props && props.angle !== undefined) {
       const center = obj.getCenterPoint();
       obj.set({ angle: props.angle, originX: "center", originY: "center", left: center.x, top: center.y });
-      // Remove angle from the rest
       const { angle, centeredRotation, ...rest } = props;
       if (Object.keys(rest).length > 0) obj.set(rest);
     } else {
@@ -276,10 +278,11 @@ export function useCanvasState() {
     }
 
     canvas.renderAll();
-    saveState();
-    // Update state to trigger re-render
-    setSelectedObject(null);
-    setTimeout(() => setSelectedObject(obj), 0);
+    if (!skipSave) {
+      saveState();
+    }
+    // Bump version instead of cycling selectedObject
+    setPropsVersion((v) => v + 1);
   }, [saveState]);
 
   const changeFormat = useCallback((newFormat: CanvasFormat) => {
@@ -296,6 +299,7 @@ export function useCanvasState() {
     canvasRef,
     initCanvas,
     selectedObject,
+    propsVersion,
     format,
     changeFormat,
     dimensions,

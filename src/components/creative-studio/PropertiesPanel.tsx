@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -20,45 +20,119 @@ const FONTS = [
   "Trebuchet MS", "Palatino", "Garamond", "Bookman",
 ];
 
+function readObjProps(obj: fabric.FabricObject): Record<string, any> {
+  const fillVal = obj.fill;
+  const strokeVal = obj.stroke;
+  return {
+    fill: fillVal === "transparent" || fillVal === null || fillVal === undefined ? "transparent" : (fillVal as string),
+    stroke: strokeVal ?? "transparent",
+    strokeWidth: obj.strokeWidth ?? 0,
+    opacity: obj.opacity ?? 1,
+    left: Math.round(obj.left || 0),
+    top: Math.round(obj.top || 0),
+    angle: Math.round(obj.angle || 0),
+    ...((obj as any).fontSize !== undefined && {
+      fontSize: (obj as any).fontSize,
+      fontFamily: (obj as any).fontFamily || "Arial",
+      fontWeight: (obj as any).fontWeight || "normal",
+      fontStyle: (obj as any).fontStyle || "normal",
+      underline: (obj as any).underline || false,
+      textAlign: (obj as any).textAlign || "left",
+    }),
+  };
+}
+
+/** A number input that only commits on blur or Enter, so the user can type freely */
+function NumberInput({
+  value,
+  onChange,
+  className,
+  min,
+  max,
+  step,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  className?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const [localVal, setLocalVal] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync from outside only when the input isn't focused
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocalVal(String(value));
+    }
+  }, [value]);
+
+  const commit = () => {
+    const n = parseFloat(localVal);
+    if (!isNaN(n)) {
+      const clamped = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n));
+      onChange(clamped);
+      setLocalVal(String(clamped));
+    } else {
+      setLocalVal(String(value));
+    }
+  };
+
+  return (
+    <Input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      value={localVal}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") commit(); }}
+      className={className}
+      min={min}
+      max={max}
+      step={step}
+    />
+  );
+}
+
 export function PropertiesPanel({ state }: Props) {
   const obj = state.selectedObject;
   const [props, setProps] = useState<Record<string, any>>({});
+  const objIdRef = useRef<number | null>(null);
 
+  // Only re-read from canvas object when the SELECTION changes (different object)
+  // or when propsVersion bumps from external changes (like canvas drag)
   useEffect(() => {
     if (!obj) {
       setProps({});
+      objIdRef.current = null;
       return;
     }
-    const fillVal = obj.fill;
-    const strokeVal = obj.stroke;
-    setProps({
-      fill: fillVal === "transparent" || fillVal === null || fillVal === undefined ? "transparent" : (fillVal as string),
-      stroke: strokeVal ?? "transparent",
-      strokeWidth: obj.strokeWidth ?? 0,
-      opacity: obj.opacity ?? 1,
-      left: Math.round(obj.left || 0),
-      top: Math.round(obj.top || 0),
-      angle: Math.round(obj.angle || 0),
-      // Text-specific
-      ...((obj as any).fontSize !== undefined && {
-        fontSize: (obj as any).fontSize,
-        fontFamily: (obj as any).fontFamily || "Arial",
-        fontWeight: (obj as any).fontWeight || "normal",
-        fontStyle: (obj as any).fontStyle || "normal",
-        underline: (obj as any).underline || false,
-        textAlign: (obj as any).textAlign || "left",
-      }),
-    });
-  }, [obj]);
+    setProps(readObjProps(obj));
+  }, [obj, state.propsVersion]);
 
   const update = useCallback((key: string, value: any) => {
     setProps((p) => ({ ...p, [key]: value }));
     if (key === "angle") {
-      // Rotate around center
       state.updateSelectedObject({ [key]: value, centeredRotation: true });
     } else {
       state.updateSelectedObject({ [key]: value });
     }
+  }, [state]);
+
+  // For sliders: update live without saving, save on commit
+  const updateLive = useCallback((key: string, value: any) => {
+    setProps((p) => ({ ...p, [key]: value }));
+    if (key === "angle") {
+      state.updateSelectedObject({ [key]: value, centeredRotation: true }, { skipSave: true });
+    } else {
+      state.updateSelectedObject({ [key]: value }, { skipSave: true });
+    }
+  }, [state]);
+
+  const commitSlider = useCallback(() => {
+    state.saveState();
   }, [state]);
 
   const deleteObject = () => {
@@ -103,7 +177,6 @@ export function PropertiesPanel({ state }: Props) {
   const fillIsTransparent = props.fill === "transparent" || props.fill === "" || props.fill === null;
   const strokeIsTransparent = props.stroke === "transparent" || props.stroke === "" || props.stroke === null;
 
-  // Get the display color for the color input (can't show "transparent" in color input)
   const fillColorDisplay = fillIsTransparent ? "#ffffff" : props.fill;
   const strokeColorDisplay = strokeIsTransparent ? "#000000" : props.stroke;
 
@@ -174,7 +247,6 @@ export function PropertiesPanel({ state }: Props) {
                   value={strokeColorDisplay}
                   onChange={(e) => {
                     update("stroke", e.target.value);
-                    // Auto-set strokeWidth if it's 0
                     if ((props.strokeWidth || 0) === 0) {
                       update("strokeWidth", 1);
                     }
@@ -187,13 +259,10 @@ export function PropertiesPanel({ state }: Props) {
                   </div>
                 )}
               </div>
-              <Input
-                type="number"
+              <NumberInput
                 value={props.strokeWidth ?? 0}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
+                onChange={(v) => {
                   update("strokeWidth", v);
-                  // If strokeWidth > 0 and no stroke color, set black
                   if (v > 0 && strokeIsTransparent) {
                     update("stroke", "#000000");
                   }
@@ -210,7 +279,8 @@ export function PropertiesPanel({ state }: Props) {
             <Label className="text-xs">Opacidade: {Math.round((props.opacity ?? 1) * 100)}%</Label>
             <Slider
               value={[Math.round((props.opacity ?? 1) * 100)]}
-              onValueChange={([v]) => update("opacity", v / 100)}
+              onValueChange={([v]) => updateLive("opacity", v / 100)}
+              onValueCommit={() => commitSlider()}
               min={0}
               max={100}
               step={1}
@@ -225,11 +295,11 @@ export function PropertiesPanel({ state }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <span className="text-[10px] text-muted-foreground">X</span>
-                <Input type="number" value={props.left ?? 0} onChange={(e) => update("left", Number(e.target.value))} className="h-7 text-xs" />
+                <NumberInput value={props.left ?? 0} onChange={(v) => update("left", v)} className="h-7 text-xs" />
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground">Y</span>
-                <Input type="number" value={props.top ?? 0} onChange={(e) => update("top", Number(e.target.value))} className="h-7 text-xs" />
+                <NumberInput value={props.top ?? 0} onChange={(v) => update("top", v)} className="h-7 text-xs" />
               </div>
             </div>
           </div>
@@ -239,7 +309,8 @@ export function PropertiesPanel({ state }: Props) {
             <Label className="text-xs">Rotação: {props.angle ?? 0}°</Label>
             <Slider
               value={[props.angle ?? 0]}
-              onValueChange={([v]) => update("angle", v)}
+              onValueChange={([v]) => updateLive("angle", v)}
+              onValueCommit={() => commitSlider()}
               min={0}
               max={360}
               step={1}
@@ -268,7 +339,7 @@ export function PropertiesPanel({ state }: Props) {
                 {/* Font size */}
                 <div className="flex gap-2 items-center">
                   <Label className="text-xs shrink-0">Tamanho</Label>
-                  <Input type="number" value={props.fontSize || 20} onChange={(e) => update("fontSize", Number(e.target.value))} className="h-7 text-xs" min={8} max={200} />
+                  <NumberInput value={props.fontSize || 20} onChange={(v) => update("fontSize", v)} className="h-7 text-xs" min={8} max={200} />
                 </div>
 
                 {/* Style buttons */}
