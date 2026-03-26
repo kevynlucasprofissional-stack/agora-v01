@@ -830,7 +830,7 @@ export default function NewAnalysisPage() {
           {messages.map((msg, idx) => {
             const hasImage = !!msg.image_url;
             const expired = hasImage && msg.expires_at ? new Date(msg.expires_at) < new Date() : false;
-            const rawContent = msg.role === "assistant" ? msg.content.replace("##READY##", "").trim() : msg.content;
+            const rawContent = msg.role === "assistant" ? msg.content.replace("##READY##", "").replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim() : msg.content;
             const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
             const displayContent = parsed ? parsed.textWithoutCards : rawContent;
             const isLastAssistant = msg.role === "assistant" && idx === messages.length - 1;
