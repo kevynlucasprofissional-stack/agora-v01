@@ -295,6 +295,16 @@ export function useCanvasState() {
     saveState();
   }, [saveState]);
 
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.getObjects().slice().forEach((obj) => canvas.remove(obj));
+    canvas.backgroundImage = undefined;
+    canvas.backgroundColor = "#1a1a2e";
+    canvas.renderAll();
+    saveState();
+  }, [saveState]);
+
   return {
     canvasRef,
     initCanvas,
@@ -318,5 +328,6 @@ export function useCanvasState() {
     loadJSON,
     updateSelectedObject,
     saveState,
+    clearCanvas,
   };
 }
