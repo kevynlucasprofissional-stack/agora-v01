@@ -202,13 +202,15 @@ export default function CreativeStudioPage() {
     };
   }, [workspace.editingId, canvasState.canvasReady]);
 
+  const isLinkedArtboard = !!(workspace.editingArtboard?.creativeJobId);
+
   if (workspace.editingId) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
           onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} />
         <div className="flex flex-1 overflow-hidden">
-          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} onAfterGenerate={handleAfterGenerate} />
+          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
           <FabricCanvas state={canvasState} />
           <PropertiesPanel state={canvasState} />
         </div>
