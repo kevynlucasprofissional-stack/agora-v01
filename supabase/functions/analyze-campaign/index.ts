@@ -225,8 +225,8 @@ serve(async (req) => {
 
   try {
     const { rawPrompt, title, files } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     // ── IBGE Enrichment ──
     // Try to extract region from the prompt
@@ -277,17 +277,17 @@ ${ibgeSection}
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
     // Helper to call the AI gateway with retry + fallback
-    const models = ["google/gemini-2.5-flash", "google/gemini-3-flash-preview"];
+    const models = ["gemini-2.5-flash", "gemini-3-flash-preview"];
     let response: Response | null = null;
     let lastError = "";
 
     for (const model of models) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              Authorization: `Bearer ${GEMINI_API_KEY}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
