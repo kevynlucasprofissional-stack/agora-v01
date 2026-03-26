@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { useCanvasState } from "./useCanvasState";
@@ -16,7 +21,6 @@ type Props = {
   state: ReturnType<typeof useCanvasState>;
   analysisId?: string;
   conversationId?: string;
-  /** If true, the artboard is linked to a conversation/job — hide AI generation */
   isLinkedArtboard?: boolean;
   onAfterGenerate?: () => void;
 };
@@ -24,6 +28,8 @@ type Props = {
 export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboard, onAfterGenerate }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,10 +45,13 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
     e.target.value = "";
   };
 
-  const handleAIGenerate = async () => {
+  const doGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
     try {
+      // Clear canvas before generating
+      state.clearCanvas();
+
       const { data, error } = await supabase.functions.invoke("generate-creative", {
         body: {
           analysis_id: analysisId || null,
@@ -76,6 +85,7 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
       }
       toast.success("Criativo gerado com sucesso!");
       setAiPrompt("");
+      setHasGenerated(true);
       if (onAfterGenerate) {
         setTimeout(() => onAfterGenerate(), 1500);
       }
@@ -86,7 +96,14 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
     }
   };
 
-  // Show AI generation only for standalone (unlinked) artboards
+  const handleAIGenerate = () => {
+    if (hasGenerated) {
+      setShowConfirm(true);
+    } else {
+      doGenerate();
+    }
+  };
+
   const showAISection = !isLinkedArtboard;
 
   return (
@@ -171,6 +188,23 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
           )}
         </div>
       </ScrollArea>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gerar novo criativo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se você gerar uma nova imagem, o progresso atual será perdido. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowConfirm(false); doGenerate(); }}>
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
