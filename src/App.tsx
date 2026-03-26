@@ -22,7 +22,7 @@ import DashboardPage from "@/pages/app/DashboardPage";
 import NewAnalysisPage from "@/pages/app/NewAnalysisPage";
 import AnalysisResultsPage from "@/pages/app/AnalysisResultsPage";
 import ConversationHistoryPage from "@/pages/app/ConversationHistoryPage";
-import HistoryPage from "@/pages/app/HistoryPage";
+
 import AnalysisReportPage from "@/pages/app/AnalysisReportPage";
 import AnalysisChatPage from "@/pages/app/AnalysisChatPage";
 import CampaignDocumentPage from "@/pages/app/CampaignDocumentPage";
@@ -58,7 +58,7 @@ const App = () => (
             <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<DashboardPage />} />
               <Route path="new-analysis" element={<NewAnalysisPage />} />
-              <Route path="history" element={<HistoryPage />} />
+              
               <Route path="analyses" element={<AnalysisResultsPage />} />
               <Route path="conversations" element={<ConversationHistoryPage />} />
               <Route path="analysis/:id/report" element={<AnalysisReportPage />} />
