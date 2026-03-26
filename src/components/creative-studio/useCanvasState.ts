@@ -299,6 +299,7 @@ export function useCanvasState() {
     canvasRef,
     initCanvas,
     selectedObject,
+    propsVersion,
     format,
     changeFormat,
     dimensions,
