@@ -22,9 +22,13 @@ export default function CreativeStudioPage() {
   const workspace = useWorkspaceState();
   const canvasState = useCanvasState();
   const [saving, setSaving] = useState(false);
-  const [jobLoaded, setJobLoaded] = useState(false);
+  const [jobProcessed, setJobProcessed] = useState(false);
   const [jobLoading, setJobLoading] = useState(!!jobId);
 
+  // Store job data to apply after canvas is ready
+  const pendingJobRef = useRef<any>(null);
+
+  // When editing an artboard, load its layers into canvas
   useEffect(() => {
     if (!workspace.editingId || !canvasState.canvasReady) return;
     const ab = workspace.editingArtboard;
@@ -35,35 +39,48 @@ export default function CreativeStudioPage() {
     }
   }, [workspace.editingId, canvasState.canvasReady]);
 
-  // Store job data to apply after canvas is ready
-  const pendingJobRef = useRef<any>(null);
-
+  // Handle jobId: find or create linked artboard, then open it
   useEffect(() => {
-    if (!jobId || jobLoaded) return;
+    if (!jobId || jobProcessed || !workspace.dbLoaded) return;
+
+    // Check if an artboard already exists for this job
+    const existingArtboard = workspace.findArtboardByJobId(jobId);
+    if (existingArtboard) {
+      // Artboard exists, just open it
+      workspace.setEditingId(existingArtboard.id);
+      setJobProcessed(true);
+      setJobLoading(false);
+      return;
+    }
+
+    // No artboard exists — load job data and create one
     setJobLoading(true);
     const loadJob = async () => {
       const { data: job } = await supabase
         .from("creative_jobs")
         .select("image_url, strategist_output, layers_state, format")
         .eq("id", jobId).single();
-      if (!job) { setJobLoading(false); return; }
-      setJobLoaded(true);
+      if (!job) { setJobLoading(false); setJobProcessed(true); return; }
+
       const fmt = (job.format as any) || "1080x1080";
-      const hasLayers = job.layers_state && typeof job.layers_state === "object" && 
+      const hasLayers = job.layers_state && typeof job.layers_state === "object" &&
         (job.layers_state as any).objects?.length > 0;
-      const id = workspace.addArtboard(fmt, "Criativo importado");
+
+      const id = workspace.addArtboard(fmt, "Criativo importado", { creativeJobId: jobId });
+
       if (hasLayers) {
         workspace.updateArtboard(id, { layersState: job.layers_state });
       } else {
         pendingJobRef.current = { image_url: job.image_url, strategist_output: job.strategist_output };
       }
       workspace.setEditingId(id);
+      setJobProcessed(true);
       setJobLoading(false);
     };
     loadJob();
-  }, [jobId, jobLoaded]);
+  }, [jobId, jobProcessed, workspace.dbLoaded]);
 
-  // Apply pending job image + layers once canvas is ready, then persist to artboard
+  // Apply pending job image + layers once canvas is ready
   useEffect(() => {
     if (!canvasState.canvasReady || !pendingJobRef.current) return;
     const { image_url, strategist_output } = pendingJobRef.current;
@@ -72,7 +89,6 @@ export default function CreativeStudioPage() {
     const applyAndSave = async () => {
       if (image_url) {
         canvasState.setBackgroundImage(image_url);
-        // Wait for image to load
         await new Promise<void>((resolve) => setTimeout(resolve, 1500));
       }
 
@@ -88,7 +104,7 @@ export default function CreativeStudioPage() {
         }
       }
 
-      // Wait for canvas to render, then save state to artboard
+      // Save state to artboard after rendering
       setTimeout(() => {
         if (workspace.editingId) {
           const json = canvasState.getJSON();
@@ -121,18 +137,22 @@ export default function CreativeStudioPage() {
     if (!json) return;
     setSaving(true);
     try {
+      // Save to artboard (which persists to DB)
+      if (workspace.editingId) {
+        const thumb = canvasState.exportThumbnail();
+        workspace.updateArtboard(workspace.editingId, {
+          layersState: json, thumbnail: thumb || null, format: canvasState.format,
+        });
+      }
+
+      // Also save to creative_jobs if linked
       if (jobId) {
         const { error } = await supabase.from("creative_jobs")
           .update({ layers_state: json as any }).eq("id", jobId);
         if (error) throw error;
-        toast.success("Salvo com sucesso!");
-      } else {
-        if (workspace.editingId) {
-          const thumb = canvasState.exportThumbnail();
-          workspace.updateArtboard(workspace.editingId, { layersState: json, thumbnail: thumb || null });
-        }
-        toast.success("Artboard salvo!");
       }
+
+      toast.success("Salvo com sucesso!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
     } finally {
@@ -164,7 +184,7 @@ export default function CreativeStudioPage() {
     );
   }
 
-  if (jobLoading) {
+  if (jobLoading || !workspace.dbLoaded) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-2rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

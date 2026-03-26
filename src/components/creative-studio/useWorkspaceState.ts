@@ -1,50 +1,7 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import type { CanvasFormat } from "./useCanvasState";
-
-// ---- IndexedDB helpers for large artboard data ----
-const IDB_NAME = "agora-studio";
-const IDB_STORE = "artboard-data";
-const IDB_VERSION = 1;
-
-function openIDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE);
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbSet(key: string, value: any) {
-  try {
-    const db = await openIDB();
-    const tx = db.transaction(IDB_STORE, "readwrite");
-    tx.objectStore(IDB_STORE).put(value, key);
-    await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
-  } catch {}
-}
-
-async function idbGet(key: string): Promise<any> {
-  try {
-    const db = await openIDB();
-    const tx = db.transaction(IDB_STORE, "readonly");
-    const req = tx.objectStore(IDB_STORE).get(key);
-    return new Promise((res) => { req.onsuccess = () => res(req.result ?? null); req.onerror = () => res(null); });
-  } catch { return null; }
-}
-
-async function idbDelete(key: string) {
-  try {
-    const db = await openIDB();
-    const tx = db.transaction(IDB_STORE, "readwrite");
-    tx.objectStore(IDB_STORE).delete(key);
-  } catch {}
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
 export type ArrowStyle = "solid" | "dashed" | "curved";
@@ -61,6 +18,7 @@ export interface Artboard {
   format: CanvasFormat;
   layersState: any | null;
   thumbnail: string | null;
+  creativeJobId?: string | null;
 }
 
 export interface StickyNote {
@@ -92,10 +50,8 @@ export interface Arrow {
   id: string;
   type: "arrow";
   arrowMode: ArrowMode;
-  // Connected mode
   fromId: string | null;
   toId: string | null;
-  // Freeform mode
   x1: number;
   y1: number;
   x2: number;
@@ -126,13 +82,9 @@ const NOTE_COLORS: Record<NoteColor, string> = {
 };
 
 export function useWorkspaceState() {
-  const [elements, setElements] = useState<WorkspaceElement[]>(() => {
-    try {
-      const saved = localStorage.getItem("agora-workspace-elements");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [];
-  });
+  const { user } = useAuth();
+  const [elements, setElements] = useState<WorkspaceElement[]>([]);
+  const [dbLoaded, setDbLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pan, setPan] = useState(() => {
@@ -156,59 +108,107 @@ export function useWorkspaceState() {
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
-  // Persist elements to localStorage + IndexedDB for heavy artboard data
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        // Save lightweight skeleton to localStorage
-        const stripped = elements.map((e) => {
-          if (e.type === "artboard") {
-            // Keep thumbnail (small) but move layersState to IDB
-            return { ...e, layersState: e.layersState ? "__IDB__" : null };
-          }
-          return e;
-        });
-        localStorage.setItem("agora-workspace-elements", JSON.stringify(stripped));
+  // Track which artboard IDs have pending DB saves
+  const savePendingRef = useRef<Set<string>>(new Set());
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-        // Save heavy layersState to IndexedDB per artboard
-        elements.forEach((e) => {
-          if (e.type === "artboard") {
-            const ab = e as Artboard;
-            if (ab.layersState && ab.layersState !== "__IDB__") {
-              idbSet(`artboard-layers-${ab.id}`, { layersState: ab.layersState });
-            }
-          }
-        });
-      } catch {}
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [elements]);
-
-  // Hydrate layersState from IndexedDB on mount
-  const hydratedRef = useRef(false);
+  // ---- Load artboards from DB on mount ----
   useEffect(() => {
-    if (hydratedRef.current) return;
-    hydratedRef.current = true;
-    const hydrate = async () => {
-      const needsHydration = elements.filter(
-        (e) => e.type === "artboard" && (e as Artboard).layersState === "__IDB__"
-      );
-      if (needsHydration.length === 0) return;
-      const updates = await Promise.all(
-        needsHydration.map(async (e) => {
-          const data = await idbGet(`artboard-layers-${e.id}`);
-          return { id: e.id, layersState: data?.layersState ?? null };
-        })
-      );
-      setElements((prev) =>
-        prev.map((e) => {
-          const up = updates.find((u) => u.id === e.id);
-          return up ? { ...e, layersState: up.layersState } : e;
-        })
-      );
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("workspace_artboards")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (data && data.length > 0) {
+        const artboards: Artboard[] = data.map((row: any) => ({
+          id: row.id,
+          type: "artboard" as const,
+          name: row.name || "Artboard",
+          x: Number(row.x) || 0,
+          y: Number(row.y) || 0,
+          zIndex: row.z_index || 0,
+          format: (row.format || "1080x1080") as CanvasFormat,
+          layersState: row.layers_state || null,
+          thumbnail: row.thumbnail || null,
+          creativeJobId: row.creative_job_id || null,
+        }));
+
+        // Load non-artboard elements from localStorage
+        let otherElements: WorkspaceElement[] = [];
+        try {
+          const saved = localStorage.getItem("agora-workspace-others");
+          if (saved) otherElements = JSON.parse(saved);
+        } catch {}
+
+        setElements([...artboards, ...otherElements]);
+      } else {
+        // No artboards in DB, load non-artboard elements from localStorage
+        let otherElements: WorkspaceElement[] = [];
+        try {
+          const saved = localStorage.getItem("agora-workspace-others");
+          if (saved) otherElements = JSON.parse(saved);
+        } catch {}
+        setElements(otherElements);
+      }
+      setDbLoaded(true);
     };
-    hydrate();
-  }, []);
+    load();
+  }, [user]);
+
+  // ---- Persist non-artboard elements to localStorage ----
+  useEffect(() => {
+    if (!dbLoaded) return;
+    const timer = setTimeout(() => {
+      const others = elements.filter((e) => e.type !== "artboard");
+      try {
+        localStorage.setItem("agora-workspace-others", JSON.stringify(others));
+      } catch {}
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [elements, dbLoaded]);
+
+  // ---- Debounced artboard save to DB ----
+  const flushArtboardSaves = useCallback(async () => {
+    if (!user || savePendingRef.current.size === 0) return;
+    const idsToSave = Array.from(savePendingRef.current);
+    savePendingRef.current.clear();
+
+    // Get current elements
+    setElements((current) => {
+      const artboardsToSave = current.filter(
+        (e) => e.type === "artboard" && idsToSave.includes(e.id)
+      ) as Artboard[];
+
+      // Fire and forget upserts
+      artboardsToSave.forEach(async (ab) => {
+        try {
+          await supabase.from("workspace_artboards").upsert({
+            id: ab.id,
+            user_id: user.id,
+            name: ab.name,
+            format: ab.format,
+            x: ab.x,
+            y: ab.y,
+            z_index: ab.zIndex,
+            layers_state: ab.layersState as any,
+            thumbnail: ab.thumbnail,
+            creative_job_id: ab.creativeJobId || null,
+          }, { onConflict: "id" });
+        } catch {}
+      });
+
+      return current; // don't modify state
+    });
+  }, [user]);
+
+  const scheduleArtboardSave = useCallback((id: string) => {
+    savePendingRef.current.add(id);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => flushArtboardSaves(), 2000);
+  }, [flushArtboardSaves]);
 
   // Persist pan/zoom to localStorage
   useEffect(() => {
@@ -240,8 +240,8 @@ export function useWorkspaceState() {
   const arrows = elements.filter((e): e is Arrow => e.type === "arrow");
 
   // ---- Artboard CRUD ----
-  const addArtboard = useCallback((format: CanvasFormat, name?: string) => {
-    const id = crypto.randomUUID();
+  const addArtboard = useCallback((format: CanvasFormat, name?: string, opts?: { creativeJobId?: string; id?: string }) => {
+    const id = opts?.id || crypto.randomUUID();
     const count = elements.filter((e) => e.type === "artboard").length;
     const col = count % 3;
     const row = Math.floor(count / 3);
@@ -255,11 +255,34 @@ export function useWorkspaceState() {
       name: name || `Artboard ${count + 1}`,
       x, y, zIndex: nextZIndex(),
       format, layersState: null, thumbnail: null,
+      creativeJobId: opts?.creativeJobId || null,
     };
     setElements((prev) => [...prev, artboard]);
     setSelectedId(id);
+
+    // Persist to DB immediately
+    if (user) {
+      supabase.from("workspace_artboards").insert({
+        id,
+        user_id: user.id,
+        name: artboard.name,
+        format: artboard.format,
+        x: artboard.x,
+        y: artboard.y,
+        z_index: artboard.zIndex,
+        creative_job_id: opts?.creativeJobId || null,
+      }).then(() => {});
+    }
+
     return id;
-  }, [elements, nextZIndex]);
+  }, [elements, nextZIndex, user]);
+
+  // Find artboard by creative job ID
+  const findArtboardByJobId = useCallback((jobId: string): Artboard | null => {
+    return (elements.find(
+      (e) => e.type === "artboard" && (e as Artboard).creativeJobId === jobId
+    ) as Artboard) || null;
+  }, [elements]);
 
   // ---- StickyNote CRUD ----
   const addStickyNote = useCallback((color: NoteColor = "yellow") => {
@@ -329,10 +352,10 @@ export function useWorkspaceState() {
 
   // ---- Generic CRUD ----
   const removeElement = useCallback((id: string) => {
-    // Clean up IndexedDB for artboards
     const el = elements.find((e) => e.id === id);
     if (el?.type === "artboard") {
-      idbDelete(`artboard-layers-${id}`);
+      // Delete from DB
+      supabase.from("workspace_artboards").delete().eq("id", id).then(() => {});
     }
     setElements((prev) => prev.filter((e) => e.id !== id && !(e.type === "arrow" && ((e as Arrow).fromId === id || (e as Arrow).toId === id))));
     if (selectedId === id) setSelectedId(null);
@@ -343,7 +366,12 @@ export function useWorkspaceState() {
     setElements((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
     );
-  }, []);
+    // If it's an artboard, schedule DB save
+    const el = elements.find((e) => e.id === id);
+    if (el?.type === "artboard") {
+      scheduleArtboardSave(id);
+    }
+  }, [elements, scheduleArtboardSave]);
 
   // ---- Z-Index ----
   const bringToFront = useCallback((id: string) => {
@@ -362,9 +390,29 @@ export function useWorkspaceState() {
     if (!el || el.type === "arrow") return;
     const newId = crypto.randomUUID();
     const clone = { ...el, id: newId, x: (el as any).x + 30, y: (el as any).y + 30, zIndex: nextZIndex() };
+    if (clone.type === "artboard") {
+      (clone as Artboard).creativeJobId = null; // duplicated artboard shouldn't keep the link
+    }
     setElements((prev) => [...prev, clone as WorkspaceElement]);
     setSelectedId(newId);
-  }, [elements, nextZIndex]);
+
+    // If artboard, persist to DB
+    if (clone.type === "artboard" && user) {
+      const ab = clone as Artboard;
+      supabase.from("workspace_artboards").insert({
+        id: newId,
+        user_id: user.id,
+        name: ab.name,
+        format: ab.format,
+        x: ab.x,
+        y: ab.y,
+        z_index: ab.zIndex,
+        layers_state: ab.layersState as any,
+        thumbnail: ab.thumbnail,
+        creative_job_id: null,
+      }).then(() => {});
+    }
+  }, [elements, nextZIndex, user]);
 
   // Legacy compatibility
   const updateArtboard = updateElement;
@@ -452,6 +500,7 @@ export function useWorkspaceState() {
     stickyNotes,
     texts,
     arrows,
+    dbLoaded,
     selectedId,
     setSelectedId,
     editingId,
@@ -460,6 +509,7 @@ export function useWorkspaceState() {
     selectedArtboard,
     editingArtboard,
     addArtboard,
+    findArtboardByJobId,
     addStickyNote,
     addText,
     addConnectedArrow,
