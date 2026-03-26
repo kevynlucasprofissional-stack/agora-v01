@@ -17,7 +17,7 @@ const mainNav = [
   { label: "Novo chat", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
   { label: "Análises", href: "/app/analyses", icon: <BarChart3 className="h-5 w-5 shrink-0" /> },
   { label: "Conversas", href: "/app/conversations", icon: <MessageSquare className="h-5 w-5 shrink-0" /> },
-  { label: "Biblioteca", href: "/app/assets", icon: <FolderOpen className="h-5 w-5 shrink-0" /> },
+  
   { label: "Estúdio Criativo", href: "/app/creative-studio", icon: <Palette className="h-5 w-5 shrink-0" /> },
 ];
 

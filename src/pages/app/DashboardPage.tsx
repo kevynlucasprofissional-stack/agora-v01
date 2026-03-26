@@ -114,7 +114,7 @@ export default function DashboardPage() {
         {[
           { icon: Plus, label: "Nova\nAnálise", to: "/app/new-analysis", primary: true },
           { icon: History, label: "Conversas", to: "/app/conversations" },
-          { icon: FolderOpen, label: "Biblioteca", to: "/app/assets" },
+          { icon: BarChart3, label: "Análises", to: "/app/analyses" },
           { icon: BarChart3, label: "Conta", to: "/app/account" },
         ].map((a, i) => (
           <motion.div key={a.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
