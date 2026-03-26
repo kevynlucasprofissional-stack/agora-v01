@@ -172,12 +172,14 @@ export const SidebarLink = ({
   props?: LinkProps;
 }) => {
   const { open, animate } = useSidebar();
+  const collapsed = animate && !open;
   return (
     <Link
       to={link.href}
       onClick={onClick}
       className={cn(
-        "flex items-center justify-start gap-3 group/sidebar py-2.5 px-3 rounded-lg transition-colors",
+        "flex items-center group/sidebar py-2.5 rounded-lg transition-colors",
+        collapsed ? "justify-center px-0" : "justify-start gap-3 px-3",
         active
           ? "bg-secondary text-foreground font-medium"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
