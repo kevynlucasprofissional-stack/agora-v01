@@ -277,7 +277,7 @@ ${ibgeSection}
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
     // Helper to call the AI gateway with retry + fallback
-    const models = ["gemini-2.5-flash", "gemini-3-flash-preview"];
+    const models = ["gemini-2.5-flash", "gemini-2.5-pro"];
     let response: Response | null = null;
     let lastError = "";
 
