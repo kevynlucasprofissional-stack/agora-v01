@@ -153,6 +153,12 @@ export default function NewAnalysisPage() {
   const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // Refs to avoid stale closures in async handleSend
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
+  const conversationIdRef = useRef<string | null>(conversationId);
+  conversationIdRef.current = conversationId;
+
   const hasMessages = messages.length > 0;
 
   // Load existing conversation on mount
@@ -225,7 +231,7 @@ export default function NewAnalysisPage() {
 
 
   const ensureConversation = useCallback(async (): Promise<string> => {
-    if (conversationId) return conversationId;
+    if (conversationIdRef.current) return conversationIdRef.current;
     if (!user) throw new Error("Not authenticated");
 
     const { data, error } = await supabase
@@ -236,10 +242,13 @@ export default function NewAnalysisPage() {
 
     if (error || !data) throw new Error("Failed to create conversation");
 
-    setConversationId(data.id);
-    setSearchParams({ c: data.id }, { replace: true });
-    return data.id;
-  }, [conversationId, user, setSearchParams]);
+    const newId = data.id;
+    conversationIdRef.current = newId;
+    setConversationId(newId);
+    // Defer URL update to avoid re-render interference during send
+    setTimeout(() => setSearchParams({ c: newId }, { replace: true }), 0);
+    return newId;
+  }, [user, setSearchParams]);
 
   // Helper: persist a message to DB
   const persistMessage = useCallback(async (
@@ -514,11 +523,13 @@ export default function NewAnalysisPage() {
     }
 
     const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
+    // Use ref to get current messages (avoids stale closure after async ensureConversation)
+    const currentMessages = messagesRef.current;
     // Prepend action mode prefix for the AI but show clean message to user
     const messagesForAI = activeMode
-      ? [...messages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
-      : [...messages, userMsg];
-    const updatedMessages = [...messages, userMsg];
+      ? [...currentMessages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
+      : [...currentMessages, userMsg];
+    const updatedMessages = [...currentMessages, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setFiles([]);
@@ -528,7 +539,7 @@ export default function NewAnalysisPage() {
     persistMessage(convId, "user", userDisplayContent);
 
     // Update conversation title from first user message (use raw input, not file-appended)
-    if (messages.length === 0 || chatTitle === "Novo chat" || chatTitle === "Nova Análise") {
+    if (currentMessages.length === 0 || chatTitle === "Novo chat" || chatTitle === "Nova Análise") {
       const titleText = (input.trim() || userDisplayContent).slice(0, 80);
       setChatTitle(titleText);
       supabase.from("conversations").update({ title: titleText }).eq("id", convId);
