@@ -523,11 +523,13 @@ export default function NewAnalysisPage() {
     }
 
     const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
+    // Use ref to get current messages (avoids stale closure after async ensureConversation)
+    const currentMessages = messagesRef.current;
     // Prepend action mode prefix for the AI but show clean message to user
     const messagesForAI = activeMode
-      ? [...messages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
-      : [...messages, userMsg];
-    const updatedMessages = [...messages, userMsg];
+      ? [...currentMessages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
+      : [...currentMessages, userMsg];
+    const updatedMessages = [...currentMessages, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setFiles([]);
