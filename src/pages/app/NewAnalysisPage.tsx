@@ -153,6 +153,12 @@ export default function NewAnalysisPage() {
   const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // Refs to avoid stale closures in async handleSend
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
+  const conversationIdRef = useRef<string | null>(conversationId);
+  conversationIdRef.current = conversationId;
+
   const hasMessages = messages.length > 0;
 
   // Load existing conversation on mount
