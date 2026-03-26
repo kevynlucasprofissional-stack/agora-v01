@@ -27,7 +27,7 @@ O fluxo principal permite que o usuário descreva sua campanha em linguagem natu
 
 ## 🛠️ Stack Tecnológica
 
-### Frontend
+### Frontend & UI
 | Tecnologia | Uso |
 |------------|-----|
 | **React 18** | Biblioteca de UI |
@@ -36,28 +36,41 @@ O fluxo principal permite que o usuário descreva sua campanha em linguagem natu
 | **Tailwind CSS 3** | Estilização utility-first |
 | **shadcn/ui** | Componentes acessíveis (Radix UI) |
 | **Framer Motion** | Animações e transições |
-| **TanStack Query** | Gerenciamento de estado assíncrono |
+
+### Estado & Roteamento
+| Tecnologia | Uso |
+|------------|-----|
 | **React Router 6** | Roteamento SPA |
+| **TanStack Query** | Cache e estado assíncrono |
+| **React Hook Form + Zod** | Formulários e validação |
 
 ### Backend & Infraestrutura
 | Tecnologia | Uso |
 |------------|-----|
 | **Lovable Cloud** | Banco de dados PostgreSQL com RLS |
-| **Edge Functions (Deno)** | Lógica de servidor serverless |
-| **Row Level Security** | Segurança por linha no banco |
+| **Edge Functions (Deno)** | 10 funções serverless |
+| **Row Level Security** | Segurança por linha no banco (16 tabelas) |
 | **Auth integrado** | Autenticação com email/senha |
 
-### Motor de IA
+### Motor de IA (Gemini Exclusivo)
 | Modelo | Uso |
 |--------|-----|
-| **Gemini 2.5 Pro** | Análise profunda multi-agente |
-| **GPT-5** | Geração de conteúdo e campanhas |
-| **Gemini 2.5 Flash** | Chat conversacional e intake |
+| **Gemini 2.5 Flash** | Chat principal, análise multi-agente, intake |
+| **Gemini 2.5 Flash Lite** | Audience insights |
+| **Gemini 3 Flash Preview** | Briefings criativos |
+| **Gemini 2.5 Flash (Image)** | Geração de imagens de fundo |
 
-### Bibliotecas Auxiliares
+### Estúdio Criativo
+| Tecnologia | Uso |
+|------------|-----|
+| **Fabric.js 6** | Motor de canvas 2D |
+| **Artboards** | Sistema multi-artboard com infinite grid |
+| **Auto-save** | Salvamento automático com deep-compare (5s) |
+
+### Exportação & Visualização
 | Biblioteca | Uso |
 |------------|-----|
-| **Recharts** | Gráficos e visualização de dados |
+| **Recharts** | Gráficos radar, área, barras |
 | **docx** | Exportação de documentos Word |
 | **pptxgenjs** | Geração de apresentações PowerPoint |
 | **html2canvas** | Exportação de criativos em PNG |
@@ -70,59 +83,66 @@ O fluxo principal permite que o usuário descreva sua campanha em linguagem natu
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USUÁRIO (Browser)                        │
-│              React + Vite + Tailwind + shadcn/ui                │
+│         React 18 + Vite 5 + Tailwind + shadcn/ui               │
+│         Framer Motion + TanStack Query + React Router           │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
-                           ▼
-              ┌────────────────────────┐
-              │   Chat de Intake (IA)  │
-              │  Coleta de briefing    │
-              │  em linguagem natural  │
-              └───────────┬────────────┘
-                          │
-                          ▼
-         ┌────────────────────────────────────┐
-         │     MOTOR MULTI-AGENTE (Edge Fn)   │
-         │                                    │
-         │  ┌──────────┐  ┌────────────────┐  │
-         │  │ Socio-   │  │ Engenharia de  │  │
-         │  │ comporta-│  │ Oferta         │  │
-         │  │ mental   │  │                │  │
-         │  └──────────┘  └────────────────┘  │
-         │  ┌──────────┐  ┌────────────────┐  │
-         │  │ Ciência  │  │ Estratégia     │  │
-         │  │ de Perf. │  │ Consolidada    │  │
-         │  └──────────┘  └────────────────┘  │
-         └───────────────┬────────────────────┘
-                         │
-                         ▼
-         ┌───────────────────────────────┐
-         │   RELATÓRIO DIAGNÓSTICO       │
-         │   Scores (0-100) + Insights   │
-         │   Radar Chart + Bottlenecks   │
-         └──────────────┬────────────────┘
+              ┌────────────┴────────────┐
+              ▼                         ▼
+┌──────────────────────┐   ┌──────────────────────────┐
+│  Chat de Intake (IA) │   │   Estúdio Criativo       │
+│  Gemini 2.5 Flash    │   │   Fabric.js 6 + Artboards│
+│  Coleta de briefing  │   │   Auto-save 5s           │
+└──────────┬───────────┘   └──────────┬───────────────┘
+           │                          │
+           ▼                          ▼
+┌────────────────────────────────────────────────────┐
+│          10 EDGE FUNCTIONS (Deno Runtime)          │
+│                                                    │
+│  ┌─────────────────┐  ┌────────────────────────┐   │
+│  │ analyze-campaign │  │ generate-creative      │   │
+│  │ (4 agentes)      │  │ (briefing + layout)    │   │
+│  └─────────────────┘  └────────────────────────┘   │
+│  ┌─────────────────┐  ┌────────────────────────┐   │
+│  │ intake-chat     │  │ generate-image          │   │
+│  │ campaign-chat   │  │ (Gemini Image)          │   │
+│  │ strategist-chat │  └────────────────────────┘   │
+│  └─────────────────┘  ┌────────────────────────┐   │
+│  ┌─────────────────┐  │ audience-insights       │   │
+│  │ generate-       │  │ optimize-campaign       │   │
+│  │ campaign        │  │ cleanup-expired-images  │   │
+│  └─────────────────┘  └────────────────────────┘   │
+└───────────────────────┬────────────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────┐
+│   LOVABLE CLOUD (PostgreSQL + RLS)        │
+│   16 tabelas protegidas                   │
+│   Auth integrado + Row Level Security     │
+└───────────────────────┬───────────────────┘
                         │
               ┌─────────┼─────────┐
               ▼         ▼         ▼
-         ┌────────┐ ┌───────┐ ┌────────┐
-         │Campanha│ │Export │ │Criativos│
-         │Otimiz. │ │DOCX/  │ │Visuais │
-         │        │ │PPTX   │ │        │
-         └────────┘ └───────┘ └────────┘
+         ┌────────┐ ┌───────┐ ┌─────────┐
+         │Relatório│ │Export │ │Criativos│
+         │Diagnós- │ │DOCX/  │ │Visuais  │
+         │tico     │ │PPTX   │ │PNG      │
+         └────────┘ └───────┘ └─────────┘
 ```
 
 ---
 
 ## ✨ Funcionalidades Principais
 
-- **Análise Multi-Agente** — 4 agentes de IA analisam a campanha em paralelo
+- **Análise Multi-Agente** — 4 agentes Gemini analisam a campanha em paralelo
 - **Relatório Diagnóstico** — Scores por dimensão, radar chart, gargalos categorizados
 - **Chat Estrategista** — Conversa contextualizada com IA sobre os resultados
 - **Geração de Campanha** — Campanha otimizada gerada automaticamente
-- **Editor de Criativos** — Editor visual inline para peças de marketing
+- **Estúdio Criativo** — Editor visual com Fabric.js, artboards e geração de imagens com IA
 - **Exportação Multi-formato** — DOCX, PPTX e PNG
 - **Dashboard** — Evolução de scores ao longo do tempo
 - **Sistema de Planos** — Freemium, Standard, Pro e Enterprise
+- **Auto-save** — Salvamento automático inteligente com deep-compare
 - **Integrações** — Meta Ads, GA4 (Enterprise)
 
 ---
@@ -182,7 +202,8 @@ O arquivo `.env` é configurado automaticamente pelo Lovable Cloud. As variávei
 ├── public/                  # Assets estáticos
 ├── src/
 │   ├── components/          # Componentes React reutilizáveis
-│   │   └── ui/              # Componentes shadcn/ui
+│   │   ├── ui/              # Componentes shadcn/ui
+│   │   └── creative-studio/ # Estúdio criativo (Fabric.js)
 │   ├── hooks/               # Custom hooks (auth, plan access, etc.)
 │   ├── integrations/        # Configuração do backend (auto-gerado)
 │   ├── lib/                 # Utilitários (export, streaming, helpers)
@@ -191,11 +212,14 @@ O arquivo `.env` é configurado automaticamente pelo Lovable Cloud. As variávei
 │   │   └── *.tsx            # Páginas públicas (landing, login, pricing)
 │   └── types/               # Tipos TypeScript
 ├── supabase/
-│   └── functions/           # Edge Functions (Deno)
+│   └── functions/           # Edge Functions (Deno) — 10 funções
 │       ├── analyze-campaign/
+│       ├── audience-insights/
 │       ├── campaign-chat/
+│       ├── cleanup-expired-images/
 │       ├── generate-campaign/
 │       ├── generate-creative/
+│       ├── generate-image/
 │       ├── intake-chat/
 │       ├── optimize-campaign/
 │       └── strategist-chat/
