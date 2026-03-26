@@ -245,8 +245,14 @@ export default function NewAnalysisPage() {
     const newId = data.id;
     conversationIdRef.current = newId;
     setConversationId(newId);
-    // Defer URL update to avoid re-render interference during send
-    setTimeout(() => setSearchParams({ c: newId }, { replace: true }), 0);
+    // Preserve existing params (especially "t" which is used as component key) to avoid remount
+    setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("c", newId);
+        return next;
+      }, { replace: true });
+    }, 0);
     return newId;
   }, [user, setSearchParams]);
 
