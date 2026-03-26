@@ -140,13 +140,23 @@ export default function CreativeStudioPage() {
     }
   }, [canvasState, jobId, workspace]);
 
+  const handleAfterGenerate = useCallback(() => {
+    if (workspace.editingId) {
+      const json = canvasState.getJSON();
+      const thumb = canvasState.exportThumbnail();
+      workspace.updateArtboard(workspace.editingId, {
+        layersState: json, thumbnail: thumb || null, format: canvasState.format,
+      });
+    }
+  }, [workspace, canvasState]);
+
   if (workspace.editingId) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
           onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} />
         <div className="flex flex-1 overflow-hidden">
-          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} />
+          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} onAfterGenerate={handleAfterGenerate} />
           <FabricCanvas state={canvasState} />
           <PropertiesPanel state={canvasState} />
         </div>
