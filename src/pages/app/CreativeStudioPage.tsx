@@ -71,29 +71,9 @@ export default function CreativeStudioPage() {
 
     const applyAndSave = async () => {
       if (image_url) {
-        await new Promise<void>((resolve) => {
-          const canvas = canvasState.canvasRef.current;
-          if (!canvas) { resolve(); return; }
-          const imgEl = new Image();
-          imgEl.crossOrigin = "anonymous";
-          imgEl.onload = () => {
-            const fabricImg = new (window as any).fabric?.FabricImage?.(imgEl) 
-              || (() => { canvasState.setBackgroundImage(image_url); return null; })();
-            if (fabricImg && canvas) {
-              fabricImg.scaleToWidth(canvasState.dimensions.w);
-              fabricImg.scaleToHeight(canvasState.dimensions.h);
-              canvas.backgroundImage = fabricImg;
-              canvas.renderAll();
-              canvasState.saveState();
-            }
-            resolve();
-          };
-          imgEl.onerror = () => {
-            canvasState.setBackgroundImage(image_url);
-            resolve();
-          };
-          imgEl.src = image_url;
-        });
+        canvasState.setBackgroundImage(image_url);
+        // Wait for image to load
+        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
       }
 
       if (strategist_output?.editable_layers) {
@@ -108,7 +88,7 @@ export default function CreativeStudioPage() {
         }
       }
 
-      // Wait a tick for canvas to render, then save state to artboard
+      // Wait for canvas to render, then save state to artboard
       setTimeout(() => {
         if (workspace.editingId) {
           const json = canvasState.getJSON();
@@ -119,7 +99,7 @@ export default function CreativeStudioPage() {
             format: canvasState.format,
           });
         }
-      }, 500);
+      }, 1000);
     };
 
     applyAndSave();
