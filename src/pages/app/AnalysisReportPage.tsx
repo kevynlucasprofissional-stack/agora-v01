@@ -128,8 +128,8 @@ export default function AnalysisReportPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
           <div className="min-w-0">
-            <Link to="/app/history" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
-              <ArrowLeft className="h-4 w-4" /> Voltar ao histórico
+            <Link to="/app/analyses" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+              <ArrowLeft className="h-4 w-4" /> Voltar às análises
             </Link>
             <h1 className="text-xl sm:text-2xl font-bold break-words">{analysis.title || "Relatório Executivo"}</h1>
             <p className="text-sm text-muted-foreground mt-1">
