@@ -233,10 +233,8 @@ IMPORTANT RULES:
       const imagePart = candidateParts.find((p: any) => p.inlineData);
       if (imagePart?.inlineData) {
         const rawImageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
-      
-      
-      // Upload base64 to storage if it's a data URI
-      if (rawImageUrl && rawImageUrl.startsWith("data:")) {
+
+        // Upload base64 to storage
         try {
           const base64Match = rawImageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
           if (base64Match) {
@@ -245,28 +243,28 @@ IMPORTANT RULES:
             const binaryStr = atob(base64Data);
             const bytes = new Uint8Array(binaryStr.length);
             for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-            
+
             const filePath = `${user.id}/creatives/${crypto.randomUUID()}.${ext}`;
             const { error: uploadError } = await supabase.storage
               .from("agora-files")
               .upload(filePath, bytes, { contentType: `image/${base64Match[1]}`, upsert: true });
-            
+
             if (!uploadError) {
               const { data: signedData } = await supabase.storage
                 .from("agora-files")
-                .createSignedUrl(filePath, 60 * 60 * 24 * 30); // 30 days
+                .createSignedUrl(filePath, 60 * 60 * 24 * 30);
               imageUrl = signedData?.signedUrl || rawImageUrl;
             } else {
               console.error("Storage upload error:", uploadError);
               imageUrl = rawImageUrl;
             }
+          } else {
+            imageUrl = rawImageUrl;
           }
         } catch (uploadErr) {
           console.error("Failed to upload image to storage:", uploadErr);
           imageUrl = rawImageUrl;
         }
-      } else {
-        imageUrl = rawImageUrl;
       }
     } else {
       console.error("Image generation failed:", imageRes.status);
