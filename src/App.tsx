@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,6 +36,10 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function NewAnalysisWithKey() {
+  const [searchParams] = useSearchParams();
+  return <NewAnalysisPage key={searchParams.get("t") || "default"} />;
+}
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -57,7 +61,7 @@ const App = () => (
             {/* App (protected) */}
             <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<DashboardPage />} />
-              <Route path="new-analysis" element={<NewAnalysisPage />} />
+              <Route path="new-analysis" element={<NewAnalysisWithKey />} />
               
               <Route path="analyses" element={<AnalysisResultsPage />} />
               <Route path="conversations" element={<ConversationHistoryPage />} />
