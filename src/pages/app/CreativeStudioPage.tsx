@@ -34,8 +34,12 @@ export default function CreativeStudioPage() {
     const ab = workspace.editingArtboard;
     if (!ab) return;
     if (ab.format !== canvasState.format) canvasState.changeFormat(ab.format);
-    if (ab.layersState && typeof ab.layersState === "object" && (ab.layersState as any).objects?.length > 0) {
-      canvasState.loadJSON(ab.layersState);
+    if (ab.layersState && typeof ab.layersState === "object") {
+      const ls = ab.layersState as any;
+      const hasContent = (ls.objects?.length > 0) || ls.backgroundImage;
+      if (hasContent) {
+        canvasState.loadJSON(ab.layersState);
+      }
     }
   }, [workspace.editingId, canvasState.canvasReady]);
 
@@ -169,6 +173,33 @@ export default function CreativeStudioPage() {
       });
     }
   }, [workspace, canvasState]);
+
+  // ---- Auto-save: save artboard state every 5 seconds when editing ----
+  const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSavedJsonRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace.editingId || !canvasState.canvasReady) {
+      if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+      return;
+    }
+
+    autoSaveRef.current = setInterval(() => {
+      const json = canvasState.getJSON();
+      if (!json || !workspace.editingId) return;
+      const jsonStr = JSON.stringify(json);
+      if (jsonStr === lastSavedJsonRef.current) return; // no changes
+      lastSavedJsonRef.current = jsonStr;
+      const thumb = canvasState.exportThumbnail();
+      workspace.updateArtboard(workspace.editingId, {
+        layersState: json, thumbnail: thumb || null, format: canvasState.format,
+      });
+    }, 5000);
+
+    return () => {
+      if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+    };
+  }, [workspace.editingId, canvasState.canvasReady]);
 
   if (workspace.editingId) {
     return (
