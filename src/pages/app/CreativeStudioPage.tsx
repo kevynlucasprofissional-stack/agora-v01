@@ -63,27 +63,66 @@ export default function CreativeStudioPage() {
     loadJob();
   }, [jobId, jobLoaded]);
 
-  // Apply pending job image + layers once canvas is ready
+  // Apply pending job image + layers once canvas is ready, then persist to artboard
   useEffect(() => {
     if (!canvasState.canvasReady || !pendingJobRef.current) return;
     const { image_url, strategist_output } = pendingJobRef.current;
     pendingJobRef.current = null;
 
-    if (image_url) {
-      canvasState.setBackgroundImage(image_url);
-    }
-
-    if (strategist_output?.editable_layers) {
-      const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
-      const dim = canvasState.dimensions;
-      const canvas = canvasState.canvasRef.current;
-      if (canvas) {
-        addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
-          addOverlay: true,
-          layout: "hero-bottom",
+    const applyAndSave = async () => {
+      if (image_url) {
+        await new Promise<void>((resolve) => {
+          const canvas = canvasState.canvasRef.current;
+          if (!canvas) { resolve(); return; }
+          const imgEl = new Image();
+          imgEl.crossOrigin = "anonymous";
+          imgEl.onload = () => {
+            const fabricImg = new (window as any).fabric?.FabricImage?.(imgEl) 
+              || (() => { canvasState.setBackgroundImage(image_url); return null; })();
+            if (fabricImg && canvas) {
+              fabricImg.scaleToWidth(canvasState.dimensions.w);
+              fabricImg.scaleToHeight(canvasState.dimensions.h);
+              canvas.backgroundImage = fabricImg;
+              canvas.renderAll();
+              canvasState.saveState();
+            }
+            resolve();
+          };
+          imgEl.onerror = () => {
+            canvasState.setBackgroundImage(image_url);
+            resolve();
+          };
+          imgEl.src = image_url;
         });
       }
-    }
+
+      if (strategist_output?.editable_layers) {
+        const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
+        const dim = canvasState.dimensions;
+        const canvas = canvasState.canvasRef.current;
+        if (canvas) {
+          addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
+            addOverlay: true,
+            layout: "hero-bottom",
+          });
+        }
+      }
+
+      // Wait a tick for canvas to render, then save state to artboard
+      setTimeout(() => {
+        if (workspace.editingId) {
+          const json = canvasState.getJSON();
+          const thumb = canvasState.exportThumbnail();
+          workspace.updateArtboard(workspace.editingId, {
+            layersState: json,
+            thumbnail: thumb || null,
+            format: canvasState.format,
+          });
+        }
+      }, 500);
+    };
+
+    applyAndSave();
   }, [canvasState.canvasReady]);
 
   const handleBackToWorkspace = useCallback(() => {
