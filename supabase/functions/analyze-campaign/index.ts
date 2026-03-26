@@ -471,26 +471,6 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
       return new Response(JSON.stringify({ error: "Serviço de IA temporariamente indisponível. Tente novamente em alguns instantes." }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     const data = await response.json();
