@@ -132,6 +132,7 @@ export default function CreativeStudioPage() {
       workspace.updateArtboard(workspace.editingId, {
         layersState: json, thumbnail: thumb || null, format: canvasState.format,
       });
+      lastSavedJsonRef.current = null; // reset for next editing session
     }
     workspace.setEditingId(null);
   }, [workspace, canvasState]);
