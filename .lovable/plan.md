@@ -1,86 +1,57 @@
 
 
-## Plano: Corrigir bugs menores do Estudio Criativo
+# Migrar todas as Edge Functions do Lovable AI Gateway para a API direta do Google Gemini
 
-### Bug 1 — Ctrl+Z intercepta undo do browser em inputs
+## Contexto
+Atualmente, 5 edge functions usam o Lovable AI Gateway (`ai.gateway.lovable.dev`) com `LOVABLE_API_KEY`, o que consome créditos do workspace Lovable. As outras 4 já usam a API direta do Google (`generativelanguage.googleapis.com`) com `GEMINI_API_KEY`. O objetivo é unificar todas para usar a API do Google diretamente, eliminando a dependência de créditos Lovable.
 
-**Arquivo:** `useCanvasState.ts` (linha 98-106)
+## Funções a migrar (5 arquivos)
 
-O handler de Ctrl+Z/Y não verifica se o foco esta em um input/textarea. Quando o usuario digita no PropertiesPanel ou ToolsSidebar e tenta Ctrl+Z para desfazer texto digitado, o undo do canvas e disparado em vez do undo nativo do browser.
+### 1. `supabase/functions/generate-image/index.ts`
+- Trocar `LOVABLE_API_KEY` → `GEMINI_API_KEY`
+- **Chamada de texto (strategist)**: trocar gateway por `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` com `Authorization: Bearer ${GEMINI_API_KEY}` (endpoint OpenAI-compatible do Google)
+- **Chamada de imagem**: trocar gateway por `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}` com `generationConfig: { responseModalities: ["TEXT", "IMAGE"] }` e adaptar o parsing da resposta (Google retorna `parts` com `inlineData.data` em base64, não `images[].image_url.url`)
 
-**Correcao:** Adicionar o mesmo guard de input/textarea/contenteditable que ja existe no handler de Delete (linha 108-109) tambem para Ctrl+Z e Ctrl+Y.
+### 2. `supabase/functions/generate-creative/index.ts`
+- Mesma migração: strategist → endpoint OpenAI-compatible, imagem → `generateContent` nativo
+- Adaptar parsing da resposta de imagem para o formato Google (`response.candidates[0].content.parts` → encontrar part com `inlineData`)
 
----
+### 3. `supabase/functions/analyze-campaign/index.ts`
+- Trocar gateway por endpoint OpenAI-compatible do Google
+- Manter retry logic entre modelos, apenas mudar URL e auth header
+- Modelos: `gemini-2.5-flash` e `gemini-3-flash-preview` (mesmos nomes sem prefixo `google/`)
 
-### Bug 2 — Canvas nao faz dispose ao desmontar
+### 4. `supabase/functions/strategist-chat/index.ts`
+- Streaming: trocar gateway por `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` (suporta streaming no formato OpenAI-compatible)
+- Trocar `LOVABLE_API_KEY` → `GEMINI_API_KEY`
 
-**Arquivo:** `FabricCanvas.tsx`
+### 5. `supabase/functions/audience-insights/index.ts`
+- Trocar gateway por endpoint OpenAI-compatible com tool calling
+- Trocar `LOVABLE_API_KEY` → `GEMINI_API_KEY`
 
-O useEffect de inicializacao nao chama `canvas.dispose()` no cleanup. Ao trocar artboards ou sair da pagina, o canvas anterior fica vivo na memoria (event listeners, WebGL contexts).
+## Detalhes técnicos
 
-**Correcao:** No cleanup do useEffect, chamar `state.canvasRef.current?.dispose()` antes de resetar `initialized`.
+**Endpoint OpenAI-compatible (texto/chat/tools):**
+```
+https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+Authorization: Bearer ${GEMINI_API_KEY}
+```
+- Suporta mesmo formato de request/response (messages, tools, stream)
+- Modelos sem prefixo: `gemini-2.5-flash`, `gemini-3-flash-preview`, `gemini-2.5-flash-lite`
 
----
+**Endpoint nativo para imagens:**
+```
+https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}
+```
+- Body: `{ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["TEXT", "IMAGE"] } }`
+- Response: `candidates[0].content.parts[]` → part com `inlineData: { mimeType, data }` (base64)
+- Converter para `data:image/png;base64,${data}` para uso no HTML
 
-### Bug 3 — File input nao reseta apos upload
+**Para imagens com referência (multimodal):**
+- Adicionar parts com `inlineData: { mimeType, data: base64 }` junto ao text part
 
-**Arquivo:** `ToolsSidebar.tsx` (linha 25-35)
-
-Apos enviar uma imagem, o `<input type="file">` mantem o valor. Se o usuario tentar enviar o mesmo arquivo novamente, `onChange` nao dispara.
-
-**Correcao:** Resetar `e.target.value = ""` no final do handler `handleUpload`.
-
----
-
-### Bug 4 — Export PNG usa nome generico
-
-**Arquivo:** `StudioHeader.tsx` (linha 178)
-
-O download usa `criativo-${state.format}.png`. Nao inclui o nome do artboard, dificultando identificar multiplas exportacoes.
-
-**Correcao:** Receber `artboardName` (ja disponivel como prop) e usar no filename: `${artboardName}-${format}.png`.
-
----
-
-### Bug 5 — Nenhum loading state ao carregar job do banco
-
-**Arquivo:** `CreativeStudioPage.tsx`
-
-Quando o usuario abre `/app/creative-studio/:jobId`, a pagina mostra o workspace vazio enquanto o job carrega do banco. Nao ha indicacao visual de loading.
-
-**Correcao:** Adicionar estado `jobLoading` e exibir um spinner centralizado enquanto o job esta sendo carregado.
-
----
-
-### Bug 6 — WorkspaceGrid keyboard handler nao verifica contenteditable
-
-**Arquivo:** `WorkspaceGrid.tsx` (linha 52)
-
-O handler verifica `INPUT` e `TEXTAREA` mas nao `contenteditable`. Se algum elemento futuro usar contenteditable, Delete/Backspace vai deletar o elemento do workspace.
-
-**Correcao:** Adicionar `|| (e.target as HTMLElement).isContentEditable` no guard.
-
----
-
-### Bug 7 — Workspace pan state resetado ao recarregar
-
-**Arquivo:** `useWorkspaceState.ts`
-
-Os elements sao persistidos no localStorage, mas `pan` e `wsZoom` nao. Ao recarregar, o usuario perde a posicao de visualizacao e tem que navegar de volta.
-
-**Correcao:** Persistir `pan` e `wsZoom` no localStorage junto com os elements.
-
----
-
-### Arquivos editados
-
-| Arquivo | Mudanca |
-|---|---|
-| `useCanvasState.ts` | Guard de input no Ctrl+Z/Y |
-| `FabricCanvas.tsx` | Dispose canvas no cleanup |
-| `ToolsSidebar.tsx` | Reset file input apos upload |
-| `StudioHeader.tsx` | Nome do artboard no filename de export |
-| `CreativeStudioPage.tsx` | Loading state ao carregar job |
-| `WorkspaceGrid.tsx` | Guard contenteditable no keyboard handler |
-| `useWorkspaceState.ts` | Persistir pan/zoom no localStorage |
+## Resultado
+- Todas as 9 edge functions usarão `GEMINI_API_KEY` (já configurada como secret)
+- Zero dependência de créditos Lovable para IA
+- Sem mudanças no frontend — os contratos de resposta das functions permanecem iguais
 
