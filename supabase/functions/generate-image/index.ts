@@ -83,7 +83,7 @@ REGRAS:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         messages: [{ role: "user", content: strategistPrompt }],
       }),
     });
@@ -152,7 +152,7 @@ IMPORTANT RULES:
     }
 
     const imageRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
