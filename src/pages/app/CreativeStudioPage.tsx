@@ -63,27 +63,46 @@ export default function CreativeStudioPage() {
     loadJob();
   }, [jobId, jobLoaded]);
 
-  // Apply pending job image + layers once canvas is ready
+  // Apply pending job image + layers once canvas is ready, then persist to artboard
   useEffect(() => {
     if (!canvasState.canvasReady || !pendingJobRef.current) return;
     const { image_url, strategist_output } = pendingJobRef.current;
     pendingJobRef.current = null;
 
-    if (image_url) {
-      canvasState.setBackgroundImage(image_url);
-    }
-
-    if (strategist_output?.editable_layers) {
-      const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
-      const dim = canvasState.dimensions;
-      const canvas = canvasState.canvasRef.current;
-      if (canvas) {
-        addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
-          addOverlay: true,
-          layout: "hero-bottom",
-        });
+    const applyAndSave = async () => {
+      if (image_url) {
+        canvasState.setBackgroundImage(image_url);
+        // Wait for image to load
+        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
       }
-    }
+
+      if (strategist_output?.editable_layers) {
+        const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
+        const dim = canvasState.dimensions;
+        const canvas = canvasState.canvasRef.current;
+        if (canvas) {
+          addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
+            addOverlay: true,
+            layout: "hero-bottom",
+          });
+        }
+      }
+
+      // Wait for canvas to render, then save state to artboard
+      setTimeout(() => {
+        if (workspace.editingId) {
+          const json = canvasState.getJSON();
+          const thumb = canvasState.exportThumbnail();
+          workspace.updateArtboard(workspace.editingId, {
+            layersState: json,
+            thumbnail: thumb || null,
+            format: canvasState.format,
+          });
+        }
+      }, 1000);
+    };
+
+    applyAndSave();
   }, [canvasState.canvasReady]);
 
   const handleBackToWorkspace = useCallback(() => {
@@ -121,13 +140,23 @@ export default function CreativeStudioPage() {
     }
   }, [canvasState, jobId, workspace]);
 
+  const handleAfterGenerate = useCallback(() => {
+    if (workspace.editingId) {
+      const json = canvasState.getJSON();
+      const thumb = canvasState.exportThumbnail();
+      workspace.updateArtboard(workspace.editingId, {
+        layersState: json, thumbnail: thumb || null, format: canvasState.format,
+      });
+    }
+  }, [workspace, canvasState]);
+
   if (workspace.editingId) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
           onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} />
         <div className="flex flex-1 overflow-hidden">
-          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} />
+          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} onAfterGenerate={handleAfterGenerate} />
           <FabricCanvas state={canvasState} />
           <PropertiesPanel state={canvasState} />
         </div>

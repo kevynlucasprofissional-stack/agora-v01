@@ -16,9 +16,10 @@ type Props = {
   state: ReturnType<typeof useCanvasState>;
   analysisId?: string;
   conversationId?: string;
+  onAfterGenerate?: () => void;
 };
 
-export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
+export function ToolsSidebar({ state, analysisId, conversationId, onAfterGenerate }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +78,10 @@ export function ToolsSidebar({ state, analysisId, conversationId }: Props) {
       }
       toast.success("Criativo gerado com sucesso!");
       setAiPrompt("");
+      // Notify parent to save artboard state after generation settles
+      if (onAfterGenerate) {
+        setTimeout(() => onAfterGenerate(), 1500);
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao gerar criativo");
     } finally {

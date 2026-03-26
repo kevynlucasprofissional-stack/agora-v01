@@ -1,6 +1,51 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import type { CanvasFormat } from "./useCanvasState";
 
+// ---- IndexedDB helpers for large artboard data ----
+const IDB_NAME = "agora-studio";
+const IDB_STORE = "artboard-data";
+const IDB_VERSION = 1;
+
+function openIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key: string, value: any) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(value, key);
+    await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+  } catch {}
+}
+
+async function idbGet(key: string): Promise<any> {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(key);
+    return new Promise((res) => { req.onsuccess = () => res(req.result ?? null); req.onerror = () => res(null); });
+  } catch { return null; }
+}
+
+async function idbDelete(key: string) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(key);
+  } catch {}
+}
+
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
 export type ArrowStyle = "solid" | "dashed" | "curved";
 export type ArrowDirection = "one-way" | "two-way";
@@ -111,21 +156,59 @@ export function useWorkspaceState() {
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
-  // Persist elements to localStorage (debounced, strip large thumbnails)
+  // Persist elements to localStorage + IndexedDB for heavy artboard data
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
+        // Save lightweight skeleton to localStorage
         const stripped = elements.map((e) => {
           if (e.type === "artboard") {
-            return { ...e, thumbnail: null, layersState: null };
+            // Keep thumbnail (small) but move layersState to IDB
+            return { ...e, layersState: e.layersState ? "__IDB__" : null };
           }
           return e;
         });
         localStorage.setItem("agora-workspace-elements", JSON.stringify(stripped));
+
+        // Save heavy layersState to IndexedDB per artboard
+        elements.forEach((e) => {
+          if (e.type === "artboard") {
+            const ab = e as Artboard;
+            if (ab.layersState && ab.layersState !== "__IDB__") {
+              idbSet(`artboard-layers-${ab.id}`, { layersState: ab.layersState });
+            }
+          }
+        });
       } catch {}
     }, 1000);
     return () => clearTimeout(timer);
   }, [elements]);
+
+  // Hydrate layersState from IndexedDB on mount
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const hydrate = async () => {
+      const needsHydration = elements.filter(
+        (e) => e.type === "artboard" && (e as Artboard).layersState === "__IDB__"
+      );
+      if (needsHydration.length === 0) return;
+      const updates = await Promise.all(
+        needsHydration.map(async (e) => {
+          const data = await idbGet(`artboard-layers-${e.id}`);
+          return { id: e.id, layersState: data?.layersState ?? null };
+        })
+      );
+      setElements((prev) =>
+        prev.map((e) => {
+          const up = updates.find((u) => u.id === e.id);
+          return up ? { ...e, layersState: up.layersState } : e;
+        })
+      );
+    };
+    hydrate();
+  }, []);
 
   // Persist pan/zoom to localStorage
   useEffect(() => {
@@ -246,10 +329,15 @@ export function useWorkspaceState() {
 
   // ---- Generic CRUD ----
   const removeElement = useCallback((id: string) => {
+    // Clean up IndexedDB for artboards
+    const el = elements.find((e) => e.id === id);
+    if (el?.type === "artboard") {
+      idbDelete(`artboard-layers-${id}`);
+    }
     setElements((prev) => prev.filter((e) => e.id !== id && !(e.type === "arrow" && ((e as Arrow).fromId === id || (e as Arrow).toId === id))));
     if (selectedId === id) setSelectedId(null);
     if (editingId === id) setEditingId(null);
-  }, [selectedId, editingId]);
+  }, [elements, selectedId, editingId]);
 
   const updateElement = useCallback((id: string, updates: Partial<any>) => {
     setElements((prev) =>
