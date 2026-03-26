@@ -329,10 +329,15 @@ export function useWorkspaceState() {
 
   // ---- Generic CRUD ----
   const removeElement = useCallback((id: string) => {
+    // Clean up IndexedDB for artboards
+    const el = elements.find((e) => e.id === id);
+    if (el?.type === "artboard") {
+      idbDelete(`artboard-layers-${id}`);
+    }
     setElements((prev) => prev.filter((e) => e.id !== id && !(e.type === "arrow" && ((e as Arrow).fromId === id || (e as Arrow).toId === id))));
     if (selectedId === id) setSelectedId(null);
     if (editingId === id) setEditingId(null);
-  }, [selectedId, editingId]);
+  }, [elements, selectedId, editingId]);
 
   const updateElement = useCallback((id: string, updates: Partial<any>) => {
     setElements((prev) =>
