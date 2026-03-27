@@ -214,27 +214,26 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    const imageRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: imagePrompt }] }],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-        }),
+    const imageRes = await fetch(GEMINI_TEXT_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        model: "gemini-2.5-flash-image",
+        messages: [{ role: "user", content: imagePrompt }],
+        modalities: ["image", "text"],
+      }),
+    });
 
     let imageUrl = "";
     if (imageRes.ok) {
       const imageData = await imageRes.json();
-      const candidateParts = imageData.candidates?.[0]?.content?.parts || [];
-      const imagePart = candidateParts.find((p: any) => p.inlineData);
-      if (imagePart?.inlineData) {
-        const rawImageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+      const rawImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || "";
 
-        // Upload base64 to storage
+      // Upload base64 to storage if it's a data URI
+      if (rawImageUrl && rawImageUrl.startsWith("data:")) {
         try {
           const base64Match = rawImageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
           if (base64Match) {
@@ -258,13 +257,13 @@ IMPORTANT RULES:
               console.error("Storage upload error:", uploadError);
               imageUrl = rawImageUrl;
             }
-          } else {
-            imageUrl = rawImageUrl;
           }
         } catch (uploadErr) {
           console.error("Failed to upload image to storage:", uploadErr);
           imageUrl = rawImageUrl;
         }
+      } else {
+        imageUrl = rawImageUrl;
       }
     } else {
       console.error("Image generation failed:", imageRes.status);
