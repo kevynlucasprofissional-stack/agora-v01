@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent";
+const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
