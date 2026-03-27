@@ -153,14 +153,15 @@ IMPORTANT RULES:
       }
     }
 
-    const imageRes = await fetch(GEMINI_TEXT_URL, {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const imageRes = await fetch(LOVABLE_GATEWAY, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash-image",
+        model: "google/gemini-2.5-flash-image",
         messages: [{ role: "user", content: hasRefImages ? imageMessageContent : imagePrompt }],
         modalities: ["image", "text"],
       }),
