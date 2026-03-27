@@ -138,39 +138,37 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    // Build image generation parts (multimodal if reference images exist)
-    const parts: any[] = [{ text: imagePrompt }];
+    // Build image generation message content (multimodal if reference images exist)
+    const imageMessageContent: any[] = [{ type: "text", text: imagePrompt }];
     if (hasRefImages) {
       for (const img of reference_images) {
-        const raw = img.content.startsWith("data:")
-          ? img.content.split(",")[1]
-          : img.content;
-        parts.push({
-          inlineData: { mimeType: img.type || "image/png", data: raw },
+        const dataUrl = img.content.startsWith("data:")
+          ? img.content
+          : `data:${img.type || "image/png"};base64,${img.content}`;
+        imageMessageContent.push({
+          type: "image_url",
+          image_url: { url: dataUrl },
         });
       }
     }
 
-    const imageRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-        }),
+    const imageRes = await fetch(GEMINI_TEXT_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        model: "gemini-2.5-flash-image",
+        messages: [{ role: "user", content: hasRefImages ? imageMessageContent : imagePrompt }],
+        modalities: ["image", "text"],
+      }),
+    });
 
     let imageUrl = "";
     if (imageRes.ok) {
       const imageData = await imageRes.json();
-      const candidateParts = imageData.candidates?.[0]?.content?.parts || [];
-      const imagePart = candidateParts.find((p: any) => p.inlineData);
-      if (imagePart?.inlineData) {
-        imageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
-      }
+      imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || "";
     } else {
       console.error("Image generation failed:", imageRes.status, await imageRes.text());
     }
