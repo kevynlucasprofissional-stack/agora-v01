@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const LOVABLE_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -214,14 +215,15 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    const imageRes = await fetch(GEMINI_TEXT_URL, {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const imageRes = await fetch(LOVABLE_GATEWAY, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash-image",
+        model: "google/gemini-2.5-flash-image",
         messages: [{ role: "user", content: imagePrompt }],
         modalities: ["image", "text"],
       }),
