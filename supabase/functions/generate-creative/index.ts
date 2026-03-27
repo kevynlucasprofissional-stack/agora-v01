@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const LOVABLE_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -215,24 +215,23 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const imageRes = await fetch(LOVABLE_GATEWAY, {
+    const imageRes = await fetch(`${GEMINI_IMAGE_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: imagePrompt }],
-        modalities: ["image", "text"],
+        contents: [{ parts: [{ text: imagePrompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
     let imageUrl = "";
     if (imageRes.ok) {
       const imageData = await imageRes.json();
-      const rawImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || "";
+      const resParts = imageData.candidates?.[0]?.content?.parts || [];
+      const imgPart = resParts.find((p: any) => p.inlineData);
+      const rawImageUrl = imgPart
+        ? `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`
+        : "";
 
       // Upload base64 to storage if it's a data URI
       if (rawImageUrl && rawImageUrl.startsWith("data:")) {

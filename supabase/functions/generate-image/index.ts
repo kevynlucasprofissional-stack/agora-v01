@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const LOVABLE_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -139,38 +139,36 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    // Build image generation message content (multimodal if reference images exist)
-    const imageMessageContent: any[] = [{ type: "text", text: imagePrompt }];
+    // Build parts for native Gemini generateContent API
+    const parts: any[] = [{ text: imagePrompt }];
     if (hasRefImages) {
       for (const img of reference_images) {
-        const dataUrl = img.content.startsWith("data:")
-          ? img.content
-          : `data:${img.type || "image/png"};base64,${img.content}`;
-        imageMessageContent.push({
-          type: "image_url",
-          image_url: { url: dataUrl },
-        });
+        const base64Match = img.content.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (base64Match) {
+          parts.push({ inlineData: { mimeType: `image/${base64Match[1]}`, data: base64Match[2] } });
+        } else {
+          parts.push({ inlineData: { mimeType: img.type || "image/png", data: img.content } });
+        }
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const imageRes = await fetch(LOVABLE_GATEWAY, {
+    const imageRes = await fetch(`${GEMINI_IMAGE_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: hasRefImages ? imageMessageContent : imagePrompt }],
-        modalities: ["image", "text"],
+        contents: [{ parts }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
     let imageUrl = "";
     if (imageRes.ok) {
       const imageData = await imageRes.json();
-      imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || "";
+      const resParts = imageData.candidates?.[0]?.content?.parts || [];
+      const imgPart = resParts.find((p: any) => p.inlineData);
+      if (imgPart) {
+        imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+      }
     } else {
       console.error("Image generation failed:", imageRes.status, await imageRes.text());
     }
