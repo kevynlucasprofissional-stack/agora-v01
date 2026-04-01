@@ -32,6 +32,7 @@ import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
 import IntegrationsPage from "@/pages/app/IntegrationsPage";
 import CreativeStudioPage from "@/pages/app/CreativeStudioPage";
+import CampaignComparatorPage from "@/pages/app/CampaignComparatorPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
