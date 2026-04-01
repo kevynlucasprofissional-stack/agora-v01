@@ -307,8 +307,8 @@ export default function CampaignComparatorPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+      <div className="flex items-center gap-3 px-3 md:px-4 py-3 border-b border-border/40">
+        <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-primary/10">
           <GitCompareArrows className="h-5 w-5 text-primary" />
         </div>
         <div>
