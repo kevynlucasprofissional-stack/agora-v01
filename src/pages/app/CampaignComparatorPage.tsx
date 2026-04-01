@@ -388,7 +388,7 @@ export default function CampaignComparatorPage() {
                       {isLastAssistant && isStreaming ? (
                         <TypewriterMarkdown content={displayContent} speed={0} />
                       ) : (
-                        <TypewriterMarkdown content={displayContent} speed={0} instant />
+                        <TypewriterMarkdown content={displayContent} speed={0} />
                       )}
                     </div>
                   )}
