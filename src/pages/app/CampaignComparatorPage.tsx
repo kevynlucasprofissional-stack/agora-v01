@@ -405,7 +405,8 @@ export default function CampaignComparatorPage() {
                 {!isUser && !isStreaming && (
                   <ChatMessageActions
                     content={msg.content}
-                    index={idx}
+                    messageIndex={idx}
+                    role="assistant"
                     feedback={feedbacks[idx]}
                     onFeedback={handleFeedback}
                   />
