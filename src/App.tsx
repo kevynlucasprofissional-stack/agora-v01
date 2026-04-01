@@ -70,6 +70,7 @@ const App = () => (
               <Route path="analysis/:id/chat" element={<AnalysisChatPage />} />
               <Route path="analysis/:id/campaign" element={<CampaignDocumentPage />} />
               <Route path="optimizer" element={<CampaignOptimizerPage />} />
+              <Route path="comparator" element={<CampaignComparatorPage />} />
               
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
