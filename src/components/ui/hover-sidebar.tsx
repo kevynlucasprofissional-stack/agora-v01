@@ -121,9 +121,7 @@ export const MobileSidebar = ({
         {...props}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-primary-foreground font-bold text-sm">Á</span>
-          </div>
+          <AgoraIcon size={32} className="shrink-0 rounded-lg" />
           <span className="font-display text-lg font-bold">Ágora</span>
         </div>
         <div className="z-20">
