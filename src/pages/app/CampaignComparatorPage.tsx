@@ -311,9 +311,9 @@ export default function CampaignComparatorPage() {
         <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-primary/10">
           <GitCompareArrows className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-lg font-bold">Comparar Campanhas</h1>
-          <p className="text-xs text-muted-foreground">Compare campanhas e receba diagnósticos estratégicos</p>
+        <div className="min-w-0">
+          <h1 className="text-base md:text-lg font-bold truncate">Comparar Campanhas</h1>
+          <p className="text-xs text-muted-foreground hidden sm:block">Compare campanhas e receba diagnósticos estratégicos</p>
         </div>
       </div>
 
