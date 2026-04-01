@@ -376,7 +376,7 @@ export default function CampaignComparatorPage() {
                   <AgoraIcon size={18} />
                 </div>
               )}
-              <div className={`max-w-[85%] ${isUser ? "order-first" : ""}`}>
+              <div className={`max-w-[95%] md:max-w-[85%] ${isUser ? "order-first" : ""}`}>
                 <div
                   className={`rounded-2xl px-4 py-3 ${
                     isUser
