@@ -11,6 +11,8 @@ import { AgoraIcon } from "@/components/AgoraIcon";
 import { parseContextCards } from "@/lib/parseContextCards";
 import { ContextCards } from "@/components/ContextCards";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
+import { parseDashboardBlocks } from "@/lib/parseDashboardBlocks";
+import { ComparatorDashboard } from "@/components/comparator/ComparatorDashboard";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -385,9 +387,17 @@ export default function CampaignComparatorPage() {
                   {isUser ? (
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <RichMarkdownRenderer content={displayContent} />
-                    </div>
+                    <>
+                      {parseDashboardBlocks(displayContent).map((block, bi) =>
+                        block.type === "dashboard" ? (
+                          <ComparatorDashboard key={bi} data={block.data} />
+                        ) : (
+                          <div key={bi} className="prose prose-sm dark:prose-invert max-w-none">
+                            <RichMarkdownRenderer content={block.content} />
+                          </div>
+                        )
+                      )}
+                    </>
                   )}
                 </div>
 
