@@ -11,6 +11,8 @@ import { AgoraIcon } from "@/components/AgoraIcon";
 import { parseContextCards } from "@/lib/parseContextCards";
 import { ContextCards } from "@/components/ContextCards";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
+import { parseDashboardBlocks } from "@/lib/parseDashboardBlocks";
+import { ComparatorDashboard } from "@/components/comparator/ComparatorDashboard";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
