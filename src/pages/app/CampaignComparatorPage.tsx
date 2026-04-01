@@ -385,12 +385,8 @@ export default function CampaignComparatorPage() {
                   {isUser ? (
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-table:border-collapse prose-th:border prose-th:border-border/60 prose-th:px-3 prose-th:py-2 prose-th:bg-muted/50 prose-th:text-xs prose-th:font-semibold prose-td:border prose-td:border-border/40 prose-td:px-3 prose-td:py-2 prose-td:text-sm">
-                      {isLastAssistant && isStreaming ? (
-                        <TypewriterMarkdown content={displayContent} speed={0} />
-                      ) : (
-                        <TypewriterMarkdown content={displayContent} speed={0} />
-                      )}
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <RichMarkdownRenderer content={displayContent} />
                     </div>
                   )}
                 </div>
