@@ -1,6 +1,6 @@
 import {
   LayoutGrid, FolderOpen, Settings, User,
-  LogOut, Plus, Link2, BarChart3, MessageSquare, Palette,
+  LogOut, Plus, Link2, BarChart3, MessageSquare, Palette, GitCompareArrows,
 } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { useAuth } from "@/hooks/useAuth";
