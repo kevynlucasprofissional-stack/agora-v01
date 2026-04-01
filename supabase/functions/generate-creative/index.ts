@@ -9,6 +9,90 @@ const corsHeaders = {
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
+const GEMINI_FALLBACK_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generateImageWithRetry(
+  prompt: string,
+  apiKey: string,
+  maxRetries = 2
+): Promise<{ imageData: any | null; failed: boolean }> {
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+  });
+  const headers = { "Content-Type": "application/json" };
+
+  // Try primary model with retries
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Image generation attempt ${attempt + 1}/${maxRetries + 1} (primary model)`);
+      const res = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+        method: "POST",
+        headers,
+        body,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const imgPart = parts.find((p: any) => p.inlineData);
+        if (imgPart) {
+          console.log("Image generated successfully (primary model)");
+          return { imageData: imgPart, failed: false };
+        }
+        console.warn("Primary model returned ok but no image part");
+      } else {
+        const statusCode = res.status;
+        const errorBody = await res.text();
+        console.error(`Primary model attempt ${attempt + 1} failed: ${statusCode} - ${errorBody.slice(0, 300)}`);
+        if (statusCode === 429 && attempt < maxRetries) {
+          const waitMs = Math.pow(2, attempt) * 1500;
+          console.log(`Rate limited, waiting ${waitMs}ms before retry...`);
+          await sleep(waitMs);
+          continue;
+        }
+      }
+    } catch (err) {
+      console.error(`Primary model attempt ${attempt + 1} exception:`, err);
+    }
+    if (attempt < maxRetries) {
+      await sleep(1000);
+    }
+  }
+
+  // Fallback model
+  try {
+    console.log("Trying fallback model (gemini-2.5-flash-preview-image-generation)...");
+    const res = await fetch(`${GEMINI_FALLBACK_IMAGE_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers,
+      body,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imgPart = parts.find((p: any) => p.inlineData);
+      if (imgPart) {
+        console.log("Image generated successfully (fallback model)");
+        return { imageData: imgPart, failed: false };
+      }
+      console.warn("Fallback model returned ok but no image part");
+    } else {
+      const errorBody = await res.text();
+      console.error(`Fallback model failed: ${res.status} - ${errorBody.slice(0, 300)}`);
+    }
+  } catch (err) {
+    console.error("Fallback model exception:", err);
+  }
+
+  console.error("All image generation attempts failed");
+  return { imageData: null, failed: true };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
