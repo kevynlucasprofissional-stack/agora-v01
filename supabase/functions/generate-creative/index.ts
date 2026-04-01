@@ -399,6 +399,7 @@ IMPORTANT RULES:
     return new Response(JSON.stringify({
       strategist_output: strategistOutput,
       image_url: imageUrl,
+      image_generation_failed,
       editable_html: editableHtml,
       creative_job_id: job?.id || null,
     }), {
