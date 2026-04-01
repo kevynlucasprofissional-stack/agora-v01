@@ -299,26 +299,16 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    const imageRes = await fetch(`${GEMINI_IMAGE_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: imagePrompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-      }),
-    });
+    const imageResult = await generateImageWithRetry(imagePrompt, GEMINI_API_KEY);
+    const image_generation_failed = imageResult.failed;
 
     let imageUrl = "";
-    if (imageRes.ok) {
-      const imageData = await imageRes.json();
-      const resParts = imageData.candidates?.[0]?.content?.parts || [];
-      const imgPart = resParts.find((p: any) => p.inlineData);
-      const rawImageUrl = imgPart
-        ? `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`
-        : "";
+    if (imageResult.imageData) {
+      const imgPart = imageResult.imageData;
+      const rawImageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
 
       // Upload base64 to storage if it's a data URI
-      if (rawImageUrl && rawImageUrl.startsWith("data:")) {
+      if (rawImageUrl.startsWith("data:")) {
         try {
           const base64Match = rawImageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
           if (base64Match) {
@@ -350,8 +340,6 @@ IMPORTANT RULES:
       } else {
         imageUrl = rawImageUrl;
       }
-    } else {
-      console.error("Image generation failed:", imageRes.status);
     }
 
     // ─── 4. Build Editable HTML ───
