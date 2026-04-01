@@ -5,6 +5,7 @@ import { Link, LinkProps } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { AgoraIcon } from "@/components/AgoraIcon";
 
 interface Links {
   label: string;
@@ -120,9 +121,7 @@ export const MobileSidebar = ({
         {...props}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-primary-foreground font-bold text-sm">Á</span>
-          </div>
+          <AgoraIcon size={32} className="shrink-0 rounded-lg" />
           <span className="font-display text-lg font-bold">Ágora</span>
         </div>
         <div className="z-20">
@@ -171,12 +170,21 @@ export const SidebarLink = ({
   onClick?: (e?: React.MouseEvent) => void;
   props?: LinkProps;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open, setOpen, animate } = useSidebar();
   const collapsed = animate && !open;
+
+  const handleClick = (e?: React.MouseEvent) => {
+    // Close mobile sidebar on navigation
+    if (window.innerWidth < 768) {
+      setOpen(false);
+    }
+    onClick?.(e);
+  };
+
   return (
     <Link
       to={link.href}
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         "flex items-center group/sidebar py-2.5 rounded-lg transition-colors",
         collapsed ? "justify-center px-0" : "justify-start gap-3 px-3",
