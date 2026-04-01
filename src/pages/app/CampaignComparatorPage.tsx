@@ -6,6 +6,7 @@ import { Send, Paperclip, X, FileText, Loader2, GitCompareArrows } from "lucide-
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
+import { RichMarkdownRenderer } from "@/components/RichMarkdownRenderer";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { parseContextCards } from "@/lib/parseContextCards";
 import { ContextCards } from "@/components/ContextCards";
