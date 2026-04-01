@@ -158,8 +158,8 @@ const components: Components = {
     <strong className="font-semibold text-foreground" {...props}>{children}</strong>
   ),
   // Blockquotes become callout cards
-  blockquote: ({ children, ...props }) => (
-    <div className="my-3 rounded-xl bg-primary/5 border-l-3 border-primary/40 px-4 py-3 text-sm" {...props}>
+  blockquote: ({ children }) => (
+    <div className="my-3 rounded-xl bg-primary/5 border-l-[3px] border-primary/40 px-4 py-3 text-sm">
       {children}
     </div>
   ),
