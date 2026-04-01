@@ -32,6 +32,7 @@ import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
 import IntegrationsPage from "@/pages/app/IntegrationsPage";
 import CreativeStudioPage from "@/pages/app/CreativeStudioPage";
+import CampaignComparatorPage from "@/pages/app/CampaignComparatorPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="analysis/:id/chat" element={<AnalysisChatPage />} />
               <Route path="analysis/:id/campaign" element={<CampaignDocumentPage />} />
               <Route path="optimizer" element={<CampaignOptimizerPage />} />
+              <Route path="comparator" element={<CampaignComparatorPage />} />
               
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<SettingsPage />} />

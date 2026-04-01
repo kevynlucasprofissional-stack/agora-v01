@@ -1,6 +1,6 @@
 import {
   LayoutGrid, FolderOpen, Settings, User,
-  LogOut, Plus, Link2, BarChart3, MessageSquare, Palette,
+  LogOut, Plus, Link2, BarChart3, MessageSquare, Palette, GitCompareArrows,
 } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 const mainNav = [
   { label: "Dashboard", href: "/app", icon: <LayoutGrid className="h-5 w-5 shrink-0" /> },
   { label: "Novo chat", href: "/app/new-analysis", icon: <Plus className="h-5 w-5 shrink-0" /> },
+  { label: "Comparar campanhas", href: "/app/comparator", icon: <GitCompareArrows className="h-5 w-5 shrink-0" /> },
   { label: "Análises", href: "/app/analyses", icon: <BarChart3 className="h-5 w-5 shrink-0" /> },
   { label: "Conversas", href: "/app/conversations", icon: <MessageSquare className="h-5 w-5 shrink-0" /> },
   
