@@ -120,11 +120,13 @@ Tipo, escopo, confiança, limitações
 
 Máx. 4 bullets com diferenças decisivas
 
-## 4) Recomendação Executiva
+## 4) Recomendação Executiva (SOMENTE para campanhas first-party)
 
 - Plano 7 dias (3 ações)
 - Plano 30 dias (3 ações)
 - 1 teste A/B (hipótese, variável, métrica)
+
+**Se TODAS as campanhas forem third-party, OMITIR esta seção inteiramente.** Apenas ofereça observações táticas dentro da Comparação Direta.
 
 ---
 
