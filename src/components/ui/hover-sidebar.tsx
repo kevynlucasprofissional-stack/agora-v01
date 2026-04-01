@@ -170,12 +170,21 @@ export const SidebarLink = ({
   onClick?: (e?: React.MouseEvent) => void;
   props?: LinkProps;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open, setOpen, animate } = useSidebar();
   const collapsed = animate && !open;
+
+  const handleClick = (e?: React.MouseEvent) => {
+    // Close mobile sidebar on navigation
+    if (window.innerWidth < 768) {
+      setOpen(false);
+    }
+    onClick?.(e);
+  };
+
   return (
     <Link
       to={link.href}
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         "flex items-center group/sidebar py-2.5 rounded-lg transition-colors",
         collapsed ? "justify-center px-0" : "justify-start gap-3 px-3",
