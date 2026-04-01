@@ -321,7 +321,7 @@ export default function CampaignComparatorPage() {
       <div
         ref={chatScrollRef}
         onScroll={handleChatScroll}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+        className="flex-1 overflow-y-auto px-2 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6"
       >
         {!hasMessages && (
           <motion.div
