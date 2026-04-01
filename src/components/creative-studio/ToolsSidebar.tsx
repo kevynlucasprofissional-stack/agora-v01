@@ -64,6 +64,9 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
       if (data?.image_url) {
         state.setBackgroundImage(data.image_url);
       }
+      if (!data?.image_url || data?.image_generation_failed) {
+        toast.warning("Imagem de fundo não gerada. Os textos foram aplicados. Tente gerar novamente.");
+      }
       const output = data?.strategist_output;
       if (output) {
         const dim = state.dimensions;
