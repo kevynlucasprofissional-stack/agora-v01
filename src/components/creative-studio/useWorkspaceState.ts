@@ -185,7 +185,7 @@ export function useWorkspaceState() {
       // Fire and forget upserts
       artboardsToSave.forEach(async (ab) => {
         try {
-          await supabase.from("workspace_artboards").upsert({
+          const { error } = await supabase.from("workspace_artboards").upsert({
             id: ab.id,
             user_id: user.id,
             name: ab.name,
@@ -197,7 +197,10 @@ export function useWorkspaceState() {
             thumbnail: ab.thumbnail,
             creative_job_id: ab.creativeJobId || null,
           }, { onConflict: "id" });
-        } catch {}
+          if (error) console.error("Artboard save error:", ab.id, error.message);
+        } catch (err) {
+          console.error("Artboard save exception:", ab.id, err);
+        }
       });
 
       return current; // don't modify state

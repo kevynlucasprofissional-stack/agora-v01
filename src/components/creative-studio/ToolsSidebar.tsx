@@ -48,6 +48,10 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
   const doGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
+
+    // Save current canvas state for recovery on failure
+    const previousJson = state.getJSON();
+
     try {
       // Clear canvas before generating
       state.clearCanvas();
@@ -90,10 +94,15 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
       setAiPrompt("");
       setHasGenerated(true);
       if (onAfterGenerate) {
-        setTimeout(() => onAfterGenerate(), 1500);
+        setTimeout(() => onAfterGenerate(), 500);
       }
     } catch (err: any) {
+      console.error("Creative generation error:", err);
       toast.error(err.message || "Erro ao gerar criativo");
+      // Restore previous canvas state on failure
+      if (previousJson) {
+        state.loadJSON(previousJson);
+      }
     } finally {
       setAiLoading(false);
     }
