@@ -72,7 +72,7 @@ export default function CreativeStudioPage() {
 
         const fmt = (job.format as any) || "1080x1080";
         const hasLayers = job.layers_state && typeof job.layers_state === "object" &&
-          (job.layers_state as any).objects?.length > 0;
+          ((job.layers_state as any).objects?.length > 0 || (job.layers_state as any).backgroundImage);
 
         const id = workspace.addArtboard(fmt, "Criativo importado", { creativeJobId: jobId });
 
@@ -101,19 +101,8 @@ export default function CreativeStudioPage() {
 
     const apply = async () => {
       if (image_url) {
-        canvasState.setBackgroundImage(image_url);
-        // Wait for image load via a polling check instead of a fixed timeout
-        await new Promise<void>((resolve) => {
-          let checks = 0;
-          const interval = setInterval(() => {
-            checks++;
-            const canvas = canvasState.canvasRef.current;
-            if ((canvas?.backgroundImage) || checks > 20) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 200);
-        });
+        // setBackgroundImage now returns a promise — no polling needed
+        await canvasState.setBackgroundImage(image_url);
       }
 
       if (strategist_output?.editable_layers) {
@@ -130,7 +119,6 @@ export default function CreativeStudioPage() {
 
       // Save state to artboard after rendering
       if (workspace.editingId) {
-        // Use rAF to let Fabric finish rendering
         requestAnimationFrame(() => {
           const json = canvasState.getJSON();
           const thumb = canvasState.exportThumbnail();
@@ -188,7 +176,6 @@ export default function CreativeStudioPage() {
 
   const handleAfterGenerate = useCallback(() => {
     if (workspace.editingId) {
-      // Delay slightly to let Fabric finish rendering new objects
       requestAnimationFrame(() => {
         const json = canvasState.getJSON();
         const thumb = canvasState.exportThumbnail();
