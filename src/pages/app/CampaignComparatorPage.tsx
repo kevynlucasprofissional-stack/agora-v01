@@ -207,8 +207,10 @@ export default function CampaignComparatorPage() {
         });
       };
 
-      await streamComparatorChat({
-        messages: currentMessages,
+      await streamChat({
+        messages: currentMessages.map(m => ({ role: m.role, content: m.content })),
+        functionName: "comparator-chat",
+        extraBody: fileContents.length > 0 ? { fileContents } : undefined,
         onDelta: upsertAssistant,
         onDone: async () => {
           setIsStreaming(false);
@@ -217,7 +219,6 @@ export default function CampaignComparatorPage() {
             await persistMessage(convId, "assistant", assistantSoFar);
           }
         },
-        fileContents: fileContents.length > 0 ? fileContents : undefined,
       });
     } catch (err) {
       console.error(err);
