@@ -62,15 +62,12 @@ Aplicar por campanha:
 ## 5) MODO CONCISO
 
 - **1–2 campanhas**: 180–320 palavras (fora dashboard)
-- **3+ campanhas**: 140–260 palavras (fora dashboard)
+- **3+ campanhas**: 100–200 palavras (fora dashboard). Use formato telegráfico:
+  - 1 bullet por campanha (acerto + gargalo + impacto ROI)
+  - Não repita scores do dashboard
+
 - Sem redundância com o dashboard — NÃO repita scores, rankings ou dados já presentes no dashboard em texto
 - Só expandir se usuário pedir: **"quero versão detalhada"**
-
-Para **3+ campanhas**, use 3 linhas por campanha:
-
-1) Principal acerto
-2) Principal gargalo
-3) Impacto em ROI
 
 ---
 
@@ -112,7 +109,7 @@ Tipo (first/third-party), escopo, confiança, limitações — máx. 3 linhas.
 ## 2) Análise por Campanha
 
 - 1–2 campanhas: análise curta por bloco (sem repetir scores)
-- 3+ campanhas: formato de 3 linhas por campanha
+- 3+ campanhas: 1 bullet por campanha com acerto + gargalo + impacto ROI
 
 ## 3) Comparação Direta
 
@@ -135,10 +132,39 @@ Não expor raciocínio interno.`;
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function pickModel(messageCount: number): string {
-  // Use flash-lite for 3+ campaign conversations (longer contexts, simpler per-campaign output)
-  // Use flash for 1-2 campaigns (deeper analysis)
-  return messageCount > 6 ? "gemini-2.5-flash-lite" : "gemini-2.5-flash";
+/** Estimate campaign count from conversation to route model selection */
+function estimateCampaignCount(messages: Array<{ role: string; content: string }>): number {
+  const allText = messages.map(m => m.content).join(" ").toLowerCase();
+  // Heuristics for campaign count
+  const patterns = [
+    /(\d+)\s*campanha/i,
+    /compare\s*(\d+)/i,
+    /(\d+)\s*vs/i,
+  ];
+  for (const p of patterns) {
+    const m = allText.match(p);
+    if (m) {
+      const n = parseInt(m[1]);
+      if (n >= 2 && n <= 10) return n;
+    }
+  }
+  // Count "vs" separators or numbered lists
+  const vsCount = (allText.match(/\bvs\.?\b/gi) || []).length;
+  if (vsCount >= 2) return vsCount + 1;
+  // Count numbered items like "1)", "2)", "3)"
+  const numberedItems = new Set<string>();
+  for (const m of allText.matchAll(/\b(\d)\)/g)) numberedItems.add(m[1]);
+  if (numberedItems.size >= 3) return numberedItems.size;
+  // Default
+  return vsCount > 0 ? 2 : 1;
+}
+
+function pickModel(messages: Array<{ role: string; content: string }>): string {
+  const campaignCount = estimateCampaignCount(messages);
+  const isLongConversation = messages.length > 6;
+  // 3+ campaigns or long conversations → lighter model for cost efficiency
+  if (campaignCount >= 3 || isLongConversation) return "gemini-2.5-flash-lite";
+  return "gemini-2.5-flash";
 }
 
 serve(async (req) => {
@@ -155,8 +181,9 @@ serve(async (req) => {
     const validated = validatePayload(ChatPayloadSchema, body);
     if (validated.error) return validated.error;
     const { messages, fileContents } = validated.data;
-    const model = pickModel(messages.length);
-    console.log(`[comparator] model=${model} msgs=${messages.length} files=${fileContents?.length ?? 0}`);
+    const model = pickModel(messages);
+    const campaignCount = estimateCampaignCount(messages);
+    console.log(`[comparator] model=${model} msgs=${messages.length} files=${fileContents?.length ?? 0} est_campaigns=${campaignCount}`);
 
     // Multimodal path (images)
     if (fileContents && fileContents.length > 0) {
