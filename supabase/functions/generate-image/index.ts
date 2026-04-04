@@ -1,33 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
-import { callGeminiText } from "../_shared/gemini.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { errorResponse, jsonResponse, withErrorHandler } from "../_shared/errors.ts";
+import { callGeminiText, parseAIJson } from "../_shared/gemini.ts";
 import { generateImageWithRetry, uploadImageToStorage, buildEditableHtml } from "../_shared/image-gen.ts";
+import { createAdminClient, getUserFromAuth } from "../_shared/supabase.ts";
+
+const STRATEGIST_FALLBACK = {
+  headline: "Transforme Seus Resultados",
+  body_copy: "Uma solução pensada para você",
+  cta: "Saiba Mais",
+  nano_banana_prompt: "Modern professional marketing background with gradient colors, abstract shapes, clean design for social media ad",
+  visual_direction: "Modern, clean, professional",
+  editable_layers: [
+    { type: "headline", content: "Transforme Seus Resultados", style: "bold, large" },
+    { type: "subheadline", content: "Uma solução pensada para você", style: "medium" },
+    { type: "cta", content: "Saiba Mais", style: "button" },
+  ],
+};
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
 
-  try {
+  return withErrorHandler("generate-image", async () => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Auth: try to get user from JWT (optional)
-    let userId: string | null = null;
-    const authHeader = req.headers.get("authorization") || "";
-    if (authHeader) {
-      try {
-        const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
-        const token = authHeader.replace("Bearer ", "");
-        const { data: { user } } = await anonClient.auth.getUser(token);
-        userId = user?.id || null;
-      } catch { /* Auth is optional */ }
+    if (!GEMINI_API_KEY) {
+      return errorResponse(500, "GEMINI_API_KEY is not configured", { category: "integration" });
     }
+
+    const supabase = createAdminClient();
+
+    // Auth: try to get user from JWT (optional for this function)
+    const authHeader = req.headers.get("authorization") || "";
+    const user = await getUserFromAuth(authHeader);
 
     const { messages = [], user_prompt, format = "1080x1080", reference_images = [] } = await req.json();
 
@@ -38,9 +43,7 @@ serve(async (req) => {
     }
 
     if (effectiveMessages.length === 0) {
-      return new Response(JSON.stringify({ error: "Forneça um prompt ou histórico de chat" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "Forneça um prompt ou histórico de chat", { category: "validation" });
     }
 
     const chatContext = effectiveMessages.map((m: any) => `${m.role}: ${m.content}`).join("\n").slice(0, 4000);
@@ -83,26 +86,10 @@ REGRAS:
 - O nano_banana_prompt deve ser em INGLÊS e descrever APENAS o visual de fundo, SEM texto
 - Inclua visual_direction coerente com o tema da conversa`;
 
-    let strategistOutput: any;
-    try {
-      const rawContent = await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" });
-      const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      strategistOutput = JSON.parse(cleaned);
-    } catch {
-      console.error("Strategist parse failed, using fallback");
-      strategistOutput = {
-        headline: "Transforme Seus Resultados",
-        body_copy: "Uma solução pensada para você",
-        cta: "Saiba Mais",
-        nano_banana_prompt: "Modern professional marketing background with gradient colors, abstract shapes, clean design for social media ad",
-        visual_direction: "Modern, clean, professional",
-        editable_layers: [
-          { type: "headline", content: "Transforme Seus Resultados", style: "bold, large" },
-          { type: "subheadline", content: "Uma solução pensada para você", style: "medium" },
-          { type: "cta", content: "Saiba Mais", style: "button" },
-        ],
-      };
-    }
+    const strategistOutput = parseAIJson(
+      await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" }),
+      STRATEGIST_FALLBACK,
+    );
 
     // ─── 2. Image Generation (shared helper) ───
     const imagePrompt = `${strategistOutput.nano_banana_prompt || "Professional marketing creative background"}
@@ -132,8 +119,8 @@ IMPORTANT RULES:
     const image_generation_failed = imageResult.failed;
 
     let imageUrl = "";
-    if (imageResult.imageData && userId) {
-      imageUrl = await uploadImageToStorage(supabase, userId, imageResult.imageData);
+    if (imageResult.imageData && user) {
+      imageUrl = await uploadImageToStorage(supabase, user.id, imageResult.imageData);
     } else if (imageResult.imageData) {
       const imgPart = imageResult.imageData;
       imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
@@ -147,19 +134,11 @@ IMPORTANT RULES:
     ];
     const editableHtml = buildEditableHtml(layers, format, imageUrl);
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       strategist_output: strategistOutput,
       image_url: imageUrl,
       image_generation_failed,
       editable_html: editableHtml,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("generate-image error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  })(req);
 });

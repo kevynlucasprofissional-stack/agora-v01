@@ -1,10 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors } from "../_shared/cors.ts";
+import {
+  errorResponse,
+  streamResponse,
+  handleAIStatus,
+  withErrorHandler,
+} from "../_shared/errors.ts";
+import {
+  callGemini,
+  callGeminiNative,
+  toGeminiContents,
+  transformGeminiStream,
+} from "../_shared/gemini.ts";
 
 const SYSTEM_PROMPT = `
 <motor_multi_agentes_agora>
@@ -476,102 +483,25 @@ REGRAS DOS CARDS:
 
 </motor_multi_agentes_agora>`;
 
-// Convert OpenAI-style messages to Gemini native format
-function toGeminiContents(messages: any[]) {
-  const contents: any[] = [];
-  let systemInstruction: any = undefined;
-
-  for (const msg of messages) {
-    if (msg.role === "system") {
-      systemInstruction = { parts: [{ text: msg.content }] };
-      continue;
-    }
-
-    const role = msg.role === "assistant" ? "model" : "user";
-
-    if (typeof msg.content === "string") {
-      contents.push({ role, parts: [{ text: msg.content }] });
-    } else if (Array.isArray(msg.content)) {
-      const parts: any[] = [];
-      for (const part of msg.content) {
-        if (part.type === "text") {
-          parts.push({ text: part.text });
-        } else if (part.type === "inline_data") {
-          parts.push({ inlineData: part.inline_data });
-        }
-      }
-      contents.push({ role, parts });
-    }
-  }
-
-  return { contents, systemInstruction };
-}
-
-// Transform Gemini SSE stream to OpenAI SSE format
-function transformGeminiStream(body: ReadableStream): ReadableStream {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = "";
-
-  return new ReadableStream({
-    async pull(controller) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-          return;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        let newlineIdx: number;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, newlineIdx).trim();
-          buffer = buffer.slice(newlineIdx + 1);
-
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr || jsonStr === "[DONE]") continue;
-
-          try {
-            const gemini = JSON.parse(jsonStr);
-            const text = gemini?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) {
-              const openaiChunk = {
-                choices: [{ delta: { content: text, role: "assistant" }, index: 0 }],
-                created: Math.floor(Date.now() / 1000),
-                model: "gemini-2.5-flash",
-                object: "chat.completion.chunk",
-              };
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
-            }
-          } catch {
-            /* skip malformed */
-          }
-        }
-      }
-    },
-  });
-}
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
 
-  try {
+  return withErrorHandler("intake-chat", async () => {
     const { checkRateLimit } = await import("../_shared/rate-limit.ts");
-    const rateLimited = await checkRateLimit(req, "intake-chat", { maxRequests: 30, windowSeconds: 60 });
+    const rateLimited = await checkRateLimit(req, "intake-chat", {
+      maxRequests: 30,
+      windowSeconds: 60,
+    });
     if (rateLimited) return rateLimited;
 
-    const { validatePayload, ChatPayloadSchema } = await import("../_shared/validation.ts");
+    const { validatePayload, ChatPayloadSchema } = await import(
+      "../_shared/validation.ts"
+    );
     const body = await req.json();
     const validated = validatePayload(ChatPayloadSchema, body);
     if (validated.error) return validated.error;
     const { messages, fileContents } = validated.data;
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const hasFiles =
       fileContents &&
@@ -580,7 +510,9 @@ serve(async (req) => {
       fileContents.some((f: any) => f.isBase64);
 
     // Build messages array
-    const processedMessages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+    const processedMessages: any[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+    ];
 
     for (const msg of messages) {
       processedMessages.push({ role: msg.role, content: msg.content });
@@ -598,7 +530,9 @@ serve(async (req) => {
             inline_data: { mime_type: file.type, data: file.content },
           });
         } else {
-          fileParts.push(`--- CONTEÚDO DO ARQUIVO: ${file.name} ---\n${file.content}\n--- FIM DO ARQUIVO ---`);
+          fileParts.push(
+            `--- CONTEÚDO DO ARQUIVO: ${file.name} ---\n${file.content}\n--- FIM DO ARQUIVO ---`,
+          );
         }
       }
 
@@ -630,86 +564,46 @@ serve(async (req) => {
       }
     }
 
-    // Use native Gemini API when files have base64 data (doesn't support data URIs in OpenAI compat)
+    // Use native Gemini API when files have base64 data
     if (hasFiles) {
-      const { contents, systemInstruction } = toGeminiContents(processedMessages);
+      const { contents, systemInstruction } =
+        toGeminiContents(processedMessages);
 
-      const geminiBody: any = { contents };
-      if (systemInstruction) geminiBody.systemInstruction = systemInstruction;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(geminiBody),
-        },
+      const response = await callGeminiNative(
+        "gemini-2.5-flash",
+        contents,
+        systemInstruction,
       );
 
       if (!response.ok) {
+        const aiError = handleAIStatus(response.status);
+        if (aiError) return aiError;
         const t = await response.text();
         console.error("Gemini native API error:", response.status, t);
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return errorResponse(500, "Erro no serviço de IA", {
+          category: "model",
         });
       }
 
-      const transformedStream = transformGeminiStream(response.body!);
-      return new Response(transformedStream, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      return streamResponse(transformGeminiStream(response.body!));
     }
 
     // No files: use OpenAI-compatible endpoint (faster, simpler)
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: processedMessages,
-        stream: true,
-      }),
+    const response = await callGemini({
+      messages: processedMessages,
+      stream: true,
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const aiError = handleAIStatus(response.status);
+      if (aiError) return aiError;
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return errorResponse(500, "Erro no serviço de IA", {
+        category: "model",
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
-  } catch (e) {
-    console.error("intake-chat error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+    return streamResponse(response.body);
+  })(req);
 });
