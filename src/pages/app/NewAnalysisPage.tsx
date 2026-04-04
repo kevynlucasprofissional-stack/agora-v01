@@ -24,7 +24,7 @@ import { parseContextCards } from "@/lib/parseContextCards";
 import { ContextCards } from "@/components/ContextCards";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
-type ChatMessage = { role: "user" | "assistant"; content: string; image_url?: string | null; expires_at?: string | null };
+// ChatMessage type imported from @/lib/chatHelpers
 
 const agentOrder: AgentKind[] = ["master_orchestrator", "sociobehavioral", "offer_engineer", "performance_scientist", "chief_strategist"];
 const agentIcons: Record<AgentKind, React.ElementType> = {
