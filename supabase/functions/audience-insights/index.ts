@@ -1,25 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors } from "../_shared/cors.ts";
+import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
+import { callGemini } from "../_shared/gemini.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const cors = handleCors(req);
+  if (cors) return cors;
 
-  try {
+  return withErrorHandler("audience-insights", async () => {
     const { analysis } = await req.json();
     if (!analysis) {
-      return new Response(JSON.stringify({ error: "analysis é obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "analysis é obrigatório", { category: "validation" });
     }
-
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const payload = analysis.normalized_payload || {};
     const contextParts: string[] = [];
@@ -40,64 +32,48 @@ Dado o contexto de uma campanha de marketing, gere EXATAMENTE um JSON com dois c
 
 Responda APENAS com o JSON, sem markdown, sem backticks.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contextParts.join("\n") },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "audience_insights",
-              description: "Return audience behavior and generation insights",
-              parameters: {
-                type: "object",
-                properties: {
-                  consumption_behavior: {
-                    type: "string",
-                    description: "Max 150 chars insight about consumption behavior",
-                  },
-                  target_generation: { type: "string", description: "Max 150 chars insight about target generation" },
+    const response = await callGemini({
+      model: "gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: contextParts.join("\n") },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "audience_insights",
+            description: "Return audience behavior and generation insights",
+            parameters: {
+              type: "object",
+              properties: {
+                consumption_behavior: {
+                  type: "string",
+                  description: "Max 150 chars insight about consumption behavior",
                 },
-                required: ["consumption_behavior", "target_generation"],
-                additionalProperties: false,
+                target_generation: {
+                  type: "string",
+                  description: "Max 150 chars insight about target generation",
+                },
               },
+              required: ["consumption_behavior", "target_generation"],
+              additionalProperties: false,
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "audience_insights" } },
-      }),
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "audience_insights" } },
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const aiError = handleAIStatus(response.status);
+      if (aiError) return aiError;
       const t = await response.text();
       console.error("AI error:", response.status, t);
-      throw new Error("AI gateway error");
+      return errorResponse(500, "AI gateway error", { category: "model" });
     }
 
     const data = await response.json();
-
-    // Extract from tool call response
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     let insights: { consumption_behavior: string; target_generation: string };
 
@@ -107,23 +83,11 @@ Responda APENAS com o JSON, sem markdown, sem backticks.`;
           ? JSON.parse(toolCall.function.arguments)
           : toolCall.function.arguments;
     } else {
-      // Fallback: try parsing content directly
       const content = data.choices?.[0]?.message?.content || "";
-      const cleaned = content
-        .replace(/```json\n?/g, "")
-        .replace(/```/g, "")
-        .trim();
+      const cleaned = content.replace(/```json\n?/g, "").replace(/```/g, "").trim();
       insights = JSON.parse(cleaned);
     }
 
-    return new Response(JSON.stringify(insights), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("audience-insights error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+    return jsonResponse(insights);
+  })(req);
 });
