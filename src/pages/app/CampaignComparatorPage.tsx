@@ -332,7 +332,7 @@ export default function CampaignComparatorPage() {
                   )}
                 </div>
 
-                {hasCards && (
+                {hasCards && isLastAssistant && !isStreaming && (
                   <ContextCards
                     cards={parsed!.cards}
                     onSelect={handleContextCardSelect}
