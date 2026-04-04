@@ -112,7 +112,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Plus, label: "Nova\nAnálise", to: "/app/new-analysis", primary: true },
+          { icon: Plus, label: "Nova\nAnálise", to: `/app/new-analysis?t=${Date.now()}`, primary: true },
           { icon: History, label: "Conversas", to: "/app/conversations" },
           { icon: BarChart3, label: "Análises", to: "/app/analyses" },
           { icon: BarChart3, label: "Conta", to: "/app/account" },
