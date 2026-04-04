@@ -245,8 +245,7 @@ export function useCanvasState() {
   const getJSON = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-    // Include backgroundImage in serialization so background-only artboards persist
-    return canvas.toJSON(["backgroundImage"]);
+    return canvas.toJSON();
   }, []);
 
   const loadJSON = useCallback((json: any) => {
