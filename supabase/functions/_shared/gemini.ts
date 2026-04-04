@@ -221,6 +221,38 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Simple helper: call Gemini and return just the text content.
+ * Throws on non-ok responses.
+ */
+export async function callGeminiText(
+  prompt: string,
+  apiKey: string,
+  opts?: { model?: string },
+): Promise<string> {
+  const model = opts?.model || "gemini-2.5-flash";
+  const res = await fetch(GEMINI_OPENAI_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const status = res.status;
+    const body = await res.text();
+    throw new Error(`Gemini ${model} error ${status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+/**
  * Parse JSON from AI text response, stripping markdown fences.
  */
 export function parseAIJson<T = any>(raw: string, fallback: T): T {
