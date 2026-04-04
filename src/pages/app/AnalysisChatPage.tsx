@@ -355,7 +355,7 @@ export default function AnalysisChatPage() {
             <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card"
+                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border/40"
               }`}>
                 {msg.role === "assistant" ? (
                   <>
