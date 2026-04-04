@@ -299,7 +299,7 @@ export default function AnalysisChatPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-[calc(100vh-4rem)] md:max-w-3xl md:mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 pb-4 border-b border-border/50 shrink-0">
         <Link to={`/app/analysis/${id}/report`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
