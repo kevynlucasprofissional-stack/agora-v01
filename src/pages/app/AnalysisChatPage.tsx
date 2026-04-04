@@ -418,7 +418,7 @@ export default function AnalysisChatPage() {
           rows={1}
           className="flex-1 resize-none rounded-xl border border-input bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <Button variant="hero" size="icon" onClick={handleSend} disabled={isStreaming || !input.trim()} className="shrink-0 h-auto">
+        <Button variant="hero" size="icon" onClick={() => handleSend()} disabled={isStreaming || !input.trim()} className="shrink-0 h-auto">
           <Send className="h-4 w-4" />
         </Button>
       </div>
