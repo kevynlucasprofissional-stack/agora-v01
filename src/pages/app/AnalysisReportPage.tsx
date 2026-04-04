@@ -192,6 +192,9 @@ export default function AnalysisReportPage() {
           ))}
         </div>
 
+        {/* Run Steps (Kernel Traceability) */}
+        <RunStepsBlock analysisId={id!} />
+
         {/* Inline Chat Block - Estrategista-Chefe */}
         {analysis && <ReportChatBlock analysis={analysis} />}
 
