@@ -561,6 +561,10 @@ serve(async (req) => {
   }
 
   try {
+    const { checkRateLimit } = await import("../_shared/rate-limit.ts");
+    const rateLimited = await checkRateLimit(req, "intake-chat", { maxRequests: 30, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { validatePayload, ChatPayloadSchema } = await import("../_shared/validation.ts");
     const body = await req.json();
     const validated = validatePayload(ChatPayloadSchema, body);
