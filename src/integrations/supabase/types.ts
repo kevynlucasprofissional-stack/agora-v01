@@ -252,6 +252,59 @@ export type Database = {
           },
         ]
       }
+      analysis_runs: {
+        Row: {
+          analysis_request_id: string
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          metadata: Json
+          model_fallback: string | null
+          model_primary: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["run_status"]
+          updated_at: string
+        }
+        Insert: {
+          analysis_request_id: string
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          model_fallback?: string | null
+          model_primary?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["run_status"]
+          updated_at?: string
+        }
+        Update: {
+          analysis_request_id?: string
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          model_fallback?: string | null
+          model_primary?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["run_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_runs_analysis_request_id_fkey"
+            columns: ["analysis_request_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -800,6 +853,71 @@ export type Database = {
           },
         ]
       }
+      run_steps: {
+        Row: {
+          agent_kind: Database["public"]["Enums"]["agent_kind"] | null
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_payload: Json | null
+          model_used: string | null
+          output_payload: Json | null
+          run_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["run_status"]
+          step_kind: Database["public"]["Enums"]["run_step_kind"]
+          step_order: number
+          tokens_input: number | null
+          tokens_output: number | null
+        }
+        Insert: {
+          agent_kind?: Database["public"]["Enums"]["agent_kind"] | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_payload?: Json | null
+          model_used?: string | null
+          output_payload?: Json | null
+          run_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["run_status"]
+          step_kind: Database["public"]["Enums"]["run_step_kind"]
+          step_order?: number
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Update: {
+          agent_kind?: Database["public"]["Enums"]["agent_kind"] | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_payload?: Json | null
+          model_used?: string | null
+          output_payload?: Json | null
+          run_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["run_status"]
+          step_kind?: Database["public"]["Enums"]["run_step_kind"]
+          step_order?: number
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_artboards: {
         Row: {
           created_at: string
@@ -888,6 +1006,15 @@ export type Database = {
       integration_status: "disconnected" | "pending" | "connected" | "error"
       plan_code: "freemium" | "standard" | "pro" | "enterprise"
       response_format: "json" | "markdown" | "text"
+      run_status: "pending" | "running" | "completed" | "failed"
+      run_step_kind:
+        | "intake"
+        | "sociobehavioral"
+        | "offer_analysis"
+        | "performance_timing"
+        | "synthesis"
+        | "image_generation"
+        | "post_processing"
       upload_kind:
         | "user_input"
         | "analysis_attachment"
@@ -1050,6 +1177,16 @@ export const Constants = {
       integration_status: ["disconnected", "pending", "connected", "error"],
       plan_code: ["freemium", "standard", "pro", "enterprise"],
       response_format: ["json", "markdown", "text"],
+      run_status: ["pending", "running", "completed", "failed"],
+      run_step_kind: [
+        "intake",
+        "sociobehavioral",
+        "offer_analysis",
+        "performance_timing",
+        "synthesis",
+        "image_generation",
+        "post_processing",
+      ],
       upload_kind: [
         "user_input",
         "analysis_attachment",
