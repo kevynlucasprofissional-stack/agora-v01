@@ -156,7 +156,9 @@ function detectManyCampaigns(messages: { role: string; content: string }[]): boo
 }
 
 function pickModel(messages: { role: string; content: string }[]): string {
-  return detectManyCampaigns(messages) ? "gemini-2.5-flash-lite" : "gemini-2.5-flash";
+  // Always use gemini-2.5-flash — the lite model produces lower quality dashboard JSON
+  // and is more prone to leaking raw JSON to the user
+  return "gemini-2.5-flash";
 }
 
 function buildErrorResponse(status: number, message: string) {
