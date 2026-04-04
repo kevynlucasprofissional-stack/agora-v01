@@ -300,8 +300,16 @@ export default function AnalysisChatPage() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-[calc(100vh-4rem)] md:max-w-3xl md:mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 pb-4 border-b border-border/50 shrink-0">
+      {/* Mobile header */}
+      <div className="flex md:hidden items-center gap-3 px-3 py-3 border-b border-border/40 bg-background">
+        <Link to={`/app/analysis/${id}/report`} className="shrink-0 p-1 -ml-1 rounded-lg hover:bg-accent/50">
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <h2 className="text-base font-bold truncate">Estrategista-Chefe</h2>
+      </div>
+
+      {/* Desktop header */}
+      <div className="hidden md:flex items-center gap-4 px-4 py-3 border-b border-border/50 shrink-0">
         <Link to={`/app/analysis/${id}/report`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
