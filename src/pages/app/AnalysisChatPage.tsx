@@ -407,7 +407,7 @@ export default function AnalysisChatPage() {
         })}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
-            <div className="glass-card px-4 py-3">
+            <div className="bg-card border border-border/40 rounded-2xl px-4 py-3">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           </div>
