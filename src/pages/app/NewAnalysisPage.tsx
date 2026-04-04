@@ -683,6 +683,7 @@ export default function NewAnalysisPage() {
             rawPrompt: fullPrompt,
             title: messages[0]?.content.slice(0, 60) || "Nova análise",
             files: fileNames,
+            analysisRequestId: analysisId,
           }),
         }
       );
