@@ -62,16 +62,15 @@ Aplicar por campanha:
 ## 5) MODO CONCISO
 
 - **1–2 campanhas**: 180–320 palavras (fora dashboard)
-- **3+ campanhas**: 240–420 palavras (fora dashboard)
-- Sem redundância
+- **3+ campanhas**: 140–260 palavras (fora dashboard)
+- Sem redundância com o dashboard — NÃO repita scores, rankings ou dados já presentes no dashboard em texto
 - Só expandir se usuário pedir: **"quero versão detalhada"**
 
-Para **3+ campanhas**, use 4 linhas por campanha:
+Para **3+ campanhas**, use 3 linhas por campanha:
 
-1) Score + Era
-2) Principal acerto
-3) Principal gargalo
-4) Impacto em ROI
+1) Principal acerto
+2) Principal gargalo
+3) Impacto em ROI
 
 ---
 
@@ -93,14 +92,14 @@ Regras:
 
 Sempre inserir antes da análise textual:
 
-[DASHBOARD]{"title":"Comparativo Estratégico","campaigns":["Nome Campanha A","Nome Campanha B"],"scores":[{"campaign":"Nome Campanha A","overall":88,"socio":90,"offer":85,"performance":88,"creative":90,"verdict":"Resumo em 1 linha"},{"campaign":"Nome Campanha B","overall":72,"socio":75,"offer":70,"performance":68,"creative":74,"verdict":"Resumo em 1 linha"}],"winner":"Nome Campanha A","winnerReason":"Razão objetiva","actions":["Ação 1","Ação 2","Ação 3"]}[/DASHBOARD]
+[DASHBOARD]{"title":"Comparativo Estratégico","campaigns":["Nome A","Nome B"],"scores":[{"campaign":"Nome A","overall":88,"socio":90,"offer":85,"performance":88,"creative":90,"verdict":"Resumo em 1 linha"},{"campaign":"Nome B","overall":72,"socio":75,"offer":70,"performance":68,"creative":74,"verdict":"Resumo em 1 linha"}],"winner":"Nome A","winnerReason":"Razão objetiva","actions":["Ação 1","Ação 2","Ação 3"]}[/DASHBOARD]
 
 Regras:
 
 - JSON válido em linha única
 - 1 score por campanha
 - actions com 3 a 5 itens
-- Não repetir tabela de scores em markdown
+- Não repetir tabela de scores em markdown — o dashboard já exibe tudo
 
 ---
 
@@ -108,12 +107,12 @@ Regras:
 
 ## 1) Contexto
 
-Tipo, escopo, confiança, limitações
+Tipo (first/third-party), escopo, confiança, limitações — máx. 3 linhas.
 
 ## 2) Análise por Campanha
 
-- 1–2 campanhas: análise curta por bloco
-- 3+ campanhas: formato de 4 linhas por campanha
+- 1–2 campanhas: análise curta por bloco (sem repetir scores)
+- 3+ campanhas: formato de 3 linhas por campanha
 
 ## 3) Comparação Direta
 
@@ -136,8 +135,10 @@ Não expor raciocínio interno.`;
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function pickModel(): string {
-  return "gemini-2.5-flash";
+function pickModel(messageCount: number): string {
+  // Use flash-lite for 3+ campaign conversations (longer contexts, simpler per-campaign output)
+  // Use flash for 1-2 campaigns (deeper analysis)
+  return messageCount > 6 ? "gemini-2.5-flash-lite" : "gemini-2.5-flash";
 }
 
 serve(async (req) => {
@@ -146,8 +147,8 @@ serve(async (req) => {
 
   return withErrorHandler("comparator-chat", async () => {
     const { messages, fileContents } = await req.json();
-    const model = pickModel();
-    console.log(`Using model: ${model} for ${messages.length} messages`);
+    const model = pickModel(messages.length);
+    console.log(`[comparator] model=${model} msgs=${messages.length} files=${fileContents?.length ?? 0}`);
 
     // Multimodal path (images)
     if (fileContents && fileContents.length > 0) {

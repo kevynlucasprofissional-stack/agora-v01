@@ -2,11 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, FileText, Loader2, GitCompareArrows, ArrowLeft } from "lucide-react";
+import { Send, Paperclip, X, FileText, Loader2, GitCompareArrows, ArrowLeft, Image as ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
+import { motion } from "framer-motion";
 import { RichMarkdownRenderer } from "@/components/RichMarkdownRenderer";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { parseContextCards } from "@/lib/parseContextCards";
@@ -17,7 +16,6 @@ import { ComparatorDashboard } from "@/components/comparator/ComparatorDashboard
 import { streamChat } from "@/lib/streamChat";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-
 type FileContent = { name: string; type: string; content: string; isBase64: boolean };
 
 const readFileContent = async (file: File): Promise<FileContent> => {
@@ -41,6 +39,13 @@ const readFileContent = async (file: File): Promise<FileContent> => {
   });
 };
 
+const SUGGESTIONS = [
+  "Quero comparar campanhas das minhas redes sociais",
+  "Comparar campanhas de concorrentes a partir de prints",
+  "Tenho métricas de 2 campanhas para comparar",
+  "Comparar estratégias de marketing de marcas diferentes",
+];
+
 export default function CampaignComparatorPage() {
   const { user } = useAuth();
   const [input, setInput] = useState("");
@@ -50,6 +55,7 @@ export default function CampaignComparatorPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<Record<number, "like" | "dislike">>({});
+  const [submittedCards, setSubmittedCards] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -76,7 +82,10 @@ export default function CampaignComparatorPage() {
     }
   }, [messages]);
 
-  const handleContextCardSelect = useCallback((text: string) => {
+  const handleContextCardSelect = useCallback((text: string, msgIdx?: number) => {
+    if (msgIdx !== undefined) {
+      setSubmittedCards((prev) => new Set(prev).add(msgIdx));
+    }
     handleSend(text);
   }, []);
 
@@ -139,7 +148,7 @@ export default function CampaignComparatorPage() {
     setInput(e.target.value);
     const el = e.target;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -243,34 +252,29 @@ export default function CampaignComparatorPage() {
       <div
         ref={chatScrollRef}
         onScroll={handleChatScroll}
-        className="flex-1 overflow-y-auto px-2 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6"
+        className="flex-1 overflow-y-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-5"
       >
         {!hasMessages && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full text-center gap-4"
+            className="flex flex-col items-center justify-center h-full text-center gap-4 px-2"
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <GitCompareArrows className="h-8 w-8 text-primary" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <GitCompareArrows className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-bold mb-2">Comparador de Campanhas</h2>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Descreva 2 ou mais campanhas que deseja comparar. Você pode colar textos, métricas, prints ou links. O Ágora vai analisar e entregar um diagnóstico estratégico completo.
+              <h2 className="text-lg font-bold mb-1.5">Comparador de Campanhas</h2>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Descreva campanhas para comparar. Cole textos, métricas, prints ou links.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 max-w-lg w-full">
-              {[
-                "Quero comparar campanhas das minhas redes sociais",
-                "Comparar campanhas de concorrentes a partir de prints",
-                "Tenho métricas de 2 campanhas para comparar",
-                "Comparar estratégias de marketing de marcas diferentes",
-              ].map((suggestion, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-md w-full">
+              {SUGGESTIONS.map((suggestion, i) => (
                 <button
                   key={i}
-                  onClick={() => { setInput(suggestion); }}
-                  className="text-left text-sm p-3 rounded-xl border border-border/40 bg-card/50 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                  onClick={() => setInput(suggestion)}
+                  className="text-left text-xs p-2.5 rounded-xl border border-border/40 bg-card/50 hover:bg-primary/5 hover:border-primary/30 transition-all"
                 >
                   {suggestion}
                 </button>
@@ -284,30 +288,31 @@ export default function CampaignComparatorPage() {
           const isLastAssistant = !isUser && idx === messages.length - 1;
           const parsed = !isUser ? parseContextCards(msg.content) : null;
           const hasCards = parsed && parsed.cards.length > 0;
+          const cardDisabled = submittedCards.has(idx) || isStreaming;
           const displayContent = parsed ? parsed.textWithoutCards : msg.content;
 
           return (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${isUser ? "justify-end" : ""}`}
+              className={`flex gap-2.5 ${isUser ? "justify-end" : ""}`}
             >
               {!isUser && (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 mt-1">
-                  <AgoraIcon size={18} />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 mt-1">
+                  <AgoraIcon size={16} />
                 </div>
               )}
-              <div className={`max-w-[95%] md:max-w-[85%] ${isUser ? "order-first" : ""}`}>
+              <div className={`max-w-[92%] md:max-w-[82%] min-w-0 ${isUser ? "order-first" : ""}`}>
                 <div
-                  className={`rounded-2xl px-4 py-3 ${
+                  className={`rounded-2xl px-3.5 py-2.5 ${
                     isUser
                       ? "bg-primary text-primary-foreground ml-auto"
                       : "bg-card border border-border/40"
                   }`}
                 >
                   {isUser ? (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                   ) : (
                     <>
                       {parseDashboardBlocks(displayContent).map((block, bi) =>
@@ -323,11 +328,11 @@ export default function CampaignComparatorPage() {
                   )}
                 </div>
 
-                {hasCards && isLastAssistant && !isStreaming && (
+                {hasCards && (
                   <ContextCards
                     cards={parsed!.cards}
-                    onSelect={handleContextCardSelect}
-                    disabled={isStreaming}
+                    onSelect={(text) => handleContextCardSelect(text, idx)}
+                    disabled={cardDisabled}
                   />
                 )}
 
@@ -346,9 +351,9 @@ export default function CampaignComparatorPage() {
         })}
 
         {loading && !messages.some((m) => m.role === "assistant" && messages.indexOf(m) === messages.length - 1) && (
-          <div className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <AgoraIcon size={18} />
+          <div className="flex gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <AgoraIcon size={16} />
             </div>
             <div className="bg-card border border-border/40 rounded-2xl px-4 py-3">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -360,18 +365,21 @@ export default function CampaignComparatorPage() {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border/40 px-2 md:px-4 py-2 md:py-3">
+      <div className="border-t border-border/40 px-3 md:px-4 py-2 md:py-3 bg-background">
         {files.length > 0 && (
-          <div className="flex gap-2 mb-2 flex-wrap">
-            {files.map((f, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-muted/60 rounded-lg px-2.5 py-1.5 text-xs">
-                <FileText className="h-3 w-3 text-muted-foreground" />
-                <span className="max-w-[120px] truncate">{f.name}</span>
-                <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+          <div className="flex gap-1.5 mb-2 flex-wrap">
+            {files.map((f, i) => {
+              const isImage = f.type.startsWith("image/");
+              return (
+                <div key={i} className="flex items-center gap-1.5 bg-muted/60 rounded-lg px-2 py-1 text-[11px]">
+                  {isImage ? <ImageIcon className="h-3 w-3 text-muted-foreground" /> : <FileText className="h-3 w-3 text-muted-foreground" />}
+                  <span className="max-w-[100px] truncate">{f.name}</span>
+                  <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -389,7 +397,7 @@ export default function CampaignComparatorPage() {
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            className="shrink-0 h-10 w-10 rounded-xl"
+            className="shrink-0 h-9 w-9 rounded-xl"
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -404,8 +412,8 @@ export default function CampaignComparatorPage() {
               placeholder="Descreva as campanhas que quer comparar..."
               rows={1}
               disabled={isStreaming}
-              className="w-full resize-none rounded-xl border border-border/40 bg-card px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
-              style={{ maxHeight: 200 }}
+              className="w-full resize-none rounded-xl border border-border/40 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
+              style={{ maxHeight: 160 }}
             />
           </div>
 
@@ -413,7 +421,7 @@ export default function CampaignComparatorPage() {
             onClick={() => handleSend()}
             disabled={isStreaming || (!input.trim() && files.length === 0)}
             size="icon"
-            className="shrink-0 h-10 w-10 rounded-xl"
+            className="shrink-0 h-9 w-9 rounded-xl"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
