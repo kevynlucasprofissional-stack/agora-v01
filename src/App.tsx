@@ -26,8 +26,6 @@ import ConversationHistoryPage from "@/pages/app/ConversationHistoryPage";
 import AnalysisReportPage from "@/pages/app/AnalysisReportPage";
 import AnalysisChatPage from "@/pages/app/AnalysisChatPage";
 import CampaignDocumentPage from "@/pages/app/CampaignDocumentPage";
-import CampaignOptimizerPage from "@/pages/app/CampaignOptimizerPage";
-import AssetsPage from "@/pages/app/AssetsPage";
 import AccountPage from "@/pages/app/AccountPage";
 import SettingsPage from "@/pages/app/SettingsPage";
 import IntegrationsPage from "@/pages/app/IntegrationsPage";
