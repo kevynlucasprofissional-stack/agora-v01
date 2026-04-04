@@ -222,23 +222,21 @@ export default function AnalysisChatPage() {
     }
   }, [id, generatingCreative, conversationId]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isStreaming || !conversationId) return;
-    const userMsg = input.trim();
-    setInput("");
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const userMsg = (overrideText || input).trim();
+    if (!userMsg || isStreaming || !conversationId) return;
+    if (!overrideText) setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
     setMessages(newMessages);
     setIsStreaming(true);
 
-    // Save user message to DB
     await saveMessage(conversationId, "user", userMsg);
 
     let assistantContent = "";
 
     try {
-      // Send all messages (except initial greeting) to API
       const apiMessages = newMessages.filter((_, i) => i > 0);
 
       await streamChat({
@@ -270,7 +268,6 @@ export default function AnalysisChatPage() {
         },
         onDone: async () => {
           setIsStreaming(false);
-          // Save assistant message to DB
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
           }
@@ -296,65 +293,23 @@ export default function AnalysisChatPage() {
   };
 
   const handleContextCardSelect = useCallback((text: string) => {
-    setInput(text);
-    // Auto-send
-    setTimeout(() => {
-      const fakeMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
-      setMessages(fakeMessages);
-      setIsStreaming(true);
-      if (conversationId) {
-        saveMessage(conversationId, "user", text);
-      }
-      let assistantContent = "";
-      const apiMessages = fakeMessages.filter((_, i) => i > 0);
-      streamChat({
-        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
-        functionName: "strategist-chat",
-        extraBody: {
-          analysisContext: analysis ? {
-            title: analysis.title,
-            score_overall: analysis.score_overall,
-            score_sociobehavioral: analysis.score_sociobehavioral,
-            score_offer: analysis.score_offer,
-            score_performance: analysis.score_performance,
-            industry: analysis.industry,
-            primary_channel: analysis.primary_channel,
-            declared_target_audience: analysis.declared_target_audience,
-            raw_prompt: analysis.raw_prompt,
-            normalized_payload: analysis.normalized_payload,
-          } : undefined,
-        },
-        onDelta: (chunk) => {
-          assistantContent += chunk;
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "user") {
-              return [...prev, { role: "assistant", content: assistantContent }];
-            }
-            return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
-          });
-        },
-        onDone: async () => {
-          setIsStreaming(false);
-          if (assistantContent && conversationId) {
-            await saveMessage(conversationId, "assistant", assistantContent);
-          }
-        },
-      }).catch((e) => {
-        setIsStreaming(false);
-        const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA."}`;
-        setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
-      });
-    }, 0);
-    setInput("");
-  }, [messages, analysis, conversationId, isStreaming]);
+    handleSend(text);
+  }, [handleSend]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 pb-4 border-b border-border/50 shrink-0">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-[calc(100vh-4rem)] md:max-w-3xl md:mx-auto">
+      {/* Mobile header */}
+      <div className="flex md:hidden items-center gap-3 px-3 py-3 border-b border-border/40 bg-background">
+        <Link to={`/app/analysis/${id}/report`} className="shrink-0 p-1 -ml-1 rounded-lg hover:bg-accent/50">
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <h2 className="text-base font-bold truncate">Estrategista-Chefe</h2>
+      </div>
+
+      {/* Desktop header */}
+      <div className="hidden md:flex items-center gap-4 px-4 py-3 border-b border-border/50 shrink-0">
         <Link to={`/app/analysis/${id}/report`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -400,7 +355,7 @@ export default function AnalysisChatPage() {
             <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card"
+                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border/40"
               }`}>
                 {msg.role === "assistant" ? (
                   <>
@@ -452,7 +407,7 @@ export default function AnalysisChatPage() {
         })}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
-            <div className="glass-card px-4 py-3">
+            <div className="bg-card border border-border/40 rounded-2xl px-4 py-3">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           </div>
@@ -461,7 +416,7 @@ export default function AnalysisChatPage() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 flex gap-2 pt-4 border-t border-border/50">
+      <div className="shrink-0 flex gap-2 px-2 md:px-0 py-3 border-t border-border/40">
         <textarea
           ref={textareaRef}
           value={input}
@@ -471,7 +426,7 @@ export default function AnalysisChatPage() {
           rows={1}
           className="flex-1 resize-none rounded-xl border border-input bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <Button variant="hero" size="icon" onClick={handleSend} disabled={isStreaming || !input.trim()} className="shrink-0 h-auto">
+        <Button variant="hero" size="icon" onClick={() => handleSend()} disabled={isStreaming || !input.trim()} className="shrink-0 h-auto">
           <Send className="h-4 w-4" />
         </Button>
       </div>
