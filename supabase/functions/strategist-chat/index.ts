@@ -46,6 +46,10 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("strategist-chat", async () => {
+    const { checkRateLimit } = await import("../_shared/rate-limit.ts");
+    const rateLimited = await checkRateLimit(req, "strategist-chat", { maxRequests: 30, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { messages, analysisContext } = await req.json();
 
     const safeMessages = Array.isArray(messages) && messages.length > 0 ? messages : [];
