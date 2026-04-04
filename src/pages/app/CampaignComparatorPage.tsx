@@ -77,14 +77,7 @@ export default function CampaignComparatorPage() {
   }, [messages]);
 
   const handleContextCardSelect = useCallback((text: string) => {
-    setInput(text);
-    // Use a microtask to let React flush the setInput, then trigger send
-    queueMicrotask(() => {
-      // Build send inline to avoid stale closure on handleSend
-      const syntheticEvent = new Event("contextCardSend");
-      (syntheticEvent as any).__cardText = text;
-      window.dispatchEvent(syntheticEvent);
-    });
+    handleSend(text);
   }, []);
 
   const handleFeedback = useCallback((index: number, type: "like" | "dislike") => {
