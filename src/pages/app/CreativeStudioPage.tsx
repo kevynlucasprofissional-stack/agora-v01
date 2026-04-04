@@ -36,7 +36,6 @@ export default function CreativeStudioPage() {
     if (ab.format !== canvasState.format) canvasState.changeFormat(ab.format);
     if (ab.layersState && typeof ab.layersState === "object") {
       const ls = ab.layersState as any;
-      // Check for content: objects OR backgroundImage
       const hasContent = (ls.objects?.length > 0) || ls.backgroundImage;
       if (hasContent) {
         canvasState.loadJSON(ab.layersState);
@@ -49,39 +48,47 @@ export default function CreativeStudioPage() {
   useEffect(() => {
     if (!jobId || jobProcessed || !workspace.dbLoaded) return;
 
-    // Check if an artboard already exists for this job
     const existingArtboard = workspace.findArtboardByJobId(jobId);
     if (existingArtboard) {
-      // Artboard exists, just open it
       workspace.setEditingId(existingArtboard.id);
       setJobProcessed(true);
       setJobLoading(false);
       return;
     }
 
-    // No artboard exists — load job data and create one
     setJobLoading(true);
     const loadJob = async () => {
-      const { data: job } = await supabase
-        .from("creative_jobs")
-        .select("image_url, strategist_output, layers_state, format")
-        .eq("id", jobId).single();
-      if (!job) { setJobLoading(false); setJobProcessed(true); return; }
+      try {
+        const { data: job } = await supabase
+          .from("creative_jobs")
+          .select("image_url, strategist_output, layers_state, format")
+          .eq("id", jobId).single();
+        if (!job) {
+          toast.error("Job criativo não encontrado");
+          setJobLoading(false);
+          setJobProcessed(true);
+          return;
+        }
 
-      const fmt = (job.format as any) || "1080x1080";
-      const hasLayers = job.layers_state && typeof job.layers_state === "object" &&
-        (job.layers_state as any).objects?.length > 0;
+        const fmt = (job.format as any) || "1080x1080";
+        const hasLayers = job.layers_state && typeof job.layers_state === "object" &&
+          (job.layers_state as any).objects?.length > 0;
 
-      const id = workspace.addArtboard(fmt, "Criativo importado", { creativeJobId: jobId });
+        const id = workspace.addArtboard(fmt, "Criativo importado", { creativeJobId: jobId });
 
-      if (hasLayers) {
-        workspace.updateArtboard(id, { layersState: job.layers_state });
-      } else {
-        pendingJobRef.current = { image_url: job.image_url, strategist_output: job.strategist_output };
+        if (hasLayers) {
+          workspace.updateArtboard(id, { layersState: job.layers_state });
+        } else {
+          pendingJobRef.current = { image_url: job.image_url, strategist_output: job.strategist_output };
+        }
+        workspace.setEditingId(id);
+      } catch (err) {
+        console.error("Error loading creative job:", err);
+        toast.error("Erro ao carregar job criativo");
+      } finally {
+        setJobProcessed(true);
+        setJobLoading(false);
       }
-      workspace.setEditingId(id);
-      setJobProcessed(true);
-      setJobLoading(false);
     };
     loadJob();
   }, [jobId, jobProcessed, workspace.dbLoaded]);
@@ -92,17 +99,28 @@ export default function CreativeStudioPage() {
     const { image_url, strategist_output } = pendingJobRef.current;
     pendingJobRef.current = null;
 
-    const applyAndSave = async () => {
+    const apply = async () => {
       if (image_url) {
         canvasState.setBackgroundImage(image_url);
-        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+        // Wait for image load via a polling check instead of a fixed timeout
+        await new Promise<void>((resolve) => {
+          let checks = 0;
+          const interval = setInterval(() => {
+            checks++;
+            const canvas = canvasState.canvasRef.current;
+            if ((canvas?.backgroundImage) || checks > 20) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 200);
+        });
       }
 
       if (strategist_output?.editable_layers) {
         const layers = strategist_output.editable_layers as Array<{ type: string; content: string; style?: string }>;
         const dim = canvasState.dimensions;
         const canvas = canvasState.canvasRef.current;
-        if (canvas) {
+        if (canvas && layers.length > 0) {
           addImpactfulLayers(canvas, layers, dim, canvasState.addText, {
             addOverlay: true,
             layout: "hero-bottom",
@@ -111,20 +129,21 @@ export default function CreativeStudioPage() {
       }
 
       // Save state to artboard after rendering
-      setTimeout(() => {
-        if (workspace.editingId) {
+      if (workspace.editingId) {
+        // Use rAF to let Fabric finish rendering
+        requestAnimationFrame(() => {
           const json = canvasState.getJSON();
           const thumb = canvasState.exportThumbnail();
-          workspace.updateArtboard(workspace.editingId, {
-            layersState: json,
-            thumbnail: thumb || null,
-            format: canvasState.format,
-          });
-        }
-      }, 1000);
+          if (workspace.editingId) {
+            workspace.updateArtboard(workspace.editingId, {
+              layersState: json, thumbnail: thumb || null, format: canvasState.format,
+            });
+          }
+        });
+      }
     };
 
-    applyAndSave();
+    apply();
   }, [canvasState.canvasReady]);
 
   const handleBackToWorkspace = useCallback(() => {
@@ -134,7 +153,7 @@ export default function CreativeStudioPage() {
       workspace.updateArtboard(workspace.editingId, {
         layersState: json, thumbnail: thumb || null, format: canvasState.format,
       });
-      lastSavedJsonRef.current = null; // reset for next editing session
+      lastSavedJsonRef.current = null;
     }
     workspace.setEditingId(null);
   }, [workspace, canvasState]);
@@ -144,7 +163,6 @@ export default function CreativeStudioPage() {
     if (!json) return;
     setSaving(true);
     try {
-      // Save to artboard (which persists to DB)
       if (workspace.editingId) {
         const thumb = canvasState.exportThumbnail();
         workspace.updateArtboard(workspace.editingId, {
@@ -153,9 +171,10 @@ export default function CreativeStudioPage() {
       }
 
       // Also save to creative_jobs if linked
-      if (jobId) {
+      const linkedJobId = jobId || workspace.editingArtboard?.creativeJobId;
+      if (linkedJobId) {
         const { error } = await supabase.from("creative_jobs")
-          .update({ layers_state: json as any }).eq("id", jobId);
+          .update({ layers_state: json as any }).eq("id", linkedJobId);
         if (error) throw error;
       }
 
@@ -169,10 +188,15 @@ export default function CreativeStudioPage() {
 
   const handleAfterGenerate = useCallback(() => {
     if (workspace.editingId) {
-      const json = canvasState.getJSON();
-      const thumb = canvasState.exportThumbnail();
-      workspace.updateArtboard(workspace.editingId, {
-        layersState: json, thumbnail: thumb || null, format: canvasState.format,
+      // Delay slightly to let Fabric finish rendering new objects
+      requestAnimationFrame(() => {
+        const json = canvasState.getJSON();
+        const thumb = canvasState.exportThumbnail();
+        if (workspace.editingId) {
+          workspace.updateArtboard(workspace.editingId, {
+            layersState: json, thumbnail: thumb || null, format: canvasState.format,
+          });
+        }
       });
     }
   }, [workspace, canvasState]);
@@ -191,7 +215,7 @@ export default function CreativeStudioPage() {
       const json = canvasState.getJSON();
       if (!json || !workspace.editingId) return;
       const jsonStr = JSON.stringify(json);
-      if (jsonStr === lastSavedJsonRef.current) return; // no changes
+      if (jsonStr === lastSavedJsonRef.current) return;
       lastSavedJsonRef.current = jsonStr;
       const thumb = canvasState.exportThumbnail();
       workspace.updateArtboard(workspace.editingId, {
