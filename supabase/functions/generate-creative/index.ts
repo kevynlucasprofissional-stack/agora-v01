@@ -1,34 +1,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { handleCors } from "../_shared/cors.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { callGeminiText } from "../_shared/gemini.ts";
+import { errorResponse, jsonResponse, withErrorHandler } from "../_shared/errors.ts";
+import { callGeminiText, parseAIJson } from "../_shared/gemini.ts";
 import { generateImageWithRetry, uploadImageToStorage, buildEditableHtml } from "../_shared/image-gen.ts";
+import { createAdminClient, getUserFromAuth } from "../_shared/supabase.ts";
+
+const STRATEGIST_FALLBACK = {
+  headline: "Transforme Seus Resultados",
+  body_copy: "Uma solução pensada para você",
+  cta: "Saiba Mais",
+  nano_banana_prompt: "Modern professional marketing background with gradient colors, abstract shapes, clean design for social media ad",
+  visual_direction: "Modern, clean, professional",
+  editable_layers: [
+    { type: "headline", content: "Transforme Seus Resultados", style: "bold, large" },
+    { type: "subheadline", content: "Uma solução pensada para você", style: "medium" },
+    { type: "cta", content: "Saiba Mais", style: "button" },
+  ],
+};
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
 
-  try {
+  return withErrorHandler("generate-creative", async () => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
-    const authHeader = req.headers.get("authorization") || "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get user from JWT
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!GEMINI_API_KEY) {
+      return errorResponse(500, "GEMINI_API_KEY is not configured", { category: "integration" });
     }
 
+    const authHeader = req.headers.get("authorization") || "";
+    const user = await getUserFromAuth(authHeader);
+    if (!user) {
+      return errorResponse(401, "Não autorizado", { category: "auth" });
+    }
+
+    const supabase = createAdminClient();
     const { analysis_id, conversation_id, format = "1080x1080", user_prompt } = await req.json();
 
     // ─── 1. Build context ───
@@ -47,9 +54,7 @@ serve(async (req) => {
 
       const campaign = analysisRes.data;
       if (!campaign) {
-        return new Response(JSON.stringify({ error: "Análise não encontrada" }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse(404, "Análise não encontrada", { category: "validation" });
       }
 
       const agentOutputs = (agentRes.data || []).map((a: any) => ({
@@ -124,26 +129,10 @@ REGRAS:
 - O visual deve ser coerente com o contexto fornecido
 - Inclua compliance_warnings se houver restrições identificadas`;
 
-    let strategistOutput: any;
-    try {
-      const rawContent = await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" });
-      const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      strategistOutput = JSON.parse(cleaned);
-    } catch (parseErr) {
-      console.error("Strategist parse error, using fallback:", parseErr);
-      strategistOutput = {
-        headline: "Transforme Seus Resultados",
-        body_copy: "Uma solução pensada para você",
-        cta: "Saiba Mais",
-        nano_banana_prompt: "Modern professional marketing background with gradient colors, abstract shapes, clean design for social media ad",
-        visual_direction: "Modern, clean, professional",
-        editable_layers: [
-          { type: "headline", content: "Transforme Seus Resultados", style: "bold, large" },
-          { type: "subheadline", content: "Uma solução pensada para você", style: "medium" },
-          { type: "cta", content: "Saiba Mais", style: "button" },
-        ],
-      };
-    }
+    const strategistOutput = parseAIJson(
+      await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" }),
+      STRATEGIST_FALLBACK,
+    );
 
     // ─── 3. Image Generation (shared helper) ───
     const imagePrompt = `${strategistOutput.nano_banana_prompt || "Professional marketing creative background"}
@@ -194,20 +183,12 @@ IMPORTANT RULES:
       console.error("Failed to save creative job:", jobError);
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       strategist_output: strategistOutput,
       image_url: imageUrl,
       image_generation_failed,
       editable_html: editableHtml,
       creative_job_id: job?.id || null,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("generate-creative error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  })(req);
 });
