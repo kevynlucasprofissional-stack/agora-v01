@@ -112,7 +112,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Plus, label: "Nova\nAnálise", to: "/app/new-analysis", primary: true },
+          { icon: Plus, label: "Nova\nAnálise", to: `/app/new-analysis?t=${Date.now()}`, primary: true },
           { icon: History, label: "Conversas", to: "/app/conversations" },
           { icon: BarChart3, label: "Análises", to: "/app/analyses" },
           { icon: BarChart3, label: "Conta", to: "/app/account" },
@@ -194,7 +194,7 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-lg">Nenhuma análise ainda</h3>
             <p className="text-sm text-muted-foreground mt-1">Comece sua primeira auditoria de campanha agora.</p>
             <Button variant="hero" className="mt-6" asChild>
-              <Link to="/app/new-analysis">
+              <Link to={`/app/new-analysis?t=${Date.now()}`}>
                 <Plus className="h-4 w-4 mr-2" /> Nova Análise
               </Link>
             </Button>
