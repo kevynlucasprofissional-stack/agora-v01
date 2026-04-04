@@ -410,7 +410,7 @@ export default function CampaignComparatorPage() {
           </div>
 
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isStreaming || (!input.trim() && files.length === 0)}
             size="icon"
             className="shrink-0 h-10 w-10 rounded-xl"
