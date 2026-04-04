@@ -16,6 +16,7 @@ export function useCanvasState() {
   const [format, setFormat] = useState<CanvasFormat>("1080x1080");
   const [zoom, setZoom] = useState(0.5);
   const [canvasReady, setCanvasReady] = useState(false);
+  const setCanvasNotReady = useCallback(() => setCanvasReady(false), []);
 
   // Undo/Redo
   const undoStack = useRef<string[]>([]);
