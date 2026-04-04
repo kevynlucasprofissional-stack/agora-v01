@@ -12,20 +12,17 @@ import { ExternalLink } from "lucide-react";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { ChatMessageBubble, ChatLoadingBubble } from "@/components/ChatMessageBubble";
-import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
+import { streamChat } from "@/lib/streamChat";
 import {
   type ChatMessage,
-  saveMessage as persistMessageHelper,
+  saveMessage,
   isNearBottom,
   scrollToBottom,
   autoResizeTextarea,
   cleanMessageContent,
 } from "@/lib/chatHelpers";
-import { parseContextCards } from "@/lib/parseContextCards";
-import { ContextCards } from "@/components/ContextCards";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
-// ChatMessage type imported from @/lib/chatHelpers
 
 const agentOrder: AgentKind[] = ["master_orchestrator", "sociobehavioral", "offer_engineer", "performance_scientist", "chief_strategist"];
 const agentIcons: Record<AgentKind, React.ElementType> = {
@@ -44,90 +41,7 @@ const ACTION_MODES = [
   { key: "campaign" as const, label: "Gerar campanha", icon: BarChart3, prefix: "[MODO: GERAR CAMPANHA] " },
 ];
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intake-chat`;
-
 type FileContent = { name: string; type: string; content: string; isBase64: boolean };
-
-async function streamChat({
-  messages,
-  onDelta,
-  onDone,
-  fileContents,
-}: {
-  messages: ChatMessage[];
-  onDelta: (delta: string) => void;
-  onDone: () => void;
-  fileContents?: FileContent[];
-}) {
-  const resp = await fetch(CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ messages, fileContents }),
-  });
-
-  if (!resp.ok || !resp.body) {
-    if (resp.status === 429) {
-      toast.error("Muitas requisições. Aguarde um momento.");
-    } else if (resp.status === 402) {
-      toast.error("Créditos insuficientes.");
-    } else {
-      toast.error("Erro ao conectar com a IA.");
-    }
-    onDone();
-    return;
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let textBuffer = "";
-  let streamDone = false;
-
-  while (!streamDone) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    textBuffer += decoder.decode(value, { stream: true });
-
-    let newlineIndex: number;
-    while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-      let line = textBuffer.slice(0, newlineIndex);
-      textBuffer = textBuffer.slice(newlineIndex + 1);
-      if (line.endsWith("\r")) line = line.slice(0, -1);
-      if (line.startsWith(":") || line.trim() === "") continue;
-      if (!line.startsWith("data: ")) continue;
-      const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") { streamDone = true; break; }
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) onDelta(content);
-      } catch {
-        textBuffer = line + "\n" + textBuffer;
-        break;
-      }
-    }
-  }
-
-  if (textBuffer.trim()) {
-    for (let raw of textBuffer.split("\n")) {
-      if (!raw) continue;
-      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-      if (raw.startsWith(":") || raw.trim() === "") continue;
-      if (!raw.startsWith("data: ")) continue;
-      const jsonStr = raw.slice(6).trim();
-      if (jsonStr === "[DONE]") continue;
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) onDelta(content);
-      } catch { /* ignore */ }
-    }
-  }
-
-  onDone();
-}
 
 export default function NewAnalysisPage() {
   const { user } = useAuth();
@@ -169,6 +83,7 @@ export default function NewAnalysisPage() {
   conversationIdRef.current = conversationId;
 
   const hasMessages = messages.length > 0;
+  const isBusy = isStreaming || isGeneratingImage;
 
   // Load existing conversation on mount
   useEffect(() => {
@@ -213,14 +128,11 @@ export default function NewAnalysisPage() {
   const handleChatScroll = useCallback(() => {
     const el = chatScrollRef.current;
     if (!el) return;
-    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    isUserNearBottomRef.current = isNearBottom(el);
   }, []);
 
   useEffect(() => {
-    const el = chatScrollRef.current;
-    if (isUserNearBottomRef.current && el) {
-      requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-    }
+    if (isUserNearBottomRef.current) scrollToBottom(chatScrollRef.current);
   }, [messages]);
 
   const handleRenameChat = useCallback(async (newTitle: string) => {
@@ -237,7 +149,6 @@ export default function NewAnalysisPage() {
       [index]: prev[index] === type ? undefined! : type,
     }));
   }, []);
-
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationIdRef.current) return conversationIdRef.current;
@@ -265,23 +176,6 @@ export default function NewAnalysisPage() {
     return newId;
   }, [user, setSearchParams]);
 
-  // Helper: persist a message to DB
-  const persistMessage = useCallback(async (
-    convId: string,
-    role: string,
-    content: string,
-    imageUrl?: string | null,
-    expiresAt?: string | null
-  ) => {
-    await supabase.from("chat_messages").insert({
-      conversation_id: convId,
-      role,
-      content,
-      image_url: imageUrl || null,
-      expires_at: expiresAt || null,
-    } as any);
-  }, []);
-
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
     setFiles((prev) => [...prev, ...newFiles]);
@@ -296,7 +190,6 @@ export default function NewAnalysisPage() {
       if (item.type.startsWith("image/")) {
         const file = item.getAsFile();
         if (file) {
-          // Create a named file from clipboard
           const named = new File([file], `imagem-colada-${Date.now()}.png`, { type: file.type });
           imageFiles.push(named);
         }
@@ -315,9 +208,7 @@ export default function NewAnalysisPage() {
 
   const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+    autoResizeTextarea(e.target, 200);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -327,7 +218,7 @@ export default function NewAnalysisPage() {
     }
   };
 
-  const readFileContent = async (file: File): Promise<{ name: string; type: string; content: string; isBase64: boolean }> => {
+  const readFileContent = async (file: File): Promise<FileContent> => {
     const textTypes = ['.txt', '.csv', '.md', '.json', '.xml', '.html', '.css', '.js', '.ts', '.tsx'];
     const isText = textTypes.some(ext => file.name.toLowerCase().endsWith(ext)) || file.type.startsWith('text/');
 
@@ -347,12 +238,12 @@ export default function NewAnalysisPage() {
       }
     });
   };
+
   const generateImage = useCallback(async (userPrompt: string, referenceImages?: { name: string; type: string; content: string }[]) => {
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     setCreativeData(null);
 
-    // Show generating message in chat
     const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando imagem com IA... Isso pode levar alguns segundos." };
     setMessages((prev) => [...prev, genMsg]);
 
@@ -392,7 +283,6 @@ export default function NewAnalysisPage() {
           editable_html: data.editable_html,
         });
 
-        // Create a creative_job record so it can be linked to an artboard
         let creativeJobId: string | null = null;
         if (user) {
           const analysisId = searchParams.get("analysis_id") || null;
@@ -421,7 +311,6 @@ export default function NewAnalysisPage() {
           expires_at: expiresAt,
         };
 
-        // Replace the generating message with the image message
         setMessages((prev) =>
           prev.map((m, i) =>
             i === prev.length - 1 && m.content.includes("Gerando imagem")
@@ -430,9 +319,8 @@ export default function NewAnalysisPage() {
           )
         );
 
-        // Persist to DB
         if (conversationId) {
-          await persistMessage(conversationId, "assistant", messageContent, imageUrl, expiresAt);
+          await saveMessage(conversationId, "assistant", messageContent, imageUrl, expiresAt);
         }
 
         if (imageFailed) {
@@ -483,7 +371,6 @@ export default function NewAnalysisPage() {
       const userPrompt = input.trim();
       let displayContent = userPrompt || "Gerar imagem";
       
-      // Process attached files for creative mode
       const pendingFiles = [...files];
       let referenceImages: { name: string; type: string; content: string }[] = [];
       
@@ -525,9 +412,9 @@ export default function NewAnalysisPage() {
     // Build user message content with files
     let userDisplayContent = input.trim();
     const activeMode = ACTION_MODES.find(m => m.key === activeAction);
-    setActiveAction(null); // Reset action after sending
+    setActiveAction(null);
     const pendingFiles = [...files];
-    const fileContents: { name: string; type: string; content: string; isBase64: boolean }[] = [];
+    const fileContents: FileContent[] = [];
 
     if (pendingFiles.length > 0) {
       try {
@@ -545,9 +432,7 @@ export default function NewAnalysisPage() {
     }
 
     const userMsg: ChatMessage = { role: "user", content: userDisplayContent };
-    // Use ref to get current messages (avoids stale closure after async ensureConversation)
     const currentMessages = messagesRef.current;
-    // Prepend action mode prefix for the AI but show clean message to user
     const messagesForAI = activeMode
       ? [...currentMessages, { role: "user" as const, content: activeMode.prefix + userDisplayContent }]
       : [...currentMessages, userMsg];
@@ -556,11 +441,12 @@ export default function NewAnalysisPage() {
     setInput("");
     setFiles([]);
     setIsStreaming(true);
+    isUserNearBottomRef.current = true;
 
     // Persist user message
-    persistMessage(convId, "user", userDisplayContent);
+    saveMessage(convId, "user", userDisplayContent);
 
-    // Update conversation title from first user message (use raw input, not file-appended)
+    // Update conversation title from first user message
     if (currentMessages.length === 0 || chatTitle === "Novo chat" || chatTitle === "Nova Análise") {
       const titleText = (input.trim() || userDisplayContent).slice(0, 80);
       setChatTitle(titleText);
@@ -572,38 +458,39 @@ export default function NewAnalysisPage() {
     }
 
     let assistantSoFar = "";
-    const upsertAssistant = (chunk: string) => {
-      assistantSoFar += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
-        }
-        return [...prev, { role: "assistant", content: assistantSoFar }];
-      });
-
-      if (assistantSoFar.includes("##READY##")) {
-        setIsReady(true);
-      }
-    };
 
     try {
       await streamChat({
-        messages: messagesForAI,
-        onDelta: upsertAssistant,
-        onDone: () => {
-          setIsStreaming(false);
-          // Persist assistant response
-          if (assistantSoFar) {
-            persistMessage(convId, "assistant", assistantSoFar);
+        messages: messagesForAI.map(m => ({ role: m.role, content: m.content })),
+        functionName: "intake-chat",
+        extraBody: fileContents.length > 0 ? { fileContents } : {},
+        onDelta: (chunk) => {
+          assistantSoFar += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant") {
+              return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            }
+            return [...prev, { role: "assistant", content: assistantSoFar }];
+          });
+
+          if (assistantSoFar.includes("##READY##")) {
+            setIsReady(true);
           }
         },
-        fileContents: fileContents.length > 0 ? fileContents : undefined,
+        onDone: async () => {
+          setIsStreaming(false);
+          if (assistantSoFar) {
+            saveMessage(convId, "assistant", assistantSoFar);
+          }
+        },
       });
     } catch (e) {
       console.error(e);
       setIsStreaming(false);
-      toast.error("Erro na comunicação com a IA.");
+      const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro na comunicação com a IA."}`;
+      setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+      saveMessage(convId, "assistant", errorMsg);
     }
   };
 
@@ -662,16 +549,8 @@ export default function NewAnalysisPage() {
   const runRealAnalysis = async (analysisId: string) => {
     setStep("processing");
 
-    // Animate through agents progressively
     const agentTimers: NodeJS.Timeout[] = [];
     let agentIdx = 0;
-    const advanceAgent = () => {
-      if (agentIdx < agentOrder.length - 1) {
-        agentIdx++;
-        setCurrentAgent(agentIdx);
-      }
-    };
-    // Advance agent every ~3s to show progress while AI works
     for (let i = 1; i < agentOrder.length; i++) {
       agentTimers.push(setTimeout(() => { setCurrentAgent(i); }, i * 3000));
     }
@@ -697,7 +576,6 @@ export default function NewAnalysisPage() {
         }
       );
 
-      // Clear animation timers
       agentTimers.forEach(clearTimeout);
       setCurrentAgent(agentOrder.length - 1);
 
@@ -708,7 +586,6 @@ export default function NewAnalysisPage() {
 
       const { analysis: result } = await resp.json();
 
-      // Update analysis_request with real AI results
       await supabase
         .from("analysis_requests")
         .update({
@@ -745,7 +622,6 @@ export default function NewAnalysisPage() {
       console.error("Analysis error:", e);
       toast.error(e instanceof Error ? e.message : "Erro ao analisar campanha.");
 
-      // Mark as failed
       await supabase
         .from("analysis_requests")
         .update({ status: "failed" })
@@ -860,91 +736,35 @@ export default function NewAnalysisPage() {
             </div>
           )}
 
-          {/* Messages */}
+          {/* Messages — now using shared ChatMessageBubble */}
           {messages.map((msg, idx) => {
-            const hasImage = !!msg.image_url;
-            const expired = hasImage && msg.expires_at ? new Date(msg.expires_at) < new Date() : false;
-            const rawContent = msg.role === "assistant" ? msg.content.replace("##READY##", "").replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim() : msg.content;
-            const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
-            const displayContent = parsed ? parsed.textWithoutCards : rawContent;
             const isLastAssistant = msg.role === "assistant" && idx === messages.length - 1;
 
             return (
-              <div key={idx} className={`group/msg mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className="flex flex-col gap-1 max-w-[85%]">
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm sm:text-base ${
-                      msg.role === "user"
-                        ? "bg-secondary text-secondary-foreground rounded-br-md"
-                        : "bg-card border border-border text-foreground rounded-bl-md"
-                    }`}
-                  >
-                    {msg.role === "assistant" ? (
-                      <>
-                        <TypewriterMarkdown
-                          content={displayContent}
-                          isStreaming={isStreaming && isLastAssistant}
-                          className="prose prose-sm max-w-none text-foreground"
-                        />
-                        {parsed && parsed.cards.length > 0 && !isStreaming && isLastAssistant && (
-                          <ContextCards
-                            cards={parsed.cards}
-                            onSelect={handleContextCardSelect}
-                            disabled={isStreaming || isGeneratingImage}
-                          />
-                        )}
-                        {/* Inline image */}
-                        {hasImage && !expired && (
-                          <div className="mt-3">
-                            <img
-                              src={msg.image_url!}
-                              alt="Imagem gerada"
-                              className="w-full max-w-[320px] rounded-lg border border-border/50"
-                            />
-                            <div className="mt-2 flex justify-center">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={(() => {
-                                  const match = msg.content.match(/\[creative_job_id:([^\]]+)\]/);
-                                  return match ? `/app/creative-studio/${match[1]}` : "/app/creative-studio";
-                                })()}>
-                                  Abrir no Estúdio Criativo <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                        {/* Expired image */}
-                        {hasImage && expired && (
-                          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs">
-                            <ImageIcon className="h-4 w-4 shrink-0" />
-                            <span>Imagem expirada</span>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    )}
-                  </div>
-                  <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <ChatMessageActions
-                      content={msg.content.replace("##READY##", "").trim()}
-                      messageIndex={idx}
-                      role={msg.role}
-                      onFeedback={handleFeedback}
-                      feedback={feedbacks[idx] || null}
-                    />
-                  </div>
+              <div key={idx} className="group/msg mb-4">
+                <ChatMessageBubble
+                  message={msg}
+                  index={idx}
+                  isLastAssistant={isLastAssistant}
+                  isStreaming={isStreaming}
+                  isBusy={isBusy}
+                  onContextCardSelect={handleContextCardSelect}
+                />
+                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mt-1`}>
+                  <ChatMessageActions
+                    content={cleanMessageContent(msg.content)}
+                    messageIndex={idx}
+                    role={msg.role}
+                    onFeedback={handleFeedback}
+                    feedback={feedbacks[idx] || null}
+                  />
                 </div>
               </div>
             );
           })}
 
           {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="mb-4 flex justify-start">
-              <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            </div>
+            <ChatLoadingBubble />
           )}
 
           {/* Ready CTA */}
@@ -1055,10 +875,10 @@ export default function NewAnalysisPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={(isStreaming || isGeneratingImage) || (!input.trim() && files.length === 0 && activeAction !== "creative")}
+              disabled={isBusy || (!input.trim() && files.length === 0 && activeAction !== "creative")}
               className="flex-shrink-0 rounded-xl h-10 w-10 bg-primary hover:bg-primary/90"
             >
-              {(isStreaming || isGeneratingImage) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
 
@@ -1069,7 +889,7 @@ export default function NewAnalysisPage() {
                 <button
                   key={a.key}
                   onClick={() => setActiveAction(isActive ? null : a.key)}
-                  disabled={isStreaming || isGeneratingImage}
+                  disabled={isBusy}
                   className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-all whitespace-nowrap disabled:opacity-50 ${
                     isActive
                       ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30 scale-[1.02]"
