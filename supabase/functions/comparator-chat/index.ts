@@ -146,7 +146,11 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("comparator-chat", async () => {
-    const { messages, fileContents } = await req.json();
+    const { validatePayload, ChatPayloadSchema } = await import("../_shared/validation.ts");
+    const body = await req.json();
+    const validated = validatePayload(ChatPayloadSchema, body);
+    if (validated.error) return validated.error;
+    const { messages, fileContents } = validated.data;
     const model = pickModel(messages.length);
     console.log(`[comparator] model=${model} msgs=${messages.length} files=${fileContents?.length ?? 0}`);
 

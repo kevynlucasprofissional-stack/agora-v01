@@ -561,7 +561,11 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, fileContents } = await req.json();
+    const { validatePayload, ChatPayloadSchema } = await import("../_shared/validation.ts");
+    const body = await req.json();
+    const validated = validatePayload(ChatPayloadSchema, body);
+    if (validated.error) return validated.error;
+    const { messages, fileContents } = validated.data;
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
