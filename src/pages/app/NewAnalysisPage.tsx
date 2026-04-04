@@ -7,16 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Send, Paperclip, X, FileText, Loader2, LayoutGrid, Users, Zap, BarChart3, Target, Check, Sparkles, Search, ImageIcon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { AGENT_INFO, AgentKind } from "@/types/database";
 import { ExternalLink } from "lucide-react";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
+import { ChatMessageBubble, ChatLoadingBubble } from "@/components/ChatMessageBubble";
+import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
+import {
+  type ChatMessage,
+  saveMessage as persistMessageHelper,
+  isNearBottom,
+  scrollToBottom,
+  autoResizeTextarea,
+  cleanMessageContent,
+} from "@/lib/chatHelpers";
 import { parseContextCards } from "@/lib/parseContextCards";
 import { ContextCards } from "@/components/ContextCards";
 
 type FlowStep = "intake" | "uploading" | "processing" | "completed";
-type ChatMessage = { role: "user" | "assistant"; content: string; image_url?: string | null; expires_at?: string | null };
+// ChatMessage type imported from @/lib/chatHelpers
 
 const agentOrder: AgentKind[] = ["master_orchestrator", "sociobehavioral", "offer_engineer", "performance_scientist", "chief_strategist"];
 const agentIcons: Record<AgentKind, React.ElementType> = {

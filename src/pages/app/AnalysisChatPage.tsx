@@ -3,21 +3,21 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ExternalLink, ImageIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { Send, ArrowLeft, Target, Loader2, Plus, Sparkles, ImageIcon } from "lucide-react";
 import { streamChat } from "@/lib/streamChat";
-import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { parseContextCards } from "@/lib/parseContextCards";
-import { ContextCards } from "@/components/ContextCards";
+import {
+  type ChatMessage,
+  saveMessage,
+  isNearBottom,
+  scrollToBottom,
+  autoResizeTextarea,
+} from "@/lib/chatHelpers";
+import { ChatMessageBubble, ChatLoadingBubble } from "@/components/ChatMessageBubble";
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  image_url?: string | null;
-  expires_at?: string | null;
-}
+const buildGreeting = (data: AnalysisRequest) =>
+  `Olá! Sou o **Estrategista-Chefe** da Ágora. Analisei sua campanha "${data.title || "sem título"}" e o score geral ficou em **${Number(data.score_overall ?? 0).toFixed(0)}/100**.\n\nPosso ajudá-lo com:\n- 🧠 **Neuromarketing** — vieses cognitivos e gatilhos para seu público\n- 🎯 **Oferta** — Fórmula de Hormozi, proposta de valor, pricing\n- 📊 **Performance** — KPIs, funil, canais e segmentação\n- 👥 **Público-alvo** — comportamento geracional e segmentação\n\nO que gostaria de explorar?`;
 
 export default function AnalysisChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,17 +29,14 @@ export default function AnalysisChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [generatingCreative, setGeneratingCreative] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserNearBottomRef = useRef(true);
 
-  // Load analysis + conversation + messages
   useEffect(() => {
     if (!id || !user) return;
 
     const loadData = async () => {
-      // Load analysis
       const { data: analysisData } = await supabase
         .from("analysis_requests")
         .select("*")
@@ -47,7 +44,6 @@ export default function AnalysisChatPage() {
         .single();
       setAnalysis(analysisData);
 
-      // Find or create conversation
       const { data: existingConv } = await supabase
         .from("conversations" as any)
         .select("*")
@@ -64,7 +60,6 @@ export default function AnalysisChatPage() {
         convId = (existingConv as any).id;
         setConversationId(convId);
 
-        // Load existing messages
         const { data: dbMessages } = await supabase
           .from("chat_messages" as any)
           .select("*")
@@ -78,7 +73,7 @@ export default function AnalysisChatPage() {
               content: m.content,
               image_url: m.image_url || null,
               expires_at: m.expires_at || null,
-            }))
+            })),
           );
         } else if (analysisData) {
           const greeting = buildGreeting(analysisData);
@@ -86,7 +81,6 @@ export default function AnalysisChatPage() {
           await saveMessage(convId, "assistant", greeting);
         }
       } else if (analysisData) {
-        // Create new conversation
         const { data: newConv } = await supabase
           .from("conversations" as any)
           .insert({
@@ -113,60 +107,23 @@ export default function AnalysisChatPage() {
     loadData();
   }, [id, user]);
 
-  const buildGreeting = (data: AnalysisRequest) =>
-    `Olá! Sou o **Estrategista-Chefe** da Ágora. Analisei sua campanha "${data.title || "sem título"}" e o score geral ficou em **${Number(data.score_overall ?? 0).toFixed(0)}/100**.\n\nPosso ajudá-lo com:\n- 🧠 **Neuromarketing** — vieses cognitivos e gatilhos para seu público\n- 🎯 **Oferta** — Fórmula de Hormozi, proposta de valor, pricing\n- 📊 **Performance** — KPIs, funil, canais e segmentação\n- 👥 **Público-alvo** — comportamento geracional e segmentação\n\nO que gostaria de explorar?`;
-
-  const saveMessage = async (
-    convId: string,
-    role: string,
-    content: string,
-    imageUrl?: string | null,
-    expiresAt?: string | null
-  ) => {
-    await supabase.from("chat_messages" as any).insert({
-      conversation_id: convId,
-      role,
-      content,
-      image_url: imageUrl || null,
-      expires_at: expiresAt || null,
-    } as any);
-  };
-
-  // Check if image is expired
-  const isImageExpired = (expiresAt: string | null | undefined): boolean => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
-
-  // Track if user is near bottom
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
-    if (!el) return;
-    const threshold = 100;
-    isUserNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (el) isUserNearBottomRef.current = isNearBottom(el);
   }, []);
 
-  // Only auto-scroll if user is near bottom
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (isUserNearBottomRef.current && el) {
-      requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-    }
+    if (isUserNearBottomRef.current) scrollToBottom(scrollContainerRef.current);
   }, [messages]);
-
-  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 160) + "px";
-  };
 
   const handleGenerateCreative = useCallback(async () => {
     if (!id || generatingCreative || !conversationId) return;
     setGeneratingCreative(true);
 
-    // Add generating message
-    const genMsg: ChatMessage = { role: "assistant", content: "🎨 Gerando criativo com IA... Isso pode levar alguns segundos." };
+    const genMsg: ChatMessage = {
+      role: "assistant",
+      content: "🎨 Gerando criativo com IA... Isso pode levar alguns segundos.",
+    };
     setMessages((prev) => [...prev, genMsg]);
 
     try {
@@ -178,14 +135,14 @@ export default function AnalysisChatPage() {
       const imageUrl = data?.image_url || null;
       const creativeJobId = data?.creative_job_id || null;
       const imageFailed = data?.image_generation_failed === true;
-      const expiresAt = imageUrl ? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() : null;
+      const expiresAt = imageUrl
+        ? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
 
       let msgContent = imageFailed
         ? "⚠️ Criativo gerado com textos, mas a imagem de fundo não pôde ser criada."
         : "✅ Imagem gerada com sucesso!";
-      if (creativeJobId) {
-        msgContent += `\n\n[creative_job_id:${creativeJobId}]`;
-      }
+      if (creativeJobId) msgContent += `\n\n[creative_job_id:${creativeJobId}]`;
 
       const imageMessage: ChatMessage = {
         role: "assistant",
@@ -198,17 +155,16 @@ export default function AnalysisChatPage() {
         prev.map((m, i) =>
           i === prev.length - 1 && m.content.includes("Gerando criativo")
             ? imageMessage
-            : m
-        )
+            : m,
+        ),
       );
 
       await saveMessage(conversationId, "assistant", msgContent, imageUrl, expiresAt);
-
-      if (imageFailed) {
-        toast.warning("Imagem de fundo não gerada. Textos aplicados.");
-      } else {
-        toast.success("Criativo gerado com sucesso!");
-      }
+      toast[imageFailed ? "warning" : "success"](
+        imageFailed
+          ? "Imagem de fundo não gerada. Textos aplicados."
+          : "Criativo gerado com sucesso!",
+      );
     } catch (e: any) {
       console.error("Erro ao gerar criativo:", e);
       const errorMsg = "❌ Erro ao gerar criativo. Tente novamente.";
@@ -216,8 +172,8 @@ export default function AnalysisChatPage() {
         prev.map((m, i) =>
           i === prev.length - 1 && m.content.includes("Gerando criativo")
             ? { ...m, content: errorMsg }
-            : m
-        )
+            : m,
+        ),
       );
       await saveMessage(conversationId, "assistant", errorMsg);
       toast.error("Erro ao gerar criativo.");
@@ -226,87 +182,102 @@ export default function AnalysisChatPage() {
     }
   }, [id, generatingCreative, conversationId]);
 
-  const handleSend = useCallback(async (overrideText?: string) => {
-    const userMsg = (overrideText || input).trim();
-    if (!userMsg || isStreaming || !conversationId) return;
-    if (!overrideText) setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  const handleSend = useCallback(
+    async (overrideText?: string) => {
+      const userMsg = (overrideText || input).trim();
+      if (!userMsg || isStreaming || !conversationId) return;
+      if (!overrideText) setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
-    setMessages(newMessages);
-    setIsStreaming(true);
+      const newMessages: ChatMessage[] = [
+        ...messages,
+        { role: "user", content: userMsg },
+      ];
+      setMessages(newMessages);
+      setIsStreaming(true);
+      isUserNearBottomRef.current = true;
 
-    await saveMessage(conversationId, "user", userMsg);
+      await saveMessage(conversationId, "user", userMsg);
 
-    let assistantContent = "";
+      let assistantContent = "";
 
-    try {
-      const apiMessages = newMessages.filter((_, i) => i > 0);
+      try {
+        const apiMessages = newMessages.filter((_, i) => i > 0);
 
-      await streamChat({
-        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
-        functionName: "strategist-chat",
-        extraBody: {
-          analysisContext: analysis ? {
-            title: analysis.title,
-            score_overall: analysis.score_overall,
-            score_sociobehavioral: analysis.score_sociobehavioral,
-            score_offer: analysis.score_offer,
-            score_performance: analysis.score_performance,
-            industry: analysis.industry,
-            primary_channel: analysis.primary_channel,
-            declared_target_audience: analysis.declared_target_audience,
-            raw_prompt: analysis.raw_prompt,
-            normalized_payload: analysis.normalized_payload,
-          } : undefined,
-        },
-        onDelta: (chunk) => {
-          assistantContent += chunk;
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "user") {
-              return [...prev, { role: "assistant", content: assistantContent }];
+        await streamChat({
+          messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
+          functionName: "strategist-chat",
+          extraBody: {
+            analysisContext: analysis
+              ? {
+                  title: analysis.title,
+                  score_overall: analysis.score_overall,
+                  score_sociobehavioral: analysis.score_sociobehavioral,
+                  score_offer: analysis.score_offer,
+                  score_performance: analysis.score_performance,
+                  industry: analysis.industry,
+                  primary_channel: analysis.primary_channel,
+                  declared_target_audience: analysis.declared_target_audience,
+                  raw_prompt: analysis.raw_prompt,
+                  normalized_payload: analysis.normalized_payload,
+                }
+              : undefined,
+          },
+          onDelta: (chunk) => {
+            assistantContent += chunk;
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "user") {
+                return [...prev, { role: "assistant", content: assistantContent }];
+              }
+              return [
+                ...prev.slice(0, -1),
+                { role: "assistant", content: assistantContent },
+              ];
+            });
+          },
+          onDone: async () => {
+            setIsStreaming(false);
+            if (assistantContent && conversationId) {
+              await saveMessage(conversationId, "assistant", assistantContent);
             }
-            return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
-          });
-        },
-        onDone: async () => {
-          setIsStreaming(false);
-          if (assistantContent && conversationId) {
-            await saveMessage(conversationId, "assistant", assistantContent);
-          }
-        },
-      });
-    } catch (e) {
-      setIsStreaming(false);
-      const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`;
-      setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
-      await saveMessage(conversationId, "assistant", errorMsg);
-    }
-  }, [input, isStreaming, conversationId, messages, analysis]);
+          },
+        });
+      } catch (e) {
+        setIsStreaming(false);
+        const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA. Tente novamente."}`;
+        setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+        await saveMessage(conversationId, "assistant", errorMsg);
+      }
+    },
+    [input, isStreaming, conversationId, messages, analysis],
+  );
 
-  // Extract creative_job_id from message content
-  const extractCreativeJobId = (content: string): string | null => {
-    const match = content.match(/\[creative_job_id:([^\]]+)\]/);
-    return match ? match[1] : null;
-  };
+  const handleContextCardSelect = useCallback(
+    (text: string) => {
+      handleSend(text);
+    },
+    [handleSend],
+  );
 
-  // Clean content for display (remove internal markers)
-  const cleanContent = (content: string): string => {
-    return content.replace(/\n?\n?\[creative_job_id:[^\]]+\]/g, "").trim();
-  };
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        Carregando...
+      </div>
+    );
 
-  const handleContextCardSelect = useCallback((text: string) => {
-    handleSend(text);
-  }, [handleSend]);
-
-  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
+  const isBusy = isStreaming || generatingCreative;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-[calc(100vh-4rem)] md:max-w-3xl md:mx-auto">
       {/* Mobile header */}
       <div className="flex md:hidden items-center gap-3 px-3 py-3 border-b border-border/40 bg-background">
-        <Link to={`/app/analysis/${id}/report`} className="shrink-0 p-1 -ml-1 rounded-lg hover:bg-accent/50">
+        <Link
+          to={`/app/analysis/${id}/report`}
+          className="shrink-0 p-1 -ml-1 rounded-lg hover:bg-accent/50"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h2 className="text-base font-bold truncate">Estrategista-Chefe</h2>
@@ -314,7 +285,10 @@ export default function AnalysisChatPage() {
 
       {/* Desktop header */}
       <div className="hidden md:flex items-center gap-4 px-4 py-3 border-b border-border/50 shrink-0">
-        <Link to={`/app/analysis/${id}/report`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to={`/app/analysis/${id}/report`}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
@@ -322,7 +296,9 @@ export default function AnalysisChatPage() {
         </div>
         <div className="flex-1">
           <h2 className="font-semibold text-sm">Estrategista-Chefe</h2>
-          <p className="text-xs text-muted-foreground">Refinamento contextual da análise</p>
+          <p className="text-xs text-muted-foreground">
+            Refinamento contextual da análise
+          </p>
         </div>
         <Button
           variant="outline"
@@ -345,92 +321,56 @@ export default function AnalysisChatPage() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto py-6 space-y-4">
-        {messages.map((msg, i) => {
-          const hasImage = !!msg.image_url;
-          const expired = hasImage && isImageExpired(msg.expires_at);
-          const creativeJobId = extractCreativeJobId(msg.content);
-          const rawContent = cleanContent(msg.content);
-          const parsed = msg.role === "assistant" ? parseContextCards(rawContent) : null;
-          const displayContent = parsed ? parsed.textWithoutCards : rawContent;
-          const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
-
-          return (
-            <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border/40"
-              }`}>
-                {msg.role === "assistant" ? (
-                  <>
-                    <TypewriterMarkdown
-                      content={displayContent}
-                      isStreaming={isStreaming && isLastAssistant}
-                      className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-headings:text-foreground"
-                    />
-                    {parsed && parsed.cards.length > 0 && !isStreaming && isLastAssistant && (
-                      <ContextCards
-                        cards={parsed.cards}
-                        onSelect={handleContextCardSelect}
-                        disabled={isStreaming || generatingCreative}
-                      />
-                    )}
-                    {/* Render image inline */}
-                    {hasImage && !expired && (
-                      <div className="mt-3">
-                        <img
-                          src={msg.image_url!}
-                          alt="Criativo gerado"
-                          className="w-full max-w-[320px] rounded-lg border border-border/50"
-                        />
-                        {creativeJobId && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <Button variant="hero" size="sm" asChild>
-                              <Link to={`/app/creative-studio/${creativeJobId}?analysis_id=${id}&conversation_id=${conversationId}`}>
-                                Abrir no Estúdio <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-                              </Link>
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {/* Expired image */}
-                    {hasImage && expired && (
-                      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs">
-                        <ImageIcon className="h-4 w-4 shrink-0" />
-                        <span>Imagem expirada</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-auto py-6 px-4 space-y-4"
+      >
+        {messages.map((msg, i) => (
+          <ChatMessageBubble
+            key={i}
+            message={msg}
+            index={i}
+            isLastAssistant={
+              msg.role === "assistant" && i === messages.length - 1
+            }
+            isStreaming={isStreaming}
+            isBusy={isBusy}
+            onContextCardSelect={handleContextCardSelect}
+            studioLinkParams={`analysis_id=${id}&conversation_id=${conversationId}`}
+          />
+        ))}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex justify-start">
-            <div className="bg-card border border-border/40 rounded-2xl px-4 py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          </div>
+          <ChatLoadingBubble />
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div className="shrink-0 flex gap-2 px-2 md:px-0 py-3 border-t border-border/40">
+      <div className="shrink-0 flex gap-2 px-3 md:px-4 py-3 border-t border-border/40">
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={handleTextareaInput}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autoResizeTextarea(e.target);
+          }}
+          onKeyDown={(e) =>
+            e.key === "Enter" &&
+            !e.shiftKey &&
+            (e.preventDefault(), handleSend())
+          }
           placeholder="Pergunte sobre a análise..."
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-input bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={isBusy}
+          className="flex-1 resize-none rounded-xl border border-input bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
-        <Button variant="hero" size="icon" onClick={() => handleSend()} disabled={isStreaming || !input.trim()} className="shrink-0 h-auto">
+        <Button
+          variant="hero"
+          size="icon"
+          onClick={() => handleSend()}
+          disabled={isBusy || !input.trim()}
+          className="shrink-0 h-auto"
+        >
           <Send className="h-4 w-4" />
         </Button>
       </div>
