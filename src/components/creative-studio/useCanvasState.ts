@@ -18,6 +18,10 @@ export function useCanvasState() {
   const [canvasReady, setCanvasReady] = useState(false);
   const setCanvasNotReady = useCallback(() => setCanvasReady(false), []);
 
+  // Use a ref for dimensions so initCanvas doesn't depend on format
+  const formatRef = useRef<CanvasFormat>(format);
+  formatRef.current = format;
+
   // Undo/Redo
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
@@ -59,14 +63,19 @@ export function useCanvasState() {
     });
   }, []);
 
+  // A version counter so the PropertiesPanel can re-read without unmounting
+  const [propsVersion, setPropsVersion] = useState(0);
+
+  // initCanvas: stable reference — reads dimensions from ref, not state
   const initCanvas = useCallback((canvasEl: HTMLCanvasElement) => {
     if (canvasRef.current) {
       canvasRef.current.dispose();
     }
 
+    const dims = FORMAT_DIMENSIONS[formatRef.current];
     const c = new fabric.Canvas(canvasEl, {
-      width: dimensions.w,
-      height: dimensions.h,
+      width: dims.w,
+      height: dims.h,
       backgroundColor: "#ffffff",
       preserveObjectStacking: true,
     });
@@ -82,17 +91,16 @@ export function useCanvasState() {
     });
     c.on("object:modified", () => {
       saveState();
-      // Force re-render of properties panel
-      const active = c.getActiveObject();
-      setSelectedObject(null);
-      setTimeout(() => setSelectedObject(active || null), 0);
+      // Bump propsVersion so PropertiesPanel re-reads without flicker
+      setPropsVersion((v) => v + 1);
     });
 
     canvasRef.current = c;
     saveState();
     setCanvasReady(true);
     return c;
-  }, [dimensions.w, dimensions.h, saveState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveState]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -130,12 +138,13 @@ export function useCanvasState() {
   const addText = useCallback((text: string, options: Partial<fabric.ITextProps> = {}) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const dim = FORMAT_DIMENSIONS[formatRef.current];
     const hasWidth = options.width && options.width > 0;
     let t: fabric.IText | fabric.Textbox;
     if (hasWidth) {
       t = new fabric.Textbox(text, {
-        left: dimensions.w / 2 - 100,
-        top: dimensions.h / 2 - 20,
+        left: dim.w / 2 - 100,
+        top: dim.h / 2 - 20,
         fontSize: 40,
         fontFamily: "Arial",
         fill: "#000000",
@@ -144,8 +153,8 @@ export function useCanvasState() {
       });
     } else {
       t = new fabric.IText(text, {
-        left: dimensions.w / 2 - 100,
-        top: dimensions.h / 2 - 20,
+        left: dim.w / 2 - 100,
+        top: dim.h / 2 - 20,
         fontSize: 40,
         fontFamily: "Arial",
         fill: "#000000",
@@ -154,20 +163,21 @@ export function useCanvasState() {
       });
     }
     // Enforce canvas margins — clamp position
-    const margin = dimensions.w * 0.05;
+    const margin = dim.w * 0.05;
     if ((t.left || 0) < margin) t.set("left", margin);
     if ((t.top || 0) < margin) t.set("top", margin);
     canvas.add(t);
     canvas.setActiveObject(t);
     canvas.renderAll();
     saveState();
-  }, [dimensions, saveState]);
+  }, [saveState]);
 
   const addShape = useCallback((type: "rect" | "circle" | "triangle" | "line") => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const cx = dimensions.w / 2;
-    const cy = dimensions.h / 2;
+    const dim = FORMAT_DIMENSIONS[formatRef.current];
+    const cx = dim.w / 2;
+    const cy = dim.h / 2;
     let obj: fabric.FabricObject;
     switch (type) {
       case "rect":
@@ -189,11 +199,12 @@ export function useCanvasState() {
     canvas.setActiveObject(obj);
     canvas.renderAll();
     saveState();
-  }, [dimensions, saveState]);
+  }, [saveState]);
 
   const addImage = useCallback((url: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const dim = FORMAT_DIMENSIONS[formatRef.current];
     const imgEl = new Image();
     imgEl.crossOrigin = "anonymous";
     imgEl.onload = () => {
@@ -201,8 +212,7 @@ export function useCanvasState() {
         left: 50,
         top: 50,
       });
-      // Scale down if too large
-      const maxDim = Math.min(dimensions.w, dimensions.h) * 0.6;
+      const maxDim = Math.min(dim.w, dim.h) * 0.6;
       if (img.width && img.width > maxDim) {
         img.scaleToWidth(maxDim);
       }
@@ -212,23 +222,31 @@ export function useCanvasState() {
       saveState();
     };
     imgEl.src = url;
-  }, [dimensions, saveState]);
+  }, [saveState]);
 
-  const setBackgroundImage = useCallback((url: string) => {
+  const setBackgroundImage = useCallback((url: string): Promise<void> => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const imgEl = new Image();
-    imgEl.crossOrigin = "anonymous";
-    imgEl.onload = () => {
-      const img = new fabric.FabricImage(imgEl);
-      img.scaleToWidth(dimensions.w);
-      img.scaleToHeight(dimensions.h);
-      canvas.backgroundImage = img;
-      canvas.renderAll();
-      saveState();
-    };
-    imgEl.src = url;
-  }, [dimensions, saveState]);
+    if (!canvas) return Promise.resolve();
+    return new Promise((resolve) => {
+      const dim = FORMAT_DIMENSIONS[formatRef.current];
+      const imgEl = new Image();
+      imgEl.crossOrigin = "anonymous";
+      imgEl.onload = () => {
+        const img = new fabric.FabricImage(imgEl);
+        img.scaleToWidth(dim.w);
+        img.scaleToHeight(dim.h);
+        canvas.backgroundImage = img;
+        canvas.renderAll();
+        saveState();
+        resolve();
+      };
+      imgEl.onerror = () => {
+        console.error("Failed to load background image:", url.slice(0, 80));
+        resolve();
+      };
+      imgEl.src = url;
+    });
+  }, [saveState]);
 
   const exportPNG = useCallback(() => {
     const canvas = canvasRef.current;
@@ -259,9 +277,6 @@ export function useCanvasState() {
     });
   }, [saveState]);
 
-  // A version counter so the PropertiesPanel can re-read without unmounting
-  const [propsVersion, setPropsVersion] = useState(0);
-
   const updateSelectedObject = useCallback((props: Record<string, any>, { skipSave = false } = {}) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -282,7 +297,6 @@ export function useCanvasState() {
     if (!skipSave) {
       saveState();
     }
-    // Bump version instead of cycling selectedObject
     setPropsVersion((v) => v + 1);
   }, [saveState]);
 
@@ -293,6 +307,7 @@ export function useCanvasState() {
     canvas.setDimensions({ width: dims.w, height: dims.h });
     canvas.renderAll();
     setFormat(newFormat);
+    formatRef.current = newFormat;
     saveState();
   }, [saveState]);
 

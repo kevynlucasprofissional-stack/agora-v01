@@ -65,12 +65,15 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
         },
       });
       if (error) throw error;
+
+      // Apply background image and wait for it to load before adding text layers
       if (data?.image_url) {
-        state.setBackgroundImage(data.image_url);
+        await state.setBackgroundImage(data.image_url);
       }
       if (!data?.image_url || data?.image_generation_failed) {
         toast.warning("Imagem de fundo não gerada. Os textos foram aplicados. Tente gerar novamente.");
       }
+
       const output = data?.strategist_output;
       if (output) {
         const dim = state.dimensions;
@@ -94,7 +97,8 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
       setAiPrompt("");
       setHasGenerated(true);
       if (onAfterGenerate) {
-        setTimeout(() => onAfterGenerate(), 500);
+        // Use rAF to let Fabric finish rendering before saving state
+        requestAnimationFrame(() => onAfterGenerate());
       }
     } catch (err: any) {
       console.error("Creative generation error:", err);
