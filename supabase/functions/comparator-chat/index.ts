@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { errorResponse, streamResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
+import { callGemini, transformGeminiStream } from "../_shared/gemini.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// ─── Prompt ──────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `[PRIORIDADE ALTA: NUNCA RETORNE JSON PARA O USUÁRIO]
 
@@ -135,89 +134,19 @@ Máx. 4 bullets com diferenças decisivas
 Português brasileiro, executivo, direto, sem floreio.
 Não expor raciocínio interno.`;
 
-/** Detect if conversation mentions 3+ campaigns to pick a lighter model */
-function detectManyCampaigns(messages: { role: string; content: string }[]): boolean {
-  const fullText = messages.map((m) => m.content).join(" ").toLowerCase();
-  // Heuristics: mentions of "campanha 3/4/5", numbered lists, or explicit "3 campanhas"
-  const patterns = [
-    /\b[3-9]\+?\s*campanhas?\b/,
-    /campanha\s*[3-9]/,
-    /terceira\s*campanha/,
-    /campanha\s*c\b/i,
-    // Count distinct "campanha" mentions with different names
-  ];
-  if (patterns.some((p) => p.test(fullText))) return true;
+// ─── Helpers ─────────────────────────────────────────────────
 
-  // Count how many distinct "Campanha X" or "campanha:" blocks appear
-  const matches = fullText.match(/campanha\s*[a-z0-9"':]/gi);
-  if (matches && matches.length >= 3) return true;
-
-  return false;
-}
-
-function pickModel(messages: { role: string; content: string }[]): string {
-  // Always use gemini-2.5-flash — the lite model produces lower quality dashboard JSON
-  // and is more prone to leaking raw JSON to the user
+function pickModel(): string {
   return "gemini-2.5-flash";
 }
 
-function buildErrorResponse(status: number, message: string) {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-function transformGeminiStream(response: Response) {
-  return new ReadableStream({
-    async start(controller) {
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let idx: number;
-          while ((idx = buffer.indexOf("\n")) !== -1) {
-            let line = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 1);
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (!line.startsWith("data: ")) continue;
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr || jsonStr === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                controller.enqueue(
-                  new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
-                );
-              }
-            } catch { /* skip partial */ }
-          }
-        }
-      } catch (err) {
-        console.error("Stream transform error:", err);
-      }
-      controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-      controller.close();
-    },
-  });
-}
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
 
-  try {
+  return withErrorHandler("comparator-chat", async () => {
     const { messages, fileContents } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
-    const model = pickModel(messages);
+    const model = pickModel();
     console.log(`Using model: ${model} for ${messages.length} messages`);
 
     // Multimodal path (images)
@@ -225,6 +154,9 @@ serve(async (req) => {
       const imageFiles = fileContents.filter((f: any) => f.isBase64 && f.type?.startsWith("image/"));
 
       if (imageFiles.length > 0) {
+        const { getGeminiKey } = await import("../_shared/gemini.ts");
+        const apiKey = getGeminiKey();
+
         const systemInstruction = { parts: [{ text: SYSTEM_PROMPT }] };
         const geminiContents: any[] = [];
 
@@ -243,7 +175,7 @@ serve(async (req) => {
         }
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -258,43 +190,30 @@ serve(async (req) => {
         if (!response.ok) {
           const t = await response.text();
           console.error("Gemini native API error:", response.status, t);
-          if (response.status === 429) return buildErrorResponse(429, "Muitas requisições. Tente novamente.");
-          return buildErrorResponse(500, "Erro no serviço de IA");
+          const aiError = handleAIStatus(response.status);
+          if (aiError) return aiError;
+          return errorResponse(500, "Erro no serviço de IA", { category: "model" });
         }
 
-        return new Response(transformGeminiStream(response), {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
+        return streamResponse(transformGeminiStream(response.body!));
       }
     }
 
     // Text-only path
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-        stream: true,
-      }),
+    const response = await callGemini({
+      model,
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      stream: true,
     });
 
     if (!response.ok) {
-      if (response.status === 429) return buildErrorResponse(429, "Muitas requisições. Tente novamente.");
-      if (response.status === 402) return buildErrorResponse(402, "Créditos insuficientes.");
+      const aiError = handleAIStatus(response.status);
+      if (aiError) return aiError;
       const t = await response.text();
       console.error("AI error:", response.status, t);
-      return buildErrorResponse(500, "Erro no serviço de IA");
+      return errorResponse(500, "Erro no serviço de IA", { category: "model" });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
-  } catch (e) {
-    console.error("comparator-chat error:", e);
-    return buildErrorResponse(500, e instanceof Error ? e.message : "Erro desconhecido");
-  }
+    return streamResponse(response.body);
+  })(req);
 });
