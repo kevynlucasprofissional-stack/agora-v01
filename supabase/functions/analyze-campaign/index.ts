@@ -3,6 +3,7 @@ import { handleCors } from "../_shared/cors.ts";
 import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
 import { fetchIbgeData } from "../_shared/ibge.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
+import { initCatalog, catalog, fetchBenchmarkResource } from "../_shared/mcp/index.ts";
 
 // ── Analysis tool schema ─────────────────────────────────────
 const ANALYSIS_TOOL = {
