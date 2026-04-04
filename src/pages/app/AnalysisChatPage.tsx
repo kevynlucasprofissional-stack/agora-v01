@@ -416,7 +416,7 @@ export default function AnalysisChatPage() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 flex gap-2 pt-4 border-t border-border/50">
+      <div className="shrink-0 flex gap-2 px-2 md:px-0 py-3 border-t border-border/40">
         <textarea
           ref={textareaRef}
           value={input}
