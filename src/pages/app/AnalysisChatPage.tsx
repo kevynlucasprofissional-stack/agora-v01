@@ -177,15 +177,16 @@ export default function AnalysisChatPage() {
 
       const imageUrl = data?.image_url || null;
       const creativeJobId = data?.creative_job_id || null;
-      const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+      const imageFailed = data?.image_generation_failed === true;
+      const expiresAt = imageUrl ? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() : null;
 
-      // Build the assistant message content
-      let msgContent = "✅ Imagem gerada com sucesso!";
+      let msgContent = imageFailed
+        ? "⚠️ Criativo gerado com textos, mas a imagem de fundo não pôde ser criada."
+        : "✅ Imagem gerada com sucesso!";
       if (creativeJobId) {
         msgContent += `\n\n[creative_job_id:${creativeJobId}]`;
       }
 
-      // Replace the generating message with the actual image message
       const imageMessage: ChatMessage = {
         role: "assistant",
         content: msgContent,
@@ -201,10 +202,13 @@ export default function AnalysisChatPage() {
         )
       );
 
-      // Save to DB
       await saveMessage(conversationId, "assistant", msgContent, imageUrl, expiresAt);
 
-      toast.success("Criativo gerado com sucesso!");
+      if (imageFailed) {
+        toast.warning("Imagem de fundo não gerada. Textos aplicados.");
+      } else {
+        toast.success("Criativo gerado com sucesso!");
+      }
     } catch (e: any) {
       console.error("Erro ao gerar criativo:", e);
       const errorMsg = "❌ Erro ao gerar criativo. Tente novamente.";

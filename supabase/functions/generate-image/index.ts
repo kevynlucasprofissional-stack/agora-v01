@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,131 @@ const corsHeaders = {
 
 const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
+const GEMINI_FALLBACK_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generateImageWithRetry(
+  parts: any[],
+  apiKey: string,
+  maxRetries = 2
+): Promise<{ imageData: any | null; failed: boolean }> {
+  const body = JSON.stringify({
+    contents: [{ parts }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+  });
+  const headers = { "Content-Type": "application/json" };
+
+  // Try primary model with retries
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Image generation attempt ${attempt + 1}/${maxRetries + 1} (primary model)`);
+      const res = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+        method: "POST",
+        headers,
+        body,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const resParts = data.candidates?.[0]?.content?.parts || [];
+        const imgPart = resParts.find((p: any) => p.inlineData);
+        if (imgPart) {
+          console.log("Image generated successfully (primary model)");
+          return { imageData: imgPart, failed: false };
+        }
+        console.warn("Primary model returned ok but no image part");
+      } else {
+        const statusCode = res.status;
+        const errorBody = await res.text();
+        console.error(`Primary model attempt ${attempt + 1} failed: ${statusCode} - ${errorBody.slice(0, 300)}`);
+        if (statusCode === 429 && attempt < maxRetries) {
+          const waitMs = Math.pow(2, attempt) * 1500;
+          console.log(`Rate limited, waiting ${waitMs}ms before retry...`);
+          await sleep(waitMs);
+          continue;
+        }
+      }
+    } catch (err) {
+      console.error(`Primary model attempt ${attempt + 1} exception:`, err);
+    }
+    if (attempt < maxRetries) {
+      await sleep(1000);
+    }
+  }
+
+  // Fallback model (text-only prompt, no reference images for compatibility)
+  try {
+    console.log("Trying fallback model (gemini-2.5-flash-preview-image-generation)...");
+    const textPart = parts.find((p: any) => p.text);
+    const fallbackBody = JSON.stringify({
+      contents: [{ parts: textPart ? [textPart] : parts }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    });
+    const res = await fetch(`${GEMINI_FALLBACK_IMAGE_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers,
+      body: fallbackBody,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const resParts = data.candidates?.[0]?.content?.parts || [];
+      const imgPart = resParts.find((p: any) => p.inlineData);
+      if (imgPart) {
+        console.log("Image generated successfully (fallback model)");
+        return { imageData: imgPart, failed: false };
+      }
+      console.warn("Fallback model returned ok but no image part");
+    } else {
+      const errorBody = await res.text();
+      console.error(`Fallback model failed: ${res.status} - ${errorBody.slice(0, 300)}`);
+    }
+  } catch (err) {
+    console.error("Fallback model exception:", err);
+  }
+
+  console.error("All image generation attempts failed");
+  return { imageData: null, failed: true };
+}
+
+async function uploadImageToStorage(
+  supabase: any,
+  userId: string,
+  imgPart: any
+): Promise<string> {
+  const rawImageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+  try {
+    const base64Match = rawImageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!base64Match) return rawImageUrl;
+
+    const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
+    const base64Data = base64Match[2];
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    const filePath = `${userId}/creatives/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("agora-files")
+      .upload(filePath, bytes, { contentType: `image/${base64Match[1]}`, upsert: true });
+
+    if (!uploadError) {
+      const { data: signedData } = await supabase.storage
+        .from("agora-files")
+        .createSignedUrl(filePath, 60 * 60 * 24 * 30);
+      return signedData?.signedUrl || rawImageUrl;
+    } else {
+      console.error("Storage upload error:", uploadError);
+      return rawImageUrl;
+    }
+  } catch (uploadErr) {
+    console.error("Failed to upload image to storage:", uploadErr);
+    return rawImageUrl;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -18,9 +144,27 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Auth: try to get user from JWT (optional - allows creative_job creation)
+    let userId: string | null = null;
+    const authHeader = req.headers.get("authorization") || "";
+    if (authHeader) {
+      try {
+        const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user } } = await anonClient.auth.getUser(token);
+        userId = user?.id || null;
+      } catch {
+        // Auth is optional for this function
+      }
+    }
+
     const { messages = [], user_prompt, format = "1080x1080", reference_images = [] } = await req.json();
 
-    // Build effective messages: combine chat history + user prompt
+    // Build effective messages
     const effectiveMessages = [...(Array.isArray(messages) ? messages : [])];
     if (user_prompt?.trim()) {
       effectiveMessages.push({ role: "user", content: user_prompt.trim() });
@@ -33,13 +177,12 @@ serve(async (req) => {
       });
     }
 
-    // Build context from chat messages
     const chatContext = effectiveMessages
       .map((m: any) => `${m.role}: ${m.content}`)
       .join("\n")
       .slice(0, 4000);
 
-    // ─── 1. Strategist: generate creative brief from chat context ───
+    // ─── 1. Strategist ───
     const hasRefImages = Array.isArray(reference_images) && reference_images.length > 0;
     const refImageNote = hasRefImages
       ? `\n\nO USUÁRIO ANEXOU ${reference_images.length} IMAGEM(NS) DE REFERÊNCIA. Leve em conta que o visual da imagem gerada deve se inspirar ou incorporar elementos dessas referências.`
@@ -73,7 +216,7 @@ Com base nesse contexto, retorne APENAS um JSON válido (sem markdown, sem \`\`\
 }
 
 REGRAS:
-- O headline, body_copy e CTA devem ser relevantes ao contexto do chat
+- O headline, body_copy, CTA e TODOS os textos em editable_layers devem ser escritos NO MESMO IDIOMA da instrução do usuário. Se foi escrita em português, TODOS os textos devem ser em português. NUNCA traduza para inglês.
 - O nano_banana_prompt deve ser em INGLÊS e descrever APENAS o visual de fundo, SEM texto
 - Inclua visual_direction coerente com o tema da conversa`;
 
@@ -94,11 +237,6 @@ REGRAS:
       if (status === 429) {
         return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns segundos." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error(`Strategist error: ${status}`);
@@ -127,7 +265,7 @@ REGRAS:
       };
     }
 
-    // ─── 2. Nano Banana Image Generation ───
+    // ─── 2. Image Generation with retry + fallback ───
     const imagePrompt = `${strategistOutput.nano_banana_prompt || "Professional marketing creative background"}
 
 FORMAT: ${format}
@@ -139,38 +277,28 @@ IMPORTANT RULES:
 - Leave clear space for text overlays
 - Make it modern, vibrant, and eye-catching`;
 
-    // Build parts for native Gemini generateContent API
-    const parts: any[] = [{ text: imagePrompt }];
+    const imageParts: any[] = [{ text: imagePrompt }];
     if (hasRefImages) {
       for (const img of reference_images) {
         const base64Match = img.content.match(/^data:image\/(\w+);base64,(.+)$/);
         if (base64Match) {
-          parts.push({ inlineData: { mimeType: `image/${base64Match[1]}`, data: base64Match[2] } });
+          imageParts.push({ inlineData: { mimeType: `image/${base64Match[1]}`, data: base64Match[2] } });
         } else {
-          parts.push({ inlineData: { mimeType: img.type || "image/png", data: img.content } });
+          imageParts.push({ inlineData: { mimeType: img.type || "image/png", data: img.content } });
         }
       }
     }
 
-    const imageRes = await fetch(`${GEMINI_IMAGE_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-      }),
-    });
+    const imageResult = await generateImageWithRetry(imageParts, GEMINI_API_KEY);
+    const image_generation_failed = imageResult.failed;
 
     let imageUrl = "";
-    if (imageRes.ok) {
-      const imageData = await imageRes.json();
-      const resParts = imageData.candidates?.[0]?.content?.parts || [];
-      const imgPart = resParts.find((p: any) => p.inlineData);
-      if (imgPart) {
-        imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-      }
-    } else {
-      console.error("Image generation failed:", imageRes.status, await imageRes.text());
+    if (imageResult.imageData && userId) {
+      imageUrl = await uploadImageToStorage(supabase, userId, imageResult.imageData);
+    } else if (imageResult.imageData) {
+      // No user auth — return base64 as fallback
+      const imgPart = imageResult.imageData;
+      imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
     }
 
     // ─── 3. Build Editable HTML ───
@@ -184,8 +312,16 @@ IMPORTANT RULES:
       : format === "1200x628" ? { w: 1200, h: 628 }
       : { w: 1080, h: 1080 };
 
-    const editableHtml = `<div class="creative-canvas" style="position:relative;width:100%;aspect-ratio:${dimensions.w}/${dimensions.h};overflow:hidden;border-radius:12px;background:#1a1a2e;">
-  <img src="${imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" />
+    const bgStyle = imageUrl
+      ? `background:#1a1a2e;`
+      : `background:linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%);`;
+
+    const imgTag = imageUrl
+      ? `<img src="${imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" />`
+      : `<!-- Image generation failed - gradient fallback -->`;
+
+    const editableHtml = `<div class="creative-canvas" style="position:relative;width:100%;aspect-ratio:${dimensions.w}/${dimensions.h};overflow:hidden;border-radius:12px;${bgStyle}">
+  ${imgTag}
   <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.3) 0%,transparent 40%,rgba(0,0,0,0.5) 100%);"></div>
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:0.75rem;">
     ${layers.map((layer: any) => {
@@ -206,6 +342,7 @@ IMPORTANT RULES:
     return new Response(JSON.stringify({
       strategist_output: strategistOutput,
       image_url: imageUrl,
+      image_generation_failed,
       editable_html: editableHtml,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

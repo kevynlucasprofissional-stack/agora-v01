@@ -374,7 +374,8 @@ export default function NewAnalysisPage() {
 
       if (data?.editable_html) {
         const imageUrl = data.image_url || null;
-        const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+        const imageFailed = data.image_generation_failed === true;
+        const expiresAt = imageUrl ? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() : null;
 
         setCreativeData({
           strategist_output: data.strategist_output,
@@ -400,7 +401,9 @@ export default function NewAnalysisPage() {
         }
 
         const jobTag = creativeJobId ? ` [creative_job_id:${creativeJobId}]` : "";
-        const messageContent = `✅ Imagem gerada com sucesso!${jobTag}`;
+        const messageContent = imageFailed
+          ? `⚠️ Criativo gerado com textos, mas a imagem de fundo não pôde ser criada.${jobTag}`
+          : `✅ Imagem gerada com sucesso!${jobTag}`;
 
         const imageMessage: ChatMessage = {
           role: "assistant",
@@ -418,12 +421,16 @@ export default function NewAnalysisPage() {
           )
         );
 
-        // Persist to DB with image_url and expires_at
+        // Persist to DB
         if (conversationId) {
           await persistMessage(conversationId, "assistant", messageContent, imageUrl, expiresAt);
         }
 
-        toast.success("Imagem gerada! Edite os textos clicando neles.");
+        if (imageFailed) {
+          toast.warning("Imagem de fundo não gerada. Textos aplicados.");
+        } else {
+          toast.success("Imagem gerada! Edite os textos clicando neles.");
+        }
       } else {
         throw new Error("Não foi possível gerar a imagem.");
       }
