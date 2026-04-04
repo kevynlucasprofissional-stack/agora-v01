@@ -4,6 +4,7 @@ import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from ".
 import { fetchIbgeData } from "../_shared/ibge.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 import { initCatalog, catalog, fetchBenchmarkResource } from "../_shared/mcp/index.ts";
+import { KernelRun } from "../_shared/kernel.ts";
 
 // ── Analysis tool schema ─────────────────────────────────────
 const ANALYSIS_TOOL = {
@@ -142,95 +143,6 @@ IMPORTANTE:
 - Analise sentimento geral da marca se dados disponíveis.
 - Se dados do IBGE forem fornecidos, USE-OS para enriquecer a análise regional e validar o público-alvo.`;
 
-// ── Step kinds for the kernel ────────────────────────────────
-const STEP_DEFINITIONS = [
-  { kind: "intake", order: 0, agent: "master_orchestrator" as const },
-  { kind: "sociobehavioral", order: 1, agent: "sociobehavioral" as const },
-  { kind: "offer_analysis", order: 2, agent: "offer_engineer" as const },
-  { kind: "performance_timing", order: 3, agent: "performance_scientist" as const },
-  { kind: "synthesis", order: 4, agent: "chief_strategist" as const },
-];
-
-// ── Run tracking helpers ─────────────────────────────────────
-async function createRun(supabaseAdmin: any, analysisRequestId: string, model: string) {
-  const { data } = await supabaseAdmin
-    .from("analysis_runs")
-    .insert({
-      analysis_request_id: analysisRequestId,
-      status: "running",
-      model_primary: model,
-      started_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  return data?.id;
-}
-
-async function createSteps(supabaseAdmin: any, runId: string, inputPayload: Record<string, unknown>) {
-  const steps = STEP_DEFINITIONS.map((s) => ({
-    run_id: runId,
-    step_kind: s.kind,
-    step_order: s.order,
-    agent_kind: s.agent,
-    status: "pending" as const,
-    input_payload: s.order === 0 ? inputPayload : {},
-  }));
-  await supabaseAdmin.from("run_steps").insert(steps);
-}
-
-async function completeRun(
-  supabaseAdmin: any,
-  runId: string,
-  status: "completed" | "failed",
-  modelUsed: string,
-  result: Record<string, unknown> | null,
-  startTime: number,
-  errorMsg?: string,
-) {
-  const duration = Date.now() - startTime;
-
-  // Update run
-  await supabaseAdmin
-    .from("analysis_runs")
-    .update({
-      status,
-      completed_at: new Date().toISOString(),
-      duration_ms: duration,
-      model_fallback: modelUsed,
-      error_message: errorMsg || null,
-    })
-    .eq("id", runId);
-
-  // Mark all steps as completed/failed with the synthesis output
-  if (status === "completed" && result) {
-    // Update all steps to completed
-    await supabaseAdmin
-      .from("run_steps")
-      .update({
-        status: "completed",
-        model_used: modelUsed,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("run_id", runId);
-
-    // Put full output on synthesis step
-    await supabaseAdmin
-      .from("run_steps")
-      .update({ output_payload: result })
-      .eq("run_id", runId)
-      .eq("step_kind", "synthesis");
-  } else {
-    await supabaseAdmin
-      .from("run_steps")
-      .update({
-        status: "failed",
-        error_message: errorMsg || "Run failed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("run_id", runId);
-  }
-}
-
 // ── IBGE enrichment ──────────────────────────────────────────
 async function buildIbgeSection(rawPrompt: string): Promise<string> {
   const regionPatterns = [
@@ -280,26 +192,21 @@ serve(async (req) => {
       return errorResponse(500, "GEMINI_API_KEY is not configured", { category: "integration" });
     }
 
-    const startTime = Date.now();
     const supabaseAdmin = createAdminClient();
 
-    // ── Create run if we have an analysisRequestId ──
-    let runId: string | null = null;
+    // ── Create kernel run ──
+    let run: KernelRun | null = null;
     if (analysisRequestId) {
-      try {
-        runId = await createRun(supabaseAdmin, analysisRequestId, "gemini-2.5-flash");
-        if (runId) {
-          await createSteps(supabaseAdmin, runId, { rawPrompt, title, files });
-        }
-      } catch (e) {
-        console.warn("Run tracking init failed (non-fatal):", e);
-      }
+      run = await KernelRun.create(supabaseAdmin, analysisRequestId, "gemini-2.5-flash", {
+        rawPrompt, title, files,
+      });
     }
 
-    // ── IBGE Enrichment ──
+    // ── Step 1: Intake — IBGE + Benchmark enrichment ──
+    const intakeStep = run ? await run.startStep("intake", { rawPrompt, title }) : null;
+
     const ibgeSection = await buildIbgeSection(rawPrompt);
 
-    // ── Benchmark Enrichment (Reality Layer) ──
     let benchmarkSection = "";
     try {
       const industry = title?.toLowerCase() || rawPrompt.slice(0, 100).toLowerCase();
@@ -312,6 +219,18 @@ ${JSON.stringify(benchResult.data, null, 2)}
 INSTRUÇÃO: Compare os KPIs da campanha com esses benchmarks reais da indústria.`;
       }
     } catch { /* non-fatal */ }
+
+    if (intakeStep) {
+      await intakeStep.complete(
+        { ibge_enriched: ibgeSection.length > 100, benchmark_enriched: benchmarkSection.length > 0 },
+        { model: "ibge+mcp" },
+      );
+    }
+
+    // ── Steps 2-4: Mark as running (handled by single AI call for now) ──
+    const socioStep = run ? await run.startStep("sociobehavioral") : null;
+    const offerStep = run ? await run.startStep("offer_analysis") : null;
+    const perfStep = run ? await run.startStep("performance_timing") : null;
 
     const userPrompt = `Analise a seguinte campanha de marketing:
 
@@ -361,9 +280,12 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
 
           const aiError = handleAIStatus(response!.status);
           if (aiError) {
-            if (runId) {
-              completeRun(supabaseAdmin, runId, "failed", model, null, startTime, `HTTP ${response!.status}`).catch(() => {});
-            }
+            // Fail all running steps
+            const failMsg = `HTTP ${response!.status}`;
+            await Promise.all([
+              socioStep?.fail(failMsg), offerStep?.fail(failMsg), perfStep?.fail(failMsg),
+            ]);
+            if (run) await run.finish("failed", { modelUsed: model, errorMessage: failMsg });
             return aiError;
           }
 
@@ -389,9 +311,10 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
 
     if (!response || !response.ok) {
       console.error("All AI models failed:", lastError);
-      if (runId) {
-        completeRun(supabaseAdmin, runId, "failed", modelUsed, null, startTime, lastError).catch(() => {});
-      }
+      await Promise.all([
+        socioStep?.fail(lastError), offerStep?.fail(lastError), perfStep?.fail(lastError),
+      ]);
+      if (run) await run.finish("failed", { modelUsed, errorMessage: lastError });
       return errorResponse(503, "Serviço de IA temporariamente indisponível. Tente novamente em alguns instantes.", { category: "model" });
     }
 
@@ -399,19 +322,65 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "analysis_result") {
       console.error("Unexpected response format:", JSON.stringify(data));
-      if (runId) {
-        completeRun(supabaseAdmin, runId, "failed", modelUsed, null, startTime, "Unexpected AI response format").catch(() => {});
-      }
+      const errMsg = "Unexpected AI response format";
+      await Promise.all([
+        socioStep?.fail(errMsg), offerStep?.fail(errMsg), perfStep?.fail(errMsg),
+      ]);
+      if (run) await run.finish("failed", { modelUsed, errorMessage: errMsg });
       return errorResponse(500, "Formato de resposta inesperado da IA", { category: "model" });
     }
 
     const analysisResult = JSON.parse(toolCall.function.arguments);
 
-    // ── Complete run tracking ──
-    if (runId) {
-      completeRun(supabaseAdmin, runId, "completed", modelUsed, analysisResult, startTime).catch((e) => {
-        console.warn("Run tracking completion failed (non-fatal):", e);
-      });
+    // ── Extract token usage from API response ──
+    const usage = data.usage || {};
+    const tokensIn = usage.prompt_tokens || null;
+    const tokensOut = usage.completion_tokens || null;
+    const perStepMetrics = { model: modelUsed, tokensIn, tokensOut };
+
+    // ── Complete agent steps with domain-specific outputs ──
+    await Promise.all([
+      socioStep?.complete(
+        {
+          marketing_era: analysisResult.marketing_era,
+          cognitive_biases: analysisResult.cognitive_biases,
+          audience_insights: analysisResult.audience_insights,
+          score: analysisResult.score_sociobehavioral,
+        },
+        perStepMetrics,
+      ),
+      offerStep?.complete(
+        {
+          hormozi_analysis: analysisResult.hormozi_analysis,
+          score: analysisResult.score_offer,
+        },
+        perStepMetrics,
+      ),
+      perfStep?.complete(
+        {
+          kpi_analysis: analysisResult.kpi_analysis,
+          timing_analysis: analysisResult.timing_analysis,
+          score: analysisResult.score_performance,
+        },
+        perStepMetrics,
+      ),
+    ]);
+
+    // ── Step 5: Synthesis ──
+    const synthStep = run ? await run.startStep("synthesis", { scores: {
+      overall: analysisResult.score_overall,
+      socio: analysisResult.score_sociobehavioral,
+      offer: analysisResult.score_offer,
+      performance: analysisResult.score_performance,
+    }}) : null;
+
+    if (synthStep) {
+      await synthStep.complete(analysisResult, perStepMetrics);
+    }
+
+    // ── Finish run ──
+    if (run) {
+      await run.finish("completed", { modelUsed });
     }
 
     // ── Return same contract as before ──
