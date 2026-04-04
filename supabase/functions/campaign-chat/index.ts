@@ -23,6 +23,10 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("campaign-chat", async () => {
+    const { checkRateLimit } = await import("../_shared/rate-limit.ts");
+    const rateLimited = await checkRateLimit(req, "campaign-chat", { maxRequests: 20, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { messages, currentDocument } = await req.json();
 
     const contextMessage = {

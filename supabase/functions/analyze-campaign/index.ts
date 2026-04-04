@@ -265,6 +265,10 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("analyze-campaign", async () => {
+    const { checkRateLimit } = await import("../_shared/rate-limit.ts");
+    const rateLimited = await checkRateLimit(req, "analyze-campaign", { maxRequests: 10, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { validatePayload, AnalyzePayloadSchema } = await import("../_shared/validation.ts");
     const body = await req.json();
     const validated = validatePayload(AnalyzePayloadSchema, body);

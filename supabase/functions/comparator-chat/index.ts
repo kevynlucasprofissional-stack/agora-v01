@@ -146,6 +146,10 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("comparator-chat", async () => {
+    const { checkRateLimit } = await import("../_shared/rate-limit.ts");
+    const rateLimited = await checkRateLimit(req, "comparator-chat", { maxRequests: 20, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { validatePayload, ChatPayloadSchema } = await import("../_shared/validation.ts");
     const body = await req.json();
     const validated = validatePayload(ChatPayloadSchema, body);
