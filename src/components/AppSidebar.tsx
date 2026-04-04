@@ -1,5 +1,5 @@
 import {
-  LayoutGrid, FolderOpen, Settings, User,
+  LayoutGrid, Settings, User,
   LogOut, Plus, Link2, BarChart3, MessageSquare, Palette, GitCompareArrows,
 } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";

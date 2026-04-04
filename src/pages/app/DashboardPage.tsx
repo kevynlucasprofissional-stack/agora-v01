@@ -5,7 +5,7 @@ import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { AnalysisRequest } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Plus, BarChart3, History, FolderOpen, Zap, ArrowRight, MessageSquare } from "lucide-react";
+import { Plus, BarChart3, History, Zap, ArrowRight, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import ScoreEvolutionChart from "@/components/ScoreEvolutionChart";
 
