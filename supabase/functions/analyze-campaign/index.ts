@@ -265,7 +265,11 @@ serve(async (req) => {
   if (cors) return cors;
 
   return withErrorHandler("analyze-campaign", async () => {
-    const { rawPrompt, title, files, analysisRequestId } = await req.json();
+    const { validatePayload, AnalyzePayloadSchema } = await import("../_shared/validation.ts");
+    const body = await req.json();
+    const validated = validatePayload(AnalyzePayloadSchema, body);
+    if (validated.error) return validated.error;
+    const { rawPrompt, title, files, analysisRequestId } = validated.data;
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) {
