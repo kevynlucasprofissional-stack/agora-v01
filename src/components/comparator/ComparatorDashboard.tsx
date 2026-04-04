@@ -73,11 +73,11 @@ function KpiCard({
   accent?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/30">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${accent || "bg-primary/10"}`}>
+    <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/30 min-w-0">
+      <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${accent || "bg-primary/10"}`}>
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <span className="text-xl font-bold text-foreground">{value}</span>
+      <span className="text-xl font-bold text-foreground truncate max-w-full">{value}</span>
       <span className="text-[10px] text-muted-foreground uppercase tracking-wider text-center leading-tight">{label}</span>
     </div>
   );
@@ -200,14 +200,15 @@ export function ComparatorDashboard({ data }: { data: DashboardData }) {
             Score Geral
           </p>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={barData} layout="vertical">
+            <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
               <YAxis
                 dataKey="name"
                 type="category"
                 tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                width={100}
+                width={80}
+                tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 11) + "…" : v}
               />
               <Tooltip
                 contentStyle={{

@@ -76,19 +76,9 @@ export default function CampaignComparatorPage() {
     }
   }, [messages]);
 
-  const pendingCardTextRef = useRef<string | null>(null);
-
   const handleContextCardSelect = useCallback((text: string) => {
-    pendingCardTextRef.current = text;
-    setInput(text);
+    handleSend(text);
   }, []);
-
-  useEffect(() => {
-    if (pendingCardTextRef.current && input === pendingCardTextRef.current && !isStreaming) {
-      pendingCardTextRef.current = null;
-      handleSend();
-    }
-  }, [input]);
 
   const handleFeedback = useCallback((index: number, type: "like" | "dislike") => {
     setFeedbacks((prev) => ({
@@ -159,9 +149,9 @@ export default function CampaignComparatorPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (overrideText?: string) => {
     if (isStreaming) return;
-    const text = input.trim();
+    const text = (overrideText || input).trim();
     if (!text && files.length === 0) return;
 
     let displayContent = text;
@@ -420,7 +410,7 @@ export default function CampaignComparatorPage() {
           </div>
 
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isStreaming || (!input.trim() && files.length === 0)}
             size="icon"
             className="shrink-0 h-10 w-10 rounded-xl"
