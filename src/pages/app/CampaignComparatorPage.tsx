@@ -224,7 +224,7 @@ export default function CampaignComparatorPage() {
       console.error(err);
       setIsStreaming(false);
       setLoading(false);
-      toast.error("Erro ao processar mensagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao processar mensagem.");
     }
   };
 
