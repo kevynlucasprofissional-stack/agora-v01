@@ -222,23 +222,21 @@ export default function AnalysisChatPage() {
     }
   }, [id, generatingCreative, conversationId]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isStreaming || !conversationId) return;
-    const userMsg = input.trim();
-    setInput("");
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const userMsg = (overrideText || input).trim();
+    if (!userMsg || isStreaming || !conversationId) return;
+    if (!overrideText) setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: userMsg }];
     setMessages(newMessages);
     setIsStreaming(true);
 
-    // Save user message to DB
     await saveMessage(conversationId, "user", userMsg);
 
     let assistantContent = "";
 
     try {
-      // Send all messages (except initial greeting) to API
       const apiMessages = newMessages.filter((_, i) => i > 0);
 
       await streamChat({
@@ -270,7 +268,6 @@ export default function AnalysisChatPage() {
         },
         onDone: async () => {
           setIsStreaming(false);
-          // Save assistant message to DB
           if (assistantContent && conversationId) {
             await saveMessage(conversationId, "assistant", assistantContent);
           }
