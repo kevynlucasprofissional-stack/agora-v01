@@ -293,58 +293,8 @@ export default function AnalysisChatPage() {
   };
 
   const handleContextCardSelect = useCallback((text: string) => {
-    setInput(text);
-    // Auto-send
-    setTimeout(() => {
-      const fakeMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
-      setMessages(fakeMessages);
-      setIsStreaming(true);
-      if (conversationId) {
-        saveMessage(conversationId, "user", text);
-      }
-      let assistantContent = "";
-      const apiMessages = fakeMessages.filter((_, i) => i > 0);
-      streamChat({
-        messages: apiMessages.map((m) => ({ role: m.role, content: m.content })),
-        functionName: "strategist-chat",
-        extraBody: {
-          analysisContext: analysis ? {
-            title: analysis.title,
-            score_overall: analysis.score_overall,
-            score_sociobehavioral: analysis.score_sociobehavioral,
-            score_offer: analysis.score_offer,
-            score_performance: analysis.score_performance,
-            industry: analysis.industry,
-            primary_channel: analysis.primary_channel,
-            declared_target_audience: analysis.declared_target_audience,
-            raw_prompt: analysis.raw_prompt,
-            normalized_payload: analysis.normalized_payload,
-          } : undefined,
-        },
-        onDelta: (chunk) => {
-          assistantContent += chunk;
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "user") {
-              return [...prev, { role: "assistant", content: assistantContent }];
-            }
-            return [...prev.slice(0, -1), { role: "assistant", content: assistantContent }];
-          });
-        },
-        onDone: async () => {
-          setIsStreaming(false);
-          if (assistantContent && conversationId) {
-            await saveMessage(conversationId, "assistant", assistantContent);
-          }
-        },
-      }).catch((e) => {
-        setIsStreaming(false);
-        const errorMsg = `❌ ${e instanceof Error ? e.message : "Erro ao conectar com a IA."}`;
-        setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
-      });
-    }, 0);
-    setInput("");
-  }, [messages, analysis, conversationId, isStreaming]);
+    handleSend(text);
+  }, [handleSend]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div>;
 
