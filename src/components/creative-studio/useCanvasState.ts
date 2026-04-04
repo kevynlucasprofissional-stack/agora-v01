@@ -318,6 +318,7 @@ export function useCanvasState() {
     zoom,
     setZoom,
     canvasReady,
+    setCanvasNotReady,
     undo,
     redo,
     addText,
