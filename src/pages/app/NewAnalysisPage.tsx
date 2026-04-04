@@ -12,6 +12,7 @@ import { ExternalLink } from "lucide-react";
 import { ChatMessageActions } from "@/components/ChatMessageActions";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { ChatMessageBubble, ChatLoadingBubble } from "@/components/ChatMessageBubble";
+import { TypewriterMarkdown } from "@/components/TypewriterMarkdown";
 import {
   type ChatMessage,
   saveMessage as persistMessageHelper,
