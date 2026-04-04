@@ -6,15 +6,8 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Cell,
 } from "recharts";
-import { Trophy, TrendingUp, Target, Zap, Award } from "lucide-react";
+import { Trophy, Target, Zap } from "lucide-react";
 
 export interface DashboardData {
   title?: string;
@@ -96,6 +89,14 @@ function DimBar({ label, value }: { label: string; value: number }) {
   );
 }
 
+function RankBadge({ rank }: { rank: number }) {
+  const badges = ["🥇", "🥈", "🥉"];
+  if (rank < badges.length) {
+    return <span className="text-sm" title={`#${rank + 1}`}>{badges[rank]}</span>;
+  }
+  return <span className="text-[10px] font-bold text-muted-foreground">#{rank + 1}</span>;
+}
+
 export function ComparatorDashboard({ data }: { data: DashboardData }) {
   const radarData = useMemo(() => {
     const dims = Object.entries(DIM_LABELS);
@@ -108,13 +109,14 @@ export function ComparatorDashboard({ data }: { data: DashboardData }) {
     });
   }, [data]);
 
-  const barData = useMemo(
-    () => data.scores.map((s) => ({ name: s.campaign, score: s.overall })),
+  const isSingle = data.scores.length === 1;
+  const isMultiple = data.scores.length >= 3;
+
+  // Sort by overall score for ranking
+  const rankedScores = useMemo(
+    () => [...data.scores].sort((a, b) => b.overall - a.overall),
     [data]
   );
-
-  const bestScore = data.scores.reduce((a, b) => (a.overall > b.overall ? a : b));
-  const isSingle = data.scores.length === 1;
 
   return (
     <div className="my-4 rounded-2xl border border-border/40 bg-card overflow-hidden">
@@ -128,34 +130,46 @@ export function ComparatorDashboard({ data }: { data: DashboardData }) {
             {data.title || "Dashboard Comparativo"}
           </h3>
           <p className="text-[10px] text-muted-foreground truncate">
-            {data.campaigns.join(" vs ")}
+            {data.campaigns.length <= 3
+              ? data.campaigns.join(" vs ")
+              : `${data.campaigns.length} campanhas comparadas`}
           </p>
         </div>
       </div>
 
-      {/* Campaign score cards - compact grid */}
-      <div className={`grid gap-3 p-4 ${data.scores.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
-        {data.scores.map((s, i) => (
-          <div key={s.campaign} className="rounded-xl border border-border/30 bg-background/50 p-3">
-            <div className="flex items-center gap-3 mb-2.5">
-              <ScoreRing value={s.overall} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  <span className="text-xs font-bold text-foreground truncate">{s.campaign}</span>
+      {/* Campaign score cards */}
+      <div className={`grid gap-3 p-4 ${
+        data.scores.length === 1
+          ? "grid-cols-1"
+          : data.scores.length === 2
+          ? "grid-cols-1 sm:grid-cols-2"
+          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      }`}>
+        {rankedScores.map((s, rankIdx) => {
+          const colorIdx = data.scores.findIndex(orig => orig.campaign === s.campaign);
+          return (
+            <div key={s.campaign} className="rounded-xl border border-border/30 bg-background/50 p-3">
+              <div className="flex items-center gap-3 mb-2.5">
+                <ScoreRing value={s.overall} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    {isMultiple && <RankBadge rank={rankIdx} />}
+                    <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[colorIdx % COLORS.length] }} />
+                    <span className="text-xs font-bold text-foreground truncate">{s.campaign}</span>
+                  </div>
+                  {s.verdict && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{s.verdict}</p>
+                  )}
                 </div>
-                {s.verdict && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{s.verdict}</p>
-                )}
+              </div>
+              <div className="space-y-1">
+                {Object.entries(DIM_LABELS).map(([key, label]) => (
+                  <DimBar key={key} label={label} value={s[key as keyof typeof s] as number} />
+                ))}
               </div>
             </div>
-            <div className="space-y-1">
-              {Object.entries(DIM_LABELS).map(([key, label]) => (
-                <DimBar key={key} label={label} value={s[key as keyof typeof s] as number} />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Radar chart - only for 2+ campaigns */}
@@ -186,11 +200,11 @@ export function ComparatorDashboard({ data }: { data: DashboardData }) {
                 ))}
               </RadarChart>
             </ResponsiveContainer>
-            <div className="flex gap-3 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               {data.scores.map((s, i) => (
                 <div key={s.campaign} className="flex items-center gap-1.5">
                   <div className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  <span className="text-[10px] text-muted-foreground">{s.campaign}</span>
+                  <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">{s.campaign}</span>
                 </div>
               ))}
             </div>

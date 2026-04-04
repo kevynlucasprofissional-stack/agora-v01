@@ -26,6 +26,35 @@ const THIRD_PARTY_ONLY = {
   ],
 };
 
+const MIXED_PARTY = {
+  messages: [
+    { role: "user", content: "Quero comparar minha campanha de e-commerce (CTR 2.5%, CPC R$1.50, ROAS 3.1, investimento R$10k, Instagram) com um anúncio que vi do concorrente MarcaX no Instagram: '70% OFF + Frete Grátis'. Não tenho dados internos dele." }
+  ],
+};
+
+const WITH_TEXT_ATTACHMENT = {
+  messages: [
+    { role: "user", content: "Compare essas duas campanhas com base no relatório anexo.\n\n📎 Arquivos: relatorio.csv" }
+  ],
+  fileContents: [
+    { name: "relatorio.csv", type: "text/csv", content: "campanha,ctr,cpc,conversoes\nCampanha A,3.2%,R$0.90,320\nCampanha B,1.5%,R$2.30,180", isBase64: false }
+  ],
+};
+
+const LONG_CONVERSATION = {
+  messages: [
+    { role: "user", content: "Quero comparar duas campanhas de Google Ads." },
+    { role: "assistant", content: "Claro! Me passe os dados das campanhas." },
+    { role: "user", content: "Campanha A: CTR 2.1%, CPC R$1.80, 300 conversões." },
+    { role: "assistant", content: "Entendi. E a Campanha B?" },
+    { role: "user", content: "Campanha B: CTR 3.5%, CPC R$0.90, 450 conversões." },
+    { role: "assistant", content: "Ambas são do mesmo período?" },
+    { role: "user", content: "Sim, mesmo período, mesmo público." },
+    { role: "assistant", content: "Processando análise..." },
+    { role: "user", content: "Pode detalhar melhor a performance?" },
+  ],
+};
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 const FUNCTION_URL = `${Deno.env.get("SUPABASE_URL")}/functions/v1/comparator-chat`;
@@ -50,7 +79,6 @@ async function collectStream(resp: Response): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     const chunk = decoder.decode(value, { stream: true });
-    // Extract text from SSE data lines
     for (const line of chunk.split("\n")) {
       if (!line.startsWith("data: ")) continue;
       const json = line.slice(6).trim();
@@ -73,7 +101,6 @@ Deno.test("comparator: returns streaming response for single campaign", async ()
   assertEquals(resp.headers.get("content-type"), "text/event-stream");
   const text = await collectStream(resp);
   assertExists(text);
-  // Should have some content
   assertEquals(text.length > 50, true, "Response should be substantial");
 });
 
@@ -81,18 +108,16 @@ Deno.test("comparator: 2 campaigns produce DASHBOARD block", async () => {
   const resp = await callComparator(TWO_CAMPAIGNS_FIRST_PARTY);
   assertEquals(resp.status, 200);
   const text = await collectStream(resp);
-  // Should contain dashboard JSON block
   const hasDashboard = text.includes("[DASHBOARD]") && text.includes("[/DASHBOARD]");
   assertEquals(hasDashboard, true, `Expected [DASHBOARD] block in response. Got ${text.length} chars.`);
 });
 
-Deno.test("comparator: 3+ campaigns produce DASHBOARD block", async () => {
+Deno.test("comparator: 3+ campaigns produce DASHBOARD block with 3+ scores", async () => {
   const resp = await callComparator(THREE_PLUS_CAMPAIGNS);
   assertEquals(resp.status, 200);
   const text = await collectStream(resp);
   const hasDashboard = text.includes("[DASHBOARD]") && text.includes("[/DASHBOARD]");
   assertEquals(hasDashboard, true, `Expected [DASHBOARD] block for 3+ campaigns`);
-  // Should have 3 score entries in dashboard
   const dashMatch = text.match(/\[DASHBOARD\]([\s\S]*?)\[\/DASHBOARD\]/);
   if (dashMatch) {
     try {
@@ -106,15 +131,39 @@ Deno.test("comparator: third-party omits executive recommendation", async () => 
   const resp = await callComparator(THIRD_PARTY_ONLY);
   assertEquals(resp.status, 200);
   const text = await collectStream(resp);
-  // Should NOT have "Recomendação Executiva" section
   const hasExecRec = text.includes("Recomendação Executiva");
   assertEquals(hasExecRec, false, "Third-party-only should omit Recomendação Executiva");
 });
 
+Deno.test("comparator: mixed party (first + third) includes recommendation", async () => {
+  const resp = await callComparator(MIXED_PARTY);
+  assertEquals(resp.status, 200);
+  const text = await collectStream(resp);
+  assertExists(text);
+  assertEquals(text.length > 100, true, "Mixed party response should be substantial");
+  // Mixed party with at least one first-party campaign should include dashboard
+  const hasDashboard = text.includes("[DASHBOARD]") && text.includes("[/DASHBOARD]");
+  assertEquals(hasDashboard, true, "Mixed party should produce dashboard");
+});
+
+Deno.test("comparator: handles text file attachment", async () => {
+  const resp = await callComparator(WITH_TEXT_ATTACHMENT);
+  assertEquals(resp.status, 200);
+  const text = await collectStream(resp);
+  assertExists(text);
+  assertEquals(text.length > 50, true, "Should process text attachment");
+});
+
+Deno.test("comparator: long conversation still works", async () => {
+  const resp = await callComparator(LONG_CONVERSATION);
+  assertEquals(resp.status, 200);
+  const text = await collectStream(resp);
+  assertExists(text);
+  assertEquals(text.length > 30, true, "Long conversation should produce response");
+});
+
 Deno.test("comparator: rejects empty messages", async () => {
   const resp = await callComparator({ messages: [] });
-  // Should either error or return a minimal response
-  // The function should handle gracefully
   assertEquals(resp.status >= 200 && resp.status < 500, true, "Should not crash on empty messages");
   await resp.body?.cancel();
 });
