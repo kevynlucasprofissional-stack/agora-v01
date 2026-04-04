@@ -3,6 +3,7 @@ import { handleCors } from "../_shared/cors.ts";
 import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
 import { fetchIbgeData } from "../_shared/ibge.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
+import { initCatalog, catalog, fetchBenchmarkResource } from "../_shared/mcp/index.ts";
 
 // ── Analysis tool schema ─────────────────────────────────────
 const ANALYSIS_TOOL = {
@@ -290,6 +291,20 @@ serve(async (req) => {
     // ── IBGE Enrichment ──
     const ibgeSection = await buildIbgeSection(rawPrompt);
 
+    // ── Benchmark Enrichment (Reality Layer) ──
+    let benchmarkSection = "";
+    try {
+      const industry = title?.toLowerCase() || rawPrompt.slice(0, 100).toLowerCase();
+      const benchResult = fetchBenchmarkResource(industry);
+      if (benchResult.success && benchResult.data) {
+        benchmarkSection = `\n\n# BENCHMARKS DE MERCADO (Reality Layer)
+${JSON.stringify(benchResult.data, null, 2)}
+- Fonte: ${benchResult.source}
+
+INSTRUÇÃO: Compare os KPIs da campanha com esses benchmarks reais da indústria.`;
+      }
+    } catch { /* non-fatal */ }
+
     const userPrompt = `Analise a seguinte campanha de marketing:
 
 TÍTULO: ${title || "Sem título"}
@@ -299,6 +314,7 @@ ${rawPrompt}
 
 ${files?.length ? `\nARQUIVOS ANEXADOS: ${files.map((f: string) => f).join(", ")}` : ""}
 ${ibgeSection}
+${benchmarkSection}
 
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
