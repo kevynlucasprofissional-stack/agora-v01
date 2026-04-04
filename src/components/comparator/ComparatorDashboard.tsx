@@ -200,14 +200,15 @@ export function ComparatorDashboard({ data }: { data: DashboardData }) {
             Score Geral
           </p>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={barData} layout="vertical">
+            <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
               <YAxis
                 dataKey="name"
                 type="category"
                 tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                width={100}
+                width={80}
+                tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 11) + "…" : v}
               />
               <Tooltip
                 contentStyle={{
