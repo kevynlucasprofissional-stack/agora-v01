@@ -363,15 +363,18 @@ export function useWorkspaceState() {
   }, [elements, selectedId, editingId]);
 
   const updateElement = useCallback((id: string, updates: Partial<any>) => {
-    setElements((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
-    );
-    // If it's an artboard, schedule DB save
-    const el = elements.find((e) => e.id === id);
-    if (el?.type === "artboard") {
-      scheduleArtboardSave(id);
-    }
-  }, [elements, scheduleArtboardSave]);
+    setElements((prev) => {
+      const updated = prev.map((e) => (e.id === id ? { ...e, ...updates } : e));
+      // If it's an artboard, schedule DB save
+      const el = updated.find((e) => e.id === id);
+      if (el?.type === "artboard") {
+        savePendingRef.current.add(id);
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => flushArtboardSaves(), 2000);
+      }
+      return updated;
+    });
+  }, [flushArtboardSaves]);
 
   // ---- Z-Index ----
   const bringToFront = useCallback((id: string) => {

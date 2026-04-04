@@ -17,7 +17,9 @@ export function FabricCanvas({ state }: Props) {
     }
     return () => {
       state.canvasRef?.current?.dispose();
+      state.canvasRef.current = null;
       initialized.current = false;
+      state.setCanvasNotReady();
     };
   }, [state.initCanvas]);
 
