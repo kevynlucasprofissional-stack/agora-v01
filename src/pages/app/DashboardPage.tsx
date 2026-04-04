@@ -198,8 +198,6 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4 mr-2" /> Nova Análise
               </Link>
             </Button>
-              </Link>
-            </Button>
           </div>
         ) : (
           <div className="space-y-2">
