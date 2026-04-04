@@ -353,8 +353,16 @@ IMPORTANT RULES:
       : format === "1200x628" ? { w: 1200, h: 628 }
       : { w: 1080, h: 1080 };
 
-    const editableHtml = `<div class="creative-canvas" style="position:relative;width:100%;aspect-ratio:${dimensions.w}/${dimensions.h};overflow:hidden;border-radius:12px;background:#1a1a2e;">
-  <img src="${imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" />
+    const bgStyle = imageUrl
+      ? `background:#1a1a2e;`
+      : `background:linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%);`;
+
+    const imgTag = imageUrl
+      ? `<img src="${imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" />`
+      : `<!-- Image generation failed - gradient fallback -->`;
+
+    const editableHtml = `<div class="creative-canvas" style="position:relative;width:100%;aspect-ratio:${dimensions.w}/${dimensions.h};overflow:hidden;border-radius:12px;${bgStyle}">
+  ${imgTag}
   <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.3) 0%,transparent 40%,rgba(0,0,0,0.5) 100%);"></div>
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:0.75rem;">
     ${layers.map((layer: any) => {
