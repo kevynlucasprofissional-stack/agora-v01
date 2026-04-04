@@ -149,9 +149,9 @@ export default function CampaignComparatorPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (overrideText?: string) => {
     if (isStreaming) return;
-    const text = input.trim();
+    const text = (overrideText || input).trim();
     if (!text && files.length === 0) return;
 
     let displayContent = text;
