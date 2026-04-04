@@ -36,11 +36,13 @@ export default function CreativeStudioPage() {
     if (ab.format !== canvasState.format) canvasState.changeFormat(ab.format);
     if (ab.layersState && typeof ab.layersState === "object") {
       const ls = ab.layersState as any;
+      // Check for content: objects OR backgroundImage
       const hasContent = (ls.objects?.length > 0) || ls.backgroundImage;
       if (hasContent) {
         canvasState.loadJSON(ab.layersState);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace.editingId, canvasState.canvasReady]);
 
   // Handle jobId: find or create linked artboard, then open it
