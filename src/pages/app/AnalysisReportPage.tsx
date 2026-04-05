@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
   Sparkles, Globe, Brain, TrendingUp, AlertTriangle, Target, Clock, Eye, Plus,
-  FileText, Presentation, ChevronDown, ChevronUp, LayoutGrid,
+  FileText, Presentation, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
