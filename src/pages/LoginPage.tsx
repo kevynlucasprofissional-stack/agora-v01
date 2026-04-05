@@ -40,21 +40,37 @@ export default function LoginPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+
+    // Use published URL when available, fallback to current origin
+    const redirectUrl = window.location.hostname.includes("lovableproject.com")
+      ? "https://agora-mkt-ai.lovable.app"
+      : window.location.origin;
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: redirectUrl,
       },
     });
     setLoading(false);
+
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+      return;
     }
+
+    // Supabase returns a user with empty identities when email already exists
+    // (security: prevents email enumeration)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      toast.error("Já existe uma conta com este e-mail. Tente fazer login.");
+      setTab("login");
+      return;
+    }
+
+    toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+    navigate(`/verify-email?email=${encodeURIComponent(email)}`);
   };
 
   const handleGoogleLogin = async () => {
