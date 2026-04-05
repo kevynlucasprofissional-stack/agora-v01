@@ -171,6 +171,52 @@ INSTRUÇÃO: Use esses dados reais na sua análise sociocomportamental. Se a pop
   return "\n\n# DADOS IBGE: Região não identificada automaticamente no prompt. Use sua análise contextual.";
 }
 
+// ── n8n webhook dispatch (fire-and-forget with short timeout) ──
+async function dispatchToN8n(payload: {
+  run_id: string;
+  rawPrompt: string;
+  title: string | null;
+  files: string[] | null;
+  user_id: string;
+  supabase_url: string;
+}): Promise<{ dispatched: boolean; error?: string }> {
+  const webhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
+  const webhookSecret = Deno.env.get("N8N_INTERNAL_SECRET");
+
+  if (!webhookUrl) {
+    console.warn("[n8n-dispatch] N8N_WEBHOOK_URL not configured, skipping dispatch");
+    return { dispatched: false, error: "N8N_WEBHOOK_URL not configured" };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(webhookSecret ? { "x-agora-webhook-secret": webhookSecret } : {}),
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    console.log(`[n8n-dispatch] Response: ${res.status} for run_id=${payload.run_id}`);
+    // Consume body to prevent resource leak
+    await res.text();
+    return { dispatched: res.ok };
+  } catch (err) {
+    clearTimeout(timeout);
+    const msg = err instanceof DOMException && err.name === "AbortError"
+      ? "Timeout (8s)"
+      : String(err);
+    console.error(`[n8n-dispatch] Failed for run_id=${payload.run_id}: ${msg}`);
+    return { dispatched: false, error: msg };
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────
 serve(async (req) => {
   const cors = handleCors(req);
@@ -194,6 +240,17 @@ serve(async (req) => {
 
     const supabaseAdmin = createAdminClient();
 
+    // ── Extract user_id from JWT (best-effort) ──
+    let userId = "anonymous";
+    try {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader) {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+        if (user) userId = user.id;
+      }
+    } catch { /* non-fatal */ }
+
     // ── Create kernel run ──
     let run: KernelRun | null = null;
     if (analysisRequestId) {
@@ -202,8 +259,49 @@ serve(async (req) => {
       });
     }
 
-    // ── Step 1: Intake — IBGE + Benchmark enrichment ──
+    // ── Step 1: Intake — create run_steps ──
     const intakeStep = run ? await run.startStep("intake", { rawPrompt, title }) : null;
+
+    // ── ASYNC PATH: Dispatch to n8n and return 202 immediately ──
+    if (run) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+
+      // Fire n8n webhook (non-blocking for user)
+      const dispatchResult = await dispatchToN8n({
+        run_id: run.runId,
+        rawPrompt,
+        title: title || null,
+        files: files || null,
+        user_id: userId,
+        supabase_url: supabaseUrl,
+      });
+
+      if (intakeStep) {
+        await intakeStep.complete(
+          { n8n_dispatched: dispatchResult.dispatched, dispatch_error: dispatchResult.error || null },
+          { model: "n8n-webhook" },
+        );
+      }
+
+      console.log(`[analyze-campaign] Returning 202 for run_id=${run.runId}, n8n_dispatched=${dispatchResult.dispatched}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          run_id: run.runId,
+          status: "processing",
+          n8n_dispatched: dispatchResult.dispatched,
+        }),
+        {
+          status: 202,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        },
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ── LEGACY PATH (fallback — no analysisRequestId / no run) ──
+    // ══════════════════════════════════════════════════════════════
 
     const ibgeSection = await buildIbgeSection(rawPrompt);
 
@@ -227,7 +325,6 @@ INSTRUÇÃO: Compare os KPIs da campanha com esses benchmarks reais da indústri
       );
     }
 
-    // ── Steps 2-4: Mark as running (handled by single AI call for now) ──
     const socioStep = run ? await run.startStep("sociobehavioral") : null;
     const offerStep = run ? await run.startStep("offer_analysis") : null;
     const perfStep = run ? await run.startStep("performance_timing") : null;
@@ -245,7 +342,6 @@ ${benchmarkSection}
 
 Use a ferramenta "analysis_result" para retornar sua análise estruturada completa.`;
 
-    // ── AI call with retry + fallback ──
     const models = ["gemini-2.5-flash", "gemini-2.5-pro"];
     let response: Response | null = null;
     let lastError = "";
@@ -280,7 +376,6 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
 
           const aiError = handleAIStatus(response!.status);
           if (aiError) {
-            // Fail all running steps
             const failMsg = `HTTP ${response!.status}`;
             await Promise.all([
               socioStep?.fail(failMsg), offerStep?.fail(failMsg), perfStep?.fail(failMsg),
@@ -332,13 +427,11 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
 
     const analysisResult = JSON.parse(toolCall.function.arguments);
 
-    // ── Extract token usage from API response ──
     const usage = data.usage || {};
     const tokensIn = usage.prompt_tokens || null;
     const tokensOut = usage.completion_tokens || null;
     const perStepMetrics = { model: modelUsed, tokensIn, tokensOut };
 
-    // ── Complete agent steps with domain-specific outputs ──
     await Promise.all([
       socioStep?.complete(
         {
@@ -366,7 +459,6 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
       ),
     ]);
 
-    // ── Step 5: Synthesis ──
     const synthStep = run ? await run.startStep("synthesis", { scores: {
       overall: analysisResult.score_overall,
       socio: analysisResult.score_sociobehavioral,
@@ -378,12 +470,10 @@ Use a ferramenta "analysis_result" para retornar sua análise estruturada comple
       await synthStep.complete(analysisResult, perStepMetrics);
     }
 
-    // ── Finish run ──
     if (run) {
       await run.finish("completed", { modelUsed });
     }
 
-    // ── Return same contract as before ──
     return jsonResponse({ success: true, analysis: analysisResult });
   })(req);
 });
