@@ -549,16 +549,17 @@ export default function NewAnalysisPage() {
   const runRealAnalysis = async (analysisId: string) => {
     setStep("processing");
 
+    // Animate agent icons while waiting
     const agentTimers: NodeJS.Timeout[] = [];
-    let agentIdx = 0;
     for (let i = 1; i < agentOrder.length; i++) {
-      agentTimers.push(setTimeout(() => { setCurrentAgent(i); }, i * 3000));
+      agentTimers.push(setTimeout(() => { setCurrentAgent(i); }, i * 5000));
     }
 
     try {
       const fullPrompt = getFullPrompt();
       const fileNames = files.map(f => f.name);
 
+      // ── Step 1: Dispatch to analyze-campaign (returns 202) ──
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-campaign`,
         {
@@ -576,47 +577,82 @@ export default function NewAnalysisPage() {
         }
       );
 
-      agentTimers.forEach(clearTimeout);
-      setCurrentAgent(agentOrder.length - 1);
-
-      if (!resp.ok) {
+      if (!resp.ok && resp.status !== 202) {
         const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.error || "Erro na análise");
+        throw new Error(errData.error || "Erro ao iniciar análise");
       }
 
-      const { analysis: result } = await resp.json();
+      const dispatchData = await resp.json();
+      console.log("[analyze] Dispatch accepted:", dispatchData);
 
-      await supabase
-        .from("analysis_requests")
-        .update({
-          status: "completed",
-          score_overall: result.score_overall,
-          score_sociobehavioral: result.score_sociobehavioral,
-          score_offer: result.score_offer,
-          score_performance: result.score_performance,
-          industry: result.industry,
-          primary_channel: result.primary_channel,
-          declared_target_audience: result.declared_target_audience,
-          region: result.region || null,
-          completed_at: new Date().toISOString(),
-          normalized_payload: {
-            executive_summary: result.executive_summary,
-            improvements: result.improvements,
-            strengths: result.strengths,
-            audience_insights: result.audience_insights,
-            market_references: result.market_references,
-            marketing_era: result.marketing_era,
-            cognitive_biases: result.cognitive_biases,
-            hormozi_analysis: result.hormozi_analysis,
-            kpi_analysis: result.kpi_analysis,
-            timing_analysis: result.timing_analysis,
-            brand_sentiment: result.brand_sentiment,
+      // ── Step 2: Subscribe to realtime updates on analysis_requests ──
+      const channel = supabase
+        .channel(`analysis-${analysisId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "analysis_requests",
+            filter: `id=eq.${analysisId}`,
           },
-        })
-        .eq("id", analysisId);
+          (payload) => {
+            const updated = payload.new as any;
+            console.log("[realtime] analysis_requests update:", updated.status);
 
-      setStep("completed");
-      setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
+            if (updated.status === "completed") {
+              agentTimers.forEach(clearTimeout);
+              setCurrentAgent(agentOrder.length - 1);
+              channel.unsubscribe();
+              setStep("completed");
+              setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
+            } else if (updated.status === "failed") {
+              agentTimers.forEach(clearTimeout);
+              channel.unsubscribe();
+              toast.error("A análise falhou. Tente novamente.");
+              setStep("intake");
+            }
+          }
+        )
+        .subscribe();
+
+      // ── Step 3: Fallback polling (in case realtime misses the event) ──
+      const POLL_INTERVAL = 5000;
+      const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minutes
+      const pollStart = Date.now();
+
+      const pollTimer = setInterval(async () => {
+        if (Date.now() - pollStart > MAX_POLL_TIME) {
+          clearInterval(pollTimer);
+          channel.unsubscribe();
+          agentTimers.forEach(clearTimeout);
+          toast.error("Tempo limite excedido. Verifique o histórico de análises.");
+          setStep("intake");
+          return;
+        }
+
+        const { data: current } = await supabase
+          .from("analysis_requests")
+          .select("status")
+          .eq("id", analysisId)
+          .single();
+
+        if (current?.status === "completed") {
+          clearInterval(pollTimer);
+          channel.unsubscribe();
+          agentTimers.forEach(clearTimeout);
+          setCurrentAgent(agentOrder.length - 1);
+          setStep("completed");
+          setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
+        } else if (current?.status === "failed") {
+          clearInterval(pollTimer);
+          channel.unsubscribe();
+          agentTimers.forEach(clearTimeout);
+          toast.error("A análise falhou. Tente novamente.");
+          setStep("intake");
+        }
+      }, POLL_INTERVAL);
+
     } catch (e) {
       agentTimers.forEach(clearTimeout);
       console.error("Analysis error:", e);
