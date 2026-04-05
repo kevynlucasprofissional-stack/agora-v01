@@ -3,6 +3,10 @@
  *
  * POST { run_id, status, analysis?, error?, agent_responses? }
  * Auth: x-agora-callback-secret header
+ *
+ * When status=completed and analysis is provided, the callback also
+ * persists scores and normalized_payload to analysis_requests so the
+ * frontend can display the report.
  */
 
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
@@ -79,7 +83,7 @@ Deno.serve(async (req) => {
     // Fetch current run
     const { data: run, error: fetchErr } = await sb
       .from("analysis_runs")
-      .select("id, status")
+      .select("id, status, analysis_request_id")
       .eq("id", run_id)
       .maybeSingle();
 
@@ -92,7 +96,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, message: "already finalized", current_status: run.status });
     }
 
-    // Build update payload
+    // Build update payload for analysis_runs
     const update: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
@@ -125,6 +129,67 @@ Deno.serve(async (req) => {
       .eq("id", run_id);
 
     if (updateErr) throw updateErr;
+
+    // ── Persist analysis results to analysis_requests ──
+    // This is what the frontend reads for the report page
+    if (status === "completed" && analysis && run.analysis_request_id) {
+      const analysisData = analysis as Record<string, any>;
+      const requestUpdate: Record<string, unknown> = {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Scores
+      if (analysisData.score_overall != null) requestUpdate.score_overall = analysisData.score_overall;
+      if (analysisData.score_sociobehavioral != null) requestUpdate.score_sociobehavioral = analysisData.score_sociobehavioral;
+      if (analysisData.score_offer != null) requestUpdate.score_offer = analysisData.score_offer;
+      if (analysisData.score_performance != null) requestUpdate.score_performance = analysisData.score_performance;
+
+      // Metadata fields
+      if (analysisData.industry) requestUpdate.industry = analysisData.industry;
+      if (analysisData.primary_channel) requestUpdate.primary_channel = analysisData.primary_channel;
+      if (analysisData.declared_target_audience) requestUpdate.declared_target_audience = analysisData.declared_target_audience;
+      if (analysisData.region) requestUpdate.region = analysisData.region;
+
+      // Normalized payload (the full analysis for the report)
+      requestUpdate.normalized_payload = {
+        executive_summary: analysisData.executive_summary,
+        improvements: analysisData.improvements,
+        strengths: analysisData.strengths,
+        audience_insights: analysisData.audience_insights,
+        market_references: analysisData.market_references,
+        marketing_era: analysisData.marketing_era,
+        cognitive_biases: analysisData.cognitive_biases,
+        hormozi_analysis: analysisData.hormozi_analysis,
+        kpi_analysis: analysisData.kpi_analysis,
+        timing_analysis: analysisData.timing_analysis,
+        brand_sentiment: analysisData.brand_sentiment,
+        ibge_insights: analysisData.ibge_insights,
+      };
+
+      const { error: reqUpdateErr } = await sb
+        .from("analysis_requests")
+        .update(requestUpdate)
+        .eq("id", run.analysis_request_id);
+
+      if (reqUpdateErr) {
+        console.error(`n8n-callback | Failed to update analysis_requests: ${reqUpdateErr.message}`);
+      } else {
+        console.log(`n8n-callback | analysis_requests updated for ${run.analysis_request_id}`);
+      }
+    }
+
+    // If failed, also update analysis_requests status
+    if (status === "failed" && run.analysis_request_id) {
+      await sb
+        .from("analysis_requests")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", run.analysis_request_id);
+    }
 
     // Insert agent_responses if provided
     let responsesInserted = 0;
