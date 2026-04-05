@@ -1,0 +1,171 @@
+/**
+ * n8n-callback – Receives async workflow results from n8n.
+ *
+ * POST { run_id, status, analysis?, error?, agent_responses? }
+ * Auth: x-agora-callback-secret header
+ */
+
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { createAdminClient } from "../_shared/supabase.ts";
+
+// ── Zod schema ──────────────────────────────────────────────
+const AgentResponseSchema = z.object({
+  agent_id: z.string().uuid(),
+  analysis_request_id: z.string().uuid(),
+  content: z.unknown().nullable().optional(),
+  content_text: z.string().nullable().optional(),
+  response_format: z.enum(["json", "markdown", "text"]).optional(),
+  success: z.boolean().optional(),
+  error_message: z.string().nullable().optional(),
+  model_name: z.string().nullable().optional(),
+  latency_ms: z.number().int().nullable().optional(),
+  tokens_input: z.number().int().nullable().optional(),
+  tokens_output: z.number().int().nullable().optional(),
+});
+
+const PayloadSchema = z.object({
+  run_id: z.string().uuid("run_id must be a valid UUID"),
+  status: z.enum(["completed", "failed"]),
+  analysis: z.record(z.unknown()).nullable().optional(),
+  error: z.string().nullable().optional(),
+  agent_responses: z.array(AgentResponseSchema).nullable().optional(),
+});
+
+// ── Helpers ─────────────────────────────────────────────────
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+const TERMINAL = ["completed", "failed"];
+
+// ── Handler ─────────────────────────────────────────────────
+Deno.serve(async (req) => {
+  const cors = handleCors(req);
+  if (cors) return cors;
+
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
+  }
+
+  // Auth
+  const secret = Deno.env.get("AGORA_CALLBACK_SECRET");
+  const provided = req.headers.get("x-agora-callback-secret") ?? "";
+  if (!secret || provided !== secret) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
+  const start = performance.now();
+  let runId = "";
+
+  try {
+    const raw = await req.json();
+    const parsed = PayloadSchema.safeParse(raw);
+    if (!parsed.success) {
+      return json(
+        { error: "Invalid payload", details: parsed.error.flatten().fieldErrors },
+        400,
+      );
+    }
+
+    const { run_id, status, analysis, error: errorMsg, agent_responses } = parsed.data;
+    runId = run_id;
+
+    const sb = createAdminClient();
+
+    // Fetch current run
+    const { data: run, error: fetchErr } = await sb
+      .from("analysis_runs")
+      .select("id, status")
+      .eq("id", run_id)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!run) return json({ error: "Run not found", run_id }, 404);
+
+    // Idempotency: skip if already terminal
+    if (TERMINAL.includes(run.status)) {
+      console.log(`n8n-callback | run=${runId} | already finalized (${run.status})`);
+      return json({ ok: true, message: "already finalized", current_status: run.status });
+    }
+
+    // Build update payload
+    const update: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    };
+
+    if (status === "completed" && analysis) {
+      update.metadata = analysis;
+    }
+    if (status === "failed" && errorMsg) {
+      update.error_message = errorMsg;
+    }
+
+    // Duration
+    const { data: runFull } = await sb
+      .from("analysis_runs")
+      .select("started_at")
+      .eq("id", run_id)
+      .single();
+
+    if (runFull?.started_at) {
+      const durationMs = Date.now() - new Date(runFull.started_at).getTime();
+      update.duration_ms = durationMs;
+    }
+
+    // Update analysis_runs
+    const { error: updateErr } = await sb
+      .from("analysis_runs")
+      .update(update)
+      .eq("id", run_id);
+
+    if (updateErr) throw updateErr;
+
+    // Insert agent_responses if provided
+    let responsesInserted = 0;
+    if (agent_responses && agent_responses.length > 0) {
+      const rows = agent_responses.map((r) => ({
+        agent_id: r.agent_id,
+        analysis_request_id: r.analysis_request_id,
+        content: r.content ?? null,
+        content_text: r.content_text ?? null,
+        response_format: r.response_format ?? "json",
+        success: r.success ?? true,
+        error_message: r.error_message ?? null,
+        model_name: r.model_name ?? null,
+        latency_ms: r.latency_ms ?? null,
+        tokens_input: r.tokens_input ?? null,
+        tokens_output: r.tokens_output ?? null,
+      }));
+
+      const { error: insertErr } = await sb
+        .from("agent_responses")
+        .insert(rows);
+
+      if (insertErr) throw insertErr;
+      responsesInserted = rows.length;
+    }
+
+    const ms = (performance.now() - start).toFixed(0);
+    console.log(
+      `n8n-callback | run=${runId} | status=${status} | responses=${responsesInserted} | ${ms}ms`,
+    );
+
+    return json({
+      ok: true,
+      run_id,
+      status,
+      agent_responses_inserted: responsesInserted,
+    });
+  } catch (e) {
+    const ms = (performance.now() - start).toFixed(0);
+    const msg = e instanceof Error ? e.message : "Internal error";
+    console.error(`n8n-callback | run=${runId} | ${ms}ms | ERROR: ${msg}`);
+    return json({ error: msg }, 500);
+  }
+});
