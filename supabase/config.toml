@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.cleanup-expired-images]
 verify_jwt = false
+
+[functions.mcp-resource]
+verify_jwt = false
