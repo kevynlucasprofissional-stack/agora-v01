@@ -93,7 +93,7 @@ export default function VerifyEmailPage() {
 
           {verified ? (
             <div className="flex flex-col items-center gap-4 py-6">
-              <CheckCircle className="h-12 w-12 text-green-500" />
+              <CheckCircle className="h-12 w-12 text-primary" />
               <p className="text-lg font-medium">E-mail verificado!</p>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
             </div>
