@@ -259,49 +259,27 @@ serve(async (req) => {
       });
     }
 
-    // ── Step 1: Intake — create run_steps ──
+    // ── Step 1: Intake — IBGE + Benchmark enrichment ──
     const intakeStep = run ? await run.startStep("intake", { rawPrompt, title }) : null;
 
-    // ── ASYNC PATH: Dispatch to n8n and return 202 immediately ──
+    // ── Fire-and-forget n8n dispatch (non-blocking, for future async path) ──
     if (run) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-
-      // Fire n8n webhook (non-blocking for user)
-      const dispatchResult = await dispatchToN8n({
+      dispatchToN8n({
         run_id: run.runId,
         rawPrompt,
         title: title || null,
         files: files || null,
         user_id: userId,
         supabase_url: supabaseUrl,
+      }).then(r => {
+        console.log(`[n8n-dispatch] fire-and-forget result: dispatched=${r.dispatched}, run_id=${run!.runId}`);
+      }).catch(e => {
+        console.error(`[n8n-dispatch] fire-and-forget error: ${e}`);
       });
-
-      if (intakeStep) {
-        await intakeStep.complete(
-          { n8n_dispatched: dispatchResult.dispatched, dispatch_error: dispatchResult.error || null },
-          { model: "n8n-webhook" },
-        );
-      }
-
-      console.log(`[analyze-campaign] Returning 202 for run_id=${run.runId}, n8n_dispatched=${dispatchResult.dispatched}`);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          run_id: run.runId,
-          status: "processing",
-          n8n_dispatched: dispatchResult.dispatched,
-        }),
-        {
-          status: 202,
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-        },
-      );
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // ── LEGACY PATH (fallback — no analysisRequestId / no run) ──
-    // ══════════════════════════════════════════════════════════════
+    // ── Continue with synchronous Gemini analysis (legacy path, always runs) ──
 
     const ibgeSection = await buildIbgeSection(rawPrompt);
 
