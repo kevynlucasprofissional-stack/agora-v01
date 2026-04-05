@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { toast } from "sonner";
@@ -10,8 +9,6 @@ import { toast } from "sonner";
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email") || "";
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verified, setVerified] = useState(false);
   const navigate = useNavigate();
@@ -22,31 +19,17 @@ export default function VerifyEmailPage() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  const handleVerify = async () => {
-    if (otp.length !== 6) return;
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: "signup",
-    });
-    setLoading(false);
-
-    if (error) {
-      if (error.message.includes("expired")) {
-        toast.error("Código expirado. Solicite um novo.");
-      } else if (error.message.includes("invalid") || error.message.includes("Invalid")) {
-        toast.error("Código inválido. Verifique e tente novamente.");
-      } else {
-        toast.error(error.message);
+  // Listen for auth state changes — user may click the link in another tab
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        setVerified(true);
+        toast.success("E-mail verificado com sucesso!");
+        setTimeout(() => navigate("/app"), 1500);
       }
-      return;
-    }
-
-    setVerified(true);
-    toast.success("E-mail verificado com sucesso!");
-    setTimeout(() => navigate("/app"), 1500);
-  };
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleResend = async () => {
     if (resendCooldown > 0) return;
@@ -59,7 +42,7 @@ export default function VerifyEmailPage() {
       toast.error("Erro ao reenviar. Tente novamente.");
       setResendCooldown(0);
     } else {
-      toast.success("Novo código enviado!");
+      toast.success("Novo e-mail de verificação enviado!");
     }
   };
 
@@ -104,34 +87,19 @@ export default function VerifyEmailPage() {
                   <Mail className="h-6 w-6 text-primary" />
                 </div>
                 <h2 className="text-lg font-semibold text-center">Verifique seu e-mail</h2>
-                <p className="text-sm text-muted-foreground text-center">
-                  Enviamos um código de 6 dígitos para{" "}
-                  <span className="font-medium text-foreground">{email}</span>
+                <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                  Enviamos um link de verificação para{" "}
+                  <span className="font-medium text-foreground">{email}</span>.
+                  <br />
+                  Clique no botão <strong>"Verify Email"</strong> no e-mail recebido para ativar sua conta.
                 </p>
               </div>
 
-              <div className="flex justify-center mb-6">
-                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+              <div className="rounded-lg border border-border bg-muted/50 p-4 mb-6">
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  💡 Não encontrou? Verifique a pasta de <strong>spam</strong> ou <strong>promoções</strong>. O e-mail é enviado por <em>no-reply@auth.lovable.cloud</em>.
+                </p>
               </div>
-
-              <Button
-                variant="hero"
-                className="w-full mb-4"
-                onClick={handleVerify}
-                disabled={otp.length !== 6 || loading}
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Verificar
-              </Button>
 
               <div className="text-center">
                 <button
@@ -141,7 +109,7 @@ export default function VerifyEmailPage() {
                 >
                   {resendCooldown > 0
                     ? `Reenviar em ${resendCooldown}s`
-                    : "Reenviar código"}
+                    : "Reenviar e-mail de verificação"}
                 </button>
               </div>
             </>
