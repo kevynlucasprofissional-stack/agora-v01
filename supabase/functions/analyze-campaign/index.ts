@@ -104,9 +104,10 @@ serve(async (req) => {
       analysis_request_id: analysisRequestId,
       rawPrompt,
       title: title || null,
-      files: files || null,
+      files: files || [],
       user_id: userId,
       supabase_url: supabaseUrl,
+      triggered_at: new Date().toISOString(),
     });
 
     console.log(`[analyze-campaign] Async dispatch: run_id=${run.runId}, dispatched=${dispatchResult.dispatched}`);
