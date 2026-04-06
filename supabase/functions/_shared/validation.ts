@@ -48,6 +48,32 @@ export const AnalyzePayloadSchema = z.object({
 
 export type AnalyzePayload = z.infer<typeof AnalyzePayloadSchema>;
 
+// ── n8n callback payload ─────────────────────────────────────
+
+const AgentResponseSchema = z.object({
+  agent_id: z.string().uuid("agent_id must be a valid UUID"),
+  analysis_request_id: z.string().uuid("analysis_request_id must be a valid UUID"),
+  content: z.unknown().nullable().optional(),
+  content_text: z.string().max(500_000).nullable().optional(),
+  response_format: z.enum(["json", "markdown", "text"]).default("json"),
+  success: z.boolean().default(true),
+  error_message: z.string().max(5_000).nullable().optional(),
+  model_name: z.string().max(200).nullable().optional(),
+  latency_ms: z.number().int().nonnegative().nullable().optional(),
+  tokens_input: z.number().int().nonnegative().nullable().optional(),
+  tokens_output: z.number().int().nonnegative().nullable().optional(),
+});
+
+export const N8nCallbackPayloadSchema = z.object({
+  run_id: z.string().uuid("run_id must be a valid UUID"),
+  status: z.enum(["completed", "failed"]),
+  analysis: z.record(z.unknown()).nullable().optional(),
+  error: z.string().max(10_000).nullable().optional(),
+  agent_responses: z.array(AgentResponseSchema).max(50).nullable().optional(),
+});
+
+export type N8nCallbackPayload = z.infer<typeof N8nCallbackPayloadSchema>;
+
 // ── Generic validator helper ─────────────────────────────────
 
 /**

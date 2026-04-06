@@ -9,32 +9,9 @@
  * frontend can display the report.
  */
 
-import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
-
-// ── Zod schema ──────────────────────────────────────────────
-const AgentResponseSchema = z.object({
-  agent_id: z.string().uuid(),
-  analysis_request_id: z.string().uuid(),
-  content: z.unknown().nullable().optional(),
-  content_text: z.string().nullable().optional(),
-  response_format: z.enum(["json", "markdown", "text"]).optional(),
-  success: z.boolean().optional(),
-  error_message: z.string().nullable().optional(),
-  model_name: z.string().nullable().optional(),
-  latency_ms: z.number().int().nullable().optional(),
-  tokens_input: z.number().int().nullable().optional(),
-  tokens_output: z.number().int().nullable().optional(),
-});
-
-const PayloadSchema = z.object({
-  run_id: z.string().uuid("run_id must be a valid UUID"),
-  status: z.enum(["completed", "failed"]),
-  analysis: z.record(z.unknown()).nullable().optional(),
-  error: z.string().nullable().optional(),
-  agent_responses: z.array(AgentResponseSchema).nullable().optional(),
-});
+import { validatePayload, N8nCallbackPayloadSchema } from "../_shared/validation.ts";
 
 // ── Helpers ─────────────────────────────────────────────────
 function json(body: unknown, status = 200): Response {
