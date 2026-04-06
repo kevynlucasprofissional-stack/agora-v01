@@ -25,6 +25,11 @@ async function dispatchToN8n(payload: N8nPayload): Promise<{ dispatched: boolean
     return { dispatched: false, error: "N8N_WEBHOOK_URL not configured" };
   }
 
+  if (!payload.run_id) {
+    console.warn("[n8n-dispatch] run_id not defined, returning");
+    return { dispatched: false, error: "run_id not defined" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
@@ -45,9 +50,7 @@ async function dispatchToN8n(payload: N8nPayload): Promise<{ dispatched: boolean
     return { dispatched: res.ok };
   } catch (err) {
     clearTimeout(timeout);
-    const msg = err instanceof DOMException && err.name === "AbortError"
-      ? "Timeout (8s)"
-      : String(err);
+    const msg = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : String(err);
     console.error(`[n8n-dispatch] Failed for run_id=${payload.run_id}: ${msg}`);
     return { dispatched: false, error: msg };
   }
@@ -77,16 +80,22 @@ serve(async (req) => {
       const authHeader = req.headers.get("Authorization");
       if (authHeader) {
         const token = authHeader.replace("Bearer ", "");
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+        const {
+          data: { user },
+        } = await supabaseAdmin.auth.getUser(token);
         if (user) userId = user.id;
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
 
     // ── Create kernel run + pipeline steps ──
     let run: KernelRun | null = null;
     if (analysisRequestId) {
       run = await KernelRun.create(supabaseAdmin, analysisRequestId, "n8n-orchestrated", {
-        rawPrompt, title, files,
+        rawPrompt,
+        title,
+        files,
       });
     }
 
