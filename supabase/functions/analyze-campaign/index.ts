@@ -5,15 +5,18 @@ import { createAdminClient } from "../_shared/supabase.ts";
 import { KernelRun } from "../_shared/kernel.ts";
 
 // ── n8n webhook dispatch (short timeout, non-blocking) ──
-async function dispatchToN8n(payload: {
+interface N8nPayload {
   run_id: string;
   analysis_request_id: string;
   rawPrompt: string;
   title: string | null;
-  files: string[] | null;
+  files: string[];
   user_id: string;
   supabase_url: string;
-}): Promise<{ dispatched: boolean; error?: string }> {
+  triggered_at: string;
+}
+
+async function dispatchToN8n(payload: N8nPayload): Promise<{ dispatched: boolean; error?: string }> {
   const webhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
   const webhookSecret = Deno.env.get("N8N_INTERNAL_SECRET");
 
