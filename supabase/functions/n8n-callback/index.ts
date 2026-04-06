@@ -44,15 +44,10 @@ Deno.serve(async (req) => {
 
   try {
     const raw = await req.json();
-    const parsed = PayloadSchema.safeParse(raw);
-    if (!parsed.success) {
-      return json(
-        { error: "Invalid payload", details: parsed.error.flatten().fieldErrors },
-        400,
-      );
-    }
+    const validated = validatePayload(N8nCallbackPayloadSchema, raw);
+    if (validated.error) return validated.error;
 
-    const { run_id, status, analysis, error: errorMsg, agent_responses } = parsed.data;
+    const { run_id, status, analysis, error: errorMsg, agent_responses } = validated.data;
     runId = run_id;
 
     const sb = createAdminClient();
