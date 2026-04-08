@@ -86,18 +86,21 @@ export default function AnalysisReportPage() {
   const rawImprovements = payload?.improvements;
   const rawStrengths = payload?.strengths;
 
-  // Support both old (string[]) and new (categorized) formats
+  // Support old (string[]), new (categorized {category,items}[]), and inline ({title,description,...}[]) formats
   type CategorizedItem = { category: string; items: string[] };
-  const improvements: CategorizedItem[] = Array.isArray(rawImprovements)
-    ? rawImprovements.length > 0 && typeof rawImprovements[0] === "string"
-      ? [{ category: "Geral", items: rawImprovements as string[] }]
-      : (rawImprovements as CategorizedItem[])
-    : [];
-  const strengths: CategorizedItem[] = Array.isArray(rawStrengths)
-    ? rawStrengths.length > 0 && typeof rawStrengths[0] === "string"
-      ? [{ category: "Geral", items: rawStrengths as string[] }]
-      : (rawStrengths as CategorizedItem[])
-    : [];
+  function normalizeToCategorized(raw: unknown): CategorizedItem[] {
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    const first = raw[0];
+    if (typeof first === "string") return [{ category: "Geral", items: raw as string[] }];
+    if (first && typeof first === "object" && "items" in first) return raw as CategorizedItem[];
+    // Inline format: [{title, description, ...}] → flatten to single category
+    if (first && typeof first === "object" && "title" in first) {
+      return [{ category: "Geral", items: raw.map((r: any) => `**${r.title}**: ${r.description || ""}`.trim()) }];
+    }
+    return [];
+  }
+  const improvements = normalizeToCategorized(rawImprovements);
+  const strengths = normalizeToCategorized(rawStrengths);
   const audienceBehavior = payload?.audience_behavior as { section: string; cards: Array<{ title: string; content: string }> } | undefined;
   const marketRefs = (payload?.market_references as string[] | undefined) || [];
   const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
