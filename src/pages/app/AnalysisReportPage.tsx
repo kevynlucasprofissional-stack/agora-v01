@@ -102,7 +102,12 @@ export default function AnalysisReportPage() {
   const improvements = normalizeToCategorized(rawImprovements);
   const strengths = normalizeToCategorized(rawStrengths);
   const audienceBehavior = payload?.audience_behavior as { section: string; cards: Array<{ title: string; content: string }> } | undefined;
-  const marketRefs = (payload?.market_references as string[] | undefined) || [];
+  const rawMarketRefs = payload?.market_references;
+  const marketRefs: string[] = Array.isArray(rawMarketRefs)
+    ? rawMarketRefs.map((ref: any) =>
+        typeof ref === "string" ? ref : `${ref.brand || ""}: ${ref.insight || ""} ${ref.relevance ? `(${ref.relevance})` : ""}`.trim()
+      )
+    : [];
   const marketingEra = payload?.marketing_era as { era: string; description: string; recommendation: string } | undefined;
   const cognitiveBiases = (payload?.cognitive_biases as Array<{ bias: string; status: string; application: string }> | undefined) || [];
   const hormoziAnalysis = payload?.hormozi_analysis as { dream_outcome: number; perceived_likelihood: number; time_delay: number; effort_sacrifice: number; overall_value: string } | undefined;
