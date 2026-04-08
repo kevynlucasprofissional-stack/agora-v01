@@ -1,0 +1,619 @@
+{
+  "name": "Agora Analysis Pipeline MVP v2 (with failed callback)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "agora-analyze",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "Webhook_1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.headers[\"x-agora-webhook-secret\"]}}",
+              "operation": "equal",
+              "value2": "={{$env.N8N_INTERNAL_SECRET}}"
+            }
+          ]
+        }
+      },
+      "id": "IF_Secret",
+      "name": "Validate Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":false,\"error\":\"unauthorized\",\"message\":\"invalid webhook secret\"}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "Respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 430]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            { "name": "run_id", "value": "={{$json.body.run_id}}" },
+            { "name": "analysis_request_id", "value": "={{$json.body.analysis_request_id || ''}}" },
+            { "name": "rawPrompt", "value": "={{$json.body.rawPrompt || ''}}" },
+            { "name": "title", "value": "={{$json.body.title || ''}}" },
+            { "name": "started_at", "value": "={{$now.toISO()}}" }
+          ],
+          "json": [
+            { "name": "files", "value": "={{$json.body.files || null}}" }
+          ]
+        }
+      },
+      "id": "Set_Context",
+      "name": "Set Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [650, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $json.run_id + '&step_kind=eq.intake'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}",
+        "options": {}
+      },
+      "id": "PATCH_Intake_Running",
+      "name": "PATCH intake running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/functions/v1/mcp-resource'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"uri\":\"agora://resources/ibge/SP\"}",
+        "options": {}
+      },
+      "id": "MCP_IBGE",
+      "name": "MCP IBGE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1140, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/functions/v1/mcp-resource'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"uri\":\"agora://resources/benchmarks/e-commerce\"}",
+        "options": {}
+      },
+      "id": "MCP_Benchmark",
+      "name": "MCP Benchmark",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "Merge_Intake",
+      "name": "Merge Intake Resources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1360, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.intake'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($('Set Context').item.json.started_at).toMillis())}},\"output_payload\":{\"ibge\":$items('MCP IBGE',0,0)[0].json,\"benchmark\":$items('MCP Benchmark',0,0)[0].json}}",
+        "options": {}
+      },
+      "id": "PATCH_Intake_Completed",
+      "name": "PATCH intake completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1600, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.sociobehavioral'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}"
+      },
+      "id": "PATCH_Socio_Running",
+      "name": "PATCH socio running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1840, 220]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { socio_output: { score: 60, note: 'mock socio output' } } }];"
+      },
+      "id": "LLM_Socio",
+      "name": "LLM Socio (mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [2060, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.sociobehavioral'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($('Set Context').item.json.started_at).toMillis())}},\"output_payload\":$json.socio_output,\"model_used\":\"mock\"}"
+      },
+      "id": "PATCH_Socio_Completed",
+      "name": "PATCH socio completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2280, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.offer_analysis'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}"
+      },
+      "id": "PATCH_Offer_Running",
+      "name": "PATCH offer running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2500, 220]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { offer_output: { score: 70, note: 'mock offer output' } } }];"
+      },
+      "id": "LLM_Offer",
+      "name": "LLM Offer (mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [2720, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.offer_analysis'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($('Set Context').item.json.started_at).toMillis())}},\"output_payload\":$json.offer_output,\"model_used\":\"mock\"}"
+      },
+      "id": "PATCH_Offer_Completed",
+      "name": "PATCH offer completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2940, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.performance_timing'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}"
+      },
+      "id": "PATCH_Perf_Running",
+      "name": "PATCH performance running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3160, 220]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { perf_output: { score: 55, note: 'mock performance output' } } }];"
+      },
+      "id": "LLM_Perf",
+      "name": "LLM Performance (mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [3380, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.performance_timing'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($('Set Context').item.json.started_at).toMillis())}},\"output_payload\":$json.perf_output,\"model_used\":\"mock\"}"
+      },
+      "id": "PATCH_Perf_Completed",
+      "name": "PATCH performance completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3600, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.synthesis'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}"
+      },
+      "id": "PATCH_Synth_Running",
+      "name": "PATCH synthesis running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3820, 220]
+    },
+    {
+      "parameters": {
+        "functionCode": "const socio = $items('LLM Socio (mock)',0,0)[0].json.socio_output; const offer = $items('LLM Offer (mock)',0,0)[0].json.offer_output; const perf = $items('LLM Performance (mock)',0,0)[0].json.perf_output; return [{ json: { synthesis_output: { score_overall: 62, score_sociobehavioral: socio.score, score_offer: offer.score, score_performance: perf.score, executive_summary: 'Análise mock n8n', source: 'n8n-mvp' } } }];"
+      },
+      "id": "LLM_Synth",
+      "name": "LLM Synthesis (mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [4040, 220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $('Set Context').item.json.run_id + '&step_kind=eq.synthesis'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($('Set Context').item.json.started_at).toMillis())}},\"output_payload\":$json.synthesis_output,\"model_used\":\"mock\"}"
+      },
+      "id": "PATCH_Synth_Completed",
+      "name": "PATCH synthesis completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [4260, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/functions/v1/n8n-callback'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-agora-callback-secret", "value": "={{$env.AGORA_CALLBACK_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"run_id\":$('Set Context').item.json.run_id,\"status\":\"completed\",\"analysis\":$json.synthesis_output,\"agent_responses\":{\"sociobehavioral\":$items('LLM Socio (mock)',0,0)[0].json.socio_output,\"offer_analysis\":$items('LLM Offer (mock)',0,0)[0].json.offer_output,\"performance_timing\":$items('LLM Performance (mock)',0,0)[0].json.perf_output,\"synthesis\":$json.synthesis_output}}"
+      },
+      "id": "Callback_Completed",
+      "name": "POST n8n-callback completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [4480, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true,\"run_id\":$('Set Context').item.json.run_id,\"status\":\"completed\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "Respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [4700, 220]
+    },
+    {
+      "parameters": {},
+      "id": "ErrorTrigger_1",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [650, 620]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "run_id", "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.run_id || ''}}" },
+            { "name": "error_message", "value": "={{$json.execution?.error?.message || 'workflow error'}}" }
+          ]
+        }
+      },
+      "id": "Set_Error_Context",
+      "name": "Set Error Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [900, 620]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.run_id}}",
+              "operation": "notEmpty"
+            }
+          ]
+        }
+      },
+      "id": "IF_RunId_Exists",
+      "name": "IF run_id exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1130, 620]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $json.run_id + '&status=in.(pending,running)'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"failed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":0,\"error_message\":$json.error_message}",
+        "options": {}
+      },
+      "id": "PATCH_RunSteps_Failed",
+      "name": "PATCH run_steps failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1370, 550]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/functions/v1/n8n-callback'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-agora-callback-secret", "value": "={{$env.AGORA_CALLBACK_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"run_id\":$json.run_id,\"status\":\"failed\",\"error\":$json.error_message,\"agent_responses\":{}}"
+      },
+      "id": "Callback_Failed",
+      "name": "POST n8n-callback failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1600, 550]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "message", "value": "missing run_id in error context; failed callback skipped" }
+          ]
+        }
+      },
+      "id": "Skip_Failed_Callback",
+      "name": "Skip failed callback (no run_id)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1370, 700]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Validate Secret", "type": "main", "index": 0 }]]
+    },
+    "Validate Secret": {
+      "main": [
+        [{ "node": "Set Context", "type": "main", "index": 0 }],
+        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Context": {
+      "main": [[{ "node": "PATCH intake running", "type": "main", "index": 0 }]]
+    },
+    "PATCH intake running": {
+      "main": [
+        [{ "node": "MCP IBGE", "type": "main", "index": 0 }],
+        [{ "node": "MCP Benchmark", "type": "main", "index": 0 }]
+      ]
+    },
+    "MCP IBGE": {
+      "main": [[{ "node": "Merge Intake Resources", "type": "main", "index": 0 }]]
+    },
+    "MCP Benchmark": {
+      "main": [[{ "node": "Merge Intake Resources", "type": "main", "index": 1 }]]
+    },
+    "Merge Intake Resources": {
+      "main": [[{ "node": "PATCH intake completed", "type": "main", "index": 0 }]]
+    },
+    "PATCH intake completed": {
+      "main": [[{ "node": "PATCH socio running", "type": "main", "index": 0 }]]
+    },
+    "PATCH socio running": {
+      "main": [[{ "node": "LLM Socio (mock)", "type": "main", "index": 0 }]]
+    },
+    "LLM Socio (mock)": {
+      "main": [[{ "node": "PATCH socio completed", "type": "main", "index": 0 }]]
+    },
+    "PATCH socio completed": {
+      "main": [[{ "node": "PATCH offer running", "type": "main", "index": 0 }]]
+    },
+    "PATCH offer running": {
+      "main": [[{ "node": "LLM Offer (mock)", "type": "main", "index": 0 }]]
+    },
+    "LLM Offer (mock)": {
+      "main": [[{ "node": "PATCH offer completed", "type": "main", "index": 0 }]]
+    },
+    "PATCH offer completed": {
+      "main": [[{ "node": "PATCH performance running", "type": "main", "index": 0 }]]
+    },
+    "PATCH performance running": {
+      "main": [[{ "node": "LLM Performance (mock)", "type": "main", "index": 0 }]]
+    },
+    "LLM Performance (mock)": {
+      "main": [[{ "node": "PATCH performance completed", "type": "main", "index": 0 }]]
+    },
+    "PATCH performance completed": {
+      "main": [[{ "node": "PATCH synthesis running", "type": "main", "index": 0 }]]
+    },
+    "PATCH synthesis running": {
+      "main": [[{ "node": "LLM Synthesis (mock)", "type": "main", "index": 0 }]]
+    },
+    "LLM Synthesis (mock)": {
+      "main": [[{ "node": "PATCH synthesis completed", "type": "main", "index": 0 }]]
+    },
+    "PATCH synthesis completed": {
+      "main": [[{ "node": "POST n8n-callback completed", "type": "main", "index": 0 }]]
+    },
+    "POST n8n-callback completed": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    },
+    "Error Trigger": {
+      "main": [[{ "node": "Set Error Context", "type": "main", "index": 0 }]]
+    },
+    "Set Error Context": {
+      "main": [[{ "node": "IF run_id exists", "type": "main", "index": 0 }]]
+    },
+    "IF run_id exists": {
+      "main": [
+        [{ "node": "PATCH run_steps failed", "type": "main", "index": 0 }],
+        [{ "node": "Skip failed callback (no run_id)", "type": "main", "index": 0 }]
+      ]
+    },
+    "PATCH run_steps failed": {
+      "main": [[{ "node": "POST n8n-callback failed", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "agora-mvp-v2",
+  "id": "agora-mvp-v2",
+  "meta": {}
+}
