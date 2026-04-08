@@ -358,7 +358,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const socio = $items('LLM Socio (mock)',0,0)[0].json.socio_output; const offer = $items('LLM Offer (mock)',0,0)[0].json.offer_output; const perf = $items('LLM Performance (mock)',0,0)[0].json.perf_output; return [{ json: { synthesis_output: { score_overall: 62, score_sociobehavioral: socio.score, score_offer: offer.score, score_performance: perf.score, executive_summary: 'Análise mock n8n', source: 'n8n-mvp' } } }];"
+        "functionCode": "const socio = $items('LLM Socio (mock)',0,0)[0].json.socio_output;\nconst offer = $items('LLM Offer (mock)',0,0)[0].json.offer_output;\nconst perf = $items('LLM Performance (mock)',0,0)[0].json.perf_output;\n\nreturn [{\n  json: {\n    synthesis_output: {\n      score_overall: 62,\n      score_sociobehavioral: socio.score,\n      score_offer: offer.score,\n      score_performance: perf.score,\n      executive_summary: 'Análise mock n8n',\n      source: 'n8n-mvp'\n    }\n  }\n}];"
       },
       "id": "LLM_Synth",
       "name": "LLM Synthesis (mock)",
@@ -437,6 +437,7 @@
         "values": {
           "string": [
             { "name": "run_id", "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.run_id || ''}}" },
+            { "name": "started_at", "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.started_at || ''}}" },
             { "name": "error_message", "value": "={{$json.execution?.error?.message || 'workflow error'}}" }
           ]
         }
@@ -479,7 +480,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"status\":\"failed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":0,\"error_message\":$json.error_message}",
+        "jsonBody": "={\"status\":\"failed\",\"completed_at\":\"{{$now.toISO()}}\",\"duration_ms\":{{$json.started_at ? Math.max(0, DateTime.fromISO($now.toISO()).toMillis() - DateTime.fromISO($json.started_at).toMillis()) : 0}},\"error_message\":$json.error_message}",
         "options": {}
       },
       "id": "PATCH_RunSteps_Failed",
