@@ -47,7 +47,7 @@ async function dispatchToN8n(payload: N8nPayload): Promise<{ dispatched: boolean
     clearTimeout(timeout);
     console.log(`[n8n-dispatch] Response: ${res.status} for run_id=${payload.run_id}`);
     await res.text(); // consume body
-    return { dispatched: res.ok };
+    return { dispatched: res.ok, ...(!res.ok ? { error: `HTTP ${res.status}` } : {}) };
   } catch (err) {
     clearTimeout(timeout);
     const msg = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : String(err);
