@@ -18,6 +18,7 @@ export type ErrorCategory =
   | "model"
   | "integration"
   | "persistence"
+  | "kernel"
   | "unknown";
 
 interface ErrorMeta {

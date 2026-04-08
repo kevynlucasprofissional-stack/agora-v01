@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors } from "../_shared/cors.ts";
-import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
+import { errorResponse, jsonResponse, withErrorHandler } from "../_shared/errors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 import { KernelRun } from "../_shared/kernel.ts";
 
@@ -72,6 +72,9 @@ serve(async (req) => {
     if (validated.error) return validated.error;
     const { rawPrompt, title, files, analysisRequestId } = validated.data;
 
+    // ── Feature flag: USE_N8N_ASYNC ──
+    const useN8nAsync = Deno.env.get("USE_N8N_ASYNC") !== "false"; // default true
+
     const supabaseAdmin = createAdminClient();
 
     // ── Extract user_id from JWT (best-effort) ──
@@ -89,15 +92,17 @@ serve(async (req) => {
       /* non-fatal */
     }
 
-    // ── Create kernel run + pipeline steps ──
-    let run: KernelRun | null = null;
-    if (analysisRequestId) {
-      run = await KernelRun.create(supabaseAdmin, analysisRequestId, "n8n-orchestrated", {
-        rawPrompt,
-        title,
-        files,
-      });
+    // ── Require analysisRequestId for async flow ──
+    if (!analysisRequestId) {
+      return errorResponse(400, "analysisRequestId é obrigatório", { category: "validation" });
     }
+
+    // ── Create kernel run + pipeline steps ──
+    const run = await KernelRun.create(supabaseAdmin, analysisRequestId, "n8n-orchestrated", {
+      rawPrompt,
+      title,
+      files,
+    });
 
     if (!run) {
       return errorResponse(500, "Failed to create analysis run", { category: "kernel" });
@@ -106,7 +111,19 @@ serve(async (req) => {
     // ── Mark intake step as running ──
     const intakeStep = await run.startStep("intake", { rawPrompt, title });
 
-    // ── Dispatch to n8n (async, but we await to know if it worked) ──
+    if (!useN8nAsync) {
+      // Legacy inline kernel path — mark intake as completed and return
+      if (intakeStep) await intakeStep.complete({});
+      console.log(`[analyze-campaign] USE_N8N_ASYNC=false, legacy path for run_id=${run.runId}`);
+      return jsonResponse({
+        run_id: run.runId,
+        analysis_request_id: analysisRequestId,
+        status: "processing",
+        message: "Análise iniciada (modo legado).",
+      }, 202);
+    }
+
+    // ── Dispatch to n8n (async) ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const dispatchResult = await dispatchToN8n({
       run_id: run.runId,
@@ -119,34 +136,54 @@ serve(async (req) => {
       triggered_at: new Date().toISOString(),
     });
 
-    console.log(`[analyze-campaign] Async dispatch: run_id=${run.runId}, dispatched=${dispatchResult.dispatched}`);
+    // Structured log per spec §8
+    console.log(JSON.stringify({
+      run_id: run.runId,
+      step_kind: "intake",
+      attempt: 1,
+      dispatch_error: dispatchResult.error || null,
+      n8n_dispatched: dispatchResult.dispatched,
+    }));
 
-    // If dispatch failed, mark intake step as failed but still return 202
-    // The n8n error handler or a future retry mechanism will handle this
+    // ── If dispatch failed: fail run immediately (no orphan) ──
     if (!dispatchResult.dispatched) {
-      console.warn(`[analyze-campaign] n8n dispatch failed, run_id=${run.runId}: ${dispatchResult.error}`);
-      if (intakeStep) {
-        await intakeStep.fail(`n8n dispatch failed: ${dispatchResult.error}`);
-      }
+      const failMsg = `n8n dispatch failed: ${dispatchResult.error}`;
+      console.error(`[analyze-campaign] ${failMsg}`);
+
+      if (intakeStep) await intakeStep.fail(failMsg);
+
+      // Fail the run terminally
+      await supabaseAdmin
+        .from("analysis_runs")
+        .update({
+          status: "failed",
+          error_message: failMsg,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", run.runId);
+
+      // Also fail the analysis_request
+      await supabaseAdmin
+        .from("analysis_requests")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", analysisRequestId);
+
+      return errorResponse(500, "Falha ao iniciar análise assíncrona", {
+        category: "integration",
+        detail: failMsg,
+      });
     }
 
     // ── Return 202 immediately ──
-    return new Response(
-      JSON.stringify({
-        success: true,
-        run_id: run.runId,
-        analysis_request_id: analysisRequestId,
-        status: "processing",
-        n8n_dispatched: dispatchResult.dispatched,
-      }),
-      {
-        status: 202,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-        },
-      },
-    );
+    return jsonResponse({
+      run_id: run.runId,
+      analysis_request_id: analysisRequestId,
+      status: "processing",
+      message: "Análise iniciada. Acompanhe via Realtime.",
+    }, 202);
   })(req);
 });
