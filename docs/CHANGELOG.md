@@ -4,6 +4,30 @@
 
 ---
 
+## [1.1.0] — 2026-04-08
+
+### 🚀 Novas Funcionalidades
+
+#### Feature Flag `USE_N8N_ASYNC` — Caminho Legado Inline Restaurado
+- **Arquivo:** `supabase/functions/analyze-campaign/index.ts`
+- Quando `USE_N8N_ASYNC=false`, a função executa análise síncrona via `runInlineAnalysis()` usando Gemini com tool calling (`analysis_result`).
+- Retorna `200 OK` com resultado completo (scores, melhorias, pontos fortes, insights de audiência).
+- Pipeline inline percorre todos os 5 steps do kernel (`intake`, `sociobehavioral`, `offer_analysis`, `performance_timing`, `synthesis`) e marca cada um como `completed`.
+- Persiste scores (`score_overall`, `score_sociobehavioral`, `score_offer`, `score_performance`) e `normalized_payload` diretamente em `analysis_requests`.
+- Em caso de falha, marca `analysis_runs` e `analysis_requests` como `failed` com mensagem de erro.
+
+### ✅ Validações Realizadas
+
+| Teste | Resultado |
+|-------|-----------|
+| `USE_N8N_ASYNC=false` → inline Gemini | ✅ 200 OK com análise completa |
+| `USE_N8N_ASYNC=true` → dispatch n8n | ✅ 202 Accepted (ou 500 se n8n não configurado) |
+| Alternância de flag via secrets | ✅ Confirmado |
+| Scores persistidos em `analysis_requests` | ✅ Confirmado |
+| Fallback de erro no inline path | ✅ `failed` em runs e requests |
+
+---
+
 ## [1.0.0] — 2026-04-08
 
 ### 🚀 Novas Funcionalidades
