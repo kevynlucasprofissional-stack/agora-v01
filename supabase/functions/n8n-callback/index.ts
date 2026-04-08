@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     // Idempotency: skip if already terminal
     if (TERMINAL.includes(run.status)) {
       console.log(`n8n-callback | run=${runId} | already finalized (${run.status})`);
-      return json({ ok: true, message: "already finalized", current_status: run.status });
+      return json({ ok: true, already_finalized: true, current_status: run.status });
     }
 
     // Build update payload for analysis_runs
