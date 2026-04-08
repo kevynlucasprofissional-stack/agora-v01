@@ -1007,6 +1007,7 @@ export type Database = {
         Returns: boolean
       }
       check_upload_limit: { Args: { p_user_id: string }; Returns: boolean }
+      finalize_orphan_runs: { Args: never; Returns: number }
     }
     Enums: {
       agent_kind:
