@@ -18,49 +18,132 @@ const ANALYSIS_TOOL = {
         score_sociobehavioral: { type: "number", description: "Sociobehavioral score 0-100" },
         score_offer: { type: "number", description: "Offer engineering score 0-100" },
         score_performance: { type: "number", description: "Performance score 0-100" },
-        executive_summary: { type: "string", description: "Executive summary in Portuguese" },
+        executive_summary: { type: "string", description: "Executive summary in Portuguese (3-5 paragraphs)" },
         improvements: {
           type: "array",
+          description: "5-10 actionable improvements grouped by category",
           items: {
             type: "object",
             properties: {
-              title: { type: "string" },
-              description: { type: "string" },
-              impact: { type: "string", enum: ["high", "medium", "low"] },
-              agent: { type: "string" },
+              category: { type: "string", description: "Category name (e.g. Estratégia e Táticas, Oferta e Comunicação, Performance e Métricas)" },
+              items: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of specific improvement recommendations"
+              },
             },
-            required: ["title", "description", "impact", "agent"],
+            required: ["category", "items"],
           },
         },
         strengths: {
           type: "array",
+          description: "3-5 identified strengths grouped by category",
           items: {
             type: "object",
             properties: {
-              title: { type: "string" },
-              description: { type: "string" },
+              category: { type: "string", description: "Category name" },
+              items: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of strength points"
+              },
             },
-            required: ["title", "description"],
+            required: ["category", "items"],
           },
         },
-        audience_insights: { type: "object", description: "Audience analysis data" },
-        market_references: {
+        audience_insights: {
           type: "array",
+          description: "Audience generation insights",
           items: {
             type: "object",
             properties: {
-              brand: { type: "string" },
-              insight: { type: "string" },
-              relevance: { type: "string" },
+              generation: { type: "string", description: "Generation or audience segment name" },
+              emoji: { type: "string", description: "Emoji representing the segment" },
+              feedback: { type: "string", description: "Detailed insight about this audience segment" },
             },
+            required: ["generation", "emoji", "feedback"],
           },
+        },
+        market_references: {
+          type: "array",
+          description: "Relevant market references and benchmarks",
+          items: { type: "string" },
+        },
+        marketing_era: {
+          type: "object",
+          description: "Kotler marketing era classification",
+          properties: {
+            era: { type: "string", description: "Marketing era (e.g. 'Marketing 3.0 (Foco em Valores) em transição para 4.0')" },
+            description: { type: "string", description: "Explanation of why this era applies" },
+            recommendation: { type: "string", description: "Recommendation to evolve the marketing approach" },
+          },
+          required: ["era", "description", "recommendation"],
+        },
+        cognitive_biases: {
+          type: "array",
+          description: "4-6 cognitive biases analysis",
+          items: {
+            type: "object",
+            properties: {
+              bias: { type: "string", description: "Name of the cognitive bias" },
+              status: { type: "string", description: "Status: Presente, Ausente (recomendado), Presente (potencial), or Mal aplicado" },
+              application: { type: "string", description: "How this bias applies or could be applied to the campaign" },
+            },
+            required: ["bias", "status", "application"],
+          },
+        },
+        hormozi_analysis: {
+          type: "object",
+          description: "Alex Hormozi Value Equation analysis",
+          properties: {
+            dream_outcome: { type: "number", description: "Dream Outcome score 1-10" },
+            perceived_likelihood: { type: "number", description: "Perceived Likelihood of Achievement score 1-10" },
+            time_delay: { type: "number", description: "Time Delay score 1-10 (higher = faster)" },
+            effort_sacrifice: { type: "number", description: "Effort & Sacrifice score 1-10 (higher = easier)" },
+            overall_value: { type: "string", description: "Calculated value equation and interpretation" },
+          },
+          required: ["dream_outcome", "perceived_likelihood", "time_delay", "effort_sacrifice", "overall_value"],
+        },
+        kpi_analysis: {
+          type: "object",
+          description: "KPI and metrics analysis",
+          properties: {
+            vanity_metrics: { type: "array", items: { type: "string" }, description: "Identified vanity metrics to avoid" },
+            recommended_north_star: { type: "string", description: "Recommended North Star metric" },
+            recommended_kpis: { type: "array", items: { type: "string" }, description: "Recommended KPIs to track" },
+          },
+          required: ["vanity_metrics", "recommended_north_star", "recommended_kpis"],
+        },
+        timing_analysis: {
+          type: "object",
+          description: "Timing and trends analysis",
+          properties: {
+            demand_momentum: { type: "string", description: "Current demand momentum assessment" },
+            context_shock: { type: "string", description: "Context shock potential assessment" },
+            seasonality: { type: "string", description: "Seasonality analysis and recommendations" },
+          },
+          required: ["demand_momentum", "context_shock", "seasonality"],
+        },
+        brand_sentiment: {
+          type: "object",
+          description: "Brand sentiment analysis",
+          properties: {
+            overall: { type: "string", description: "Overall sentiment (e.g. Positivo, Neutro, Negativo)" },
+            analysis: { type: "string", description: "Detailed sentiment analysis" },
+          },
+          required: ["overall", "analysis"],
         },
         industry: { type: "string" },
         primary_channel: { type: "string" },
         declared_target_audience: { type: "string" },
         region: { type: "string" },
       },
-      required: ["score_overall", "score_sociobehavioral", "score_offer", "score_performance", "executive_summary", "improvements", "strengths"],
+      required: [
+        "score_overall", "score_sociobehavioral", "score_offer", "score_performance",
+        "executive_summary", "improvements", "strengths",
+        "marketing_era", "cognitive_biases", "hormozi_analysis",
+        "kpi_analysis", "timing_analysis", "brand_sentiment",
+      ],
     },
   },
 };
@@ -73,15 +156,55 @@ Analise a campanha descrita pelo usuário sob 4 perspectivas:
 3. **Performance & Timing** (score_performance): Canais, segmentação, métricas esperadas, sazonalidade, orçamento.
 4. **Score Geral** (score_overall): Média ponderada considerando os 3 pilares.
 
-Forneça:
-- Scores de 0 a 100 para cada dimensão
-- Resumo executivo em português (3-5 parágrafos)
-- 5-10 melhorias acionáveis com impacto (high/medium/low)
-- 3-5 pontos fortes identificados
-- Referências de mercado relevantes
-- Insights de audiência
+Forneça TODOS os campos obrigatórios:
 
-Responda SEMPRE usando a tool analysis_result. Seja específico e acionável.`;
+### Scores
+- Scores de 0 a 100 para cada dimensão (score_overall, score_sociobehavioral, score_offer, score_performance)
+
+### Resumo Executivo
+- executive_summary: Resumo executivo em português (3-5 parágrafos detalhados)
+
+### Melhorias (improvements)
+- Array de objetos com { category, items[] }. Agrupe em 2-4 categorias (ex: "Estratégia e Táticas", "Oferta e Comunicação", "Performance e Métricas"). Cada categoria deve ter 2-4 itens específicos e acionáveis.
+
+### Pontos Fortes (strengths)
+- Array de objetos com { category, items[] }. Agrupe em 2-3 categorias com 1-3 itens cada.
+
+### Era do Marketing (marketing_era)
+- Classifique segundo Kotler (1.0 a 4.0). Campos: era (string com classificação, ex: "Marketing 3.0 (Foco em Valores)"), description, recommendation.
+
+### Vieses Cognitivos (cognitive_biases)
+- Analise 4-6 vieses cognitivos relevantes. Para cada: bias (nome), status ("Presente", "Presente (potencial)", "Ausente (recomendado)" ou "Mal aplicado"), application (como se aplica ou deveria ser aplicado).
+
+### Análise de Valor Hormozi (hormozi_analysis)
+- Equação de Valor: Valor = (Resultado Sonhado × Probabilidade) ÷ (Tempo × Esforço)
+- Scores de 1 a 10 para: dream_outcome, perceived_likelihood, time_delay, effort_sacrifice
+- overall_value: cálculo e interpretação textual
+
+### Análise de KPIs (kpi_analysis)
+- vanity_metrics: métricas de vaidade identificadas
+- recommended_north_star: métrica North Star recomendada
+- recommended_kpis: 4-6 KPIs recomendados
+
+### Timing e Tendências (timing_analysis)
+- demand_momentum: momento de demanda
+- context_shock: potencial de choque de contexto
+- seasonality: análise de sazonalidade
+
+### Sentimento de Marca (brand_sentiment)
+- overall: sentimento geral (Positivo, Neutro, Negativo ou Desconhecido)
+- analysis: análise detalhada
+
+### Insights de Audiência (audience_insights)
+- Array com segmentos de público, cada um com: generation, emoji, feedback
+
+### Referências de Mercado (market_references)
+- Array de strings com referências relevantes do mercado
+
+### Campos adicionais
+- industry, primary_channel, declared_target_audience, region
+
+Responda SEMPRE usando a tool analysis_result. Seja específico, profundo e acionável. Todos os textos em português.`;
 
 // ── n8n webhook dispatch (short timeout, non-blocking) ──
 interface N8nPayload {
@@ -145,7 +268,6 @@ async function runInlineAnalysis(
   const startTime = Date.now();
 
   try {
-    // Intake step already started by caller
     const messages: ChatMessage[] = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: rawPrompt },
@@ -204,13 +326,13 @@ async function runInlineAnalysis(
     }
 
     // Persist to analysis_requests
+    const a = analysis as Record<string, any>;
     const requestUpdate: Record<string, unknown> = {
       status: "completed",
       completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const a = analysis as Record<string, any>;
     if (a.score_overall != null) requestUpdate.score_overall = a.score_overall;
     if (a.score_sociobehavioral != null) requestUpdate.score_sociobehavioral = a.score_sociobehavioral;
     if (a.score_offer != null) requestUpdate.score_offer = a.score_offer;
@@ -220,12 +342,19 @@ async function runInlineAnalysis(
     if (a.declared_target_audience) requestUpdate.declared_target_audience = a.declared_target_audience;
     if (a.region) requestUpdate.region = a.region;
 
+    // Persist ALL fields into normalized_payload (matching n8n async output)
     requestUpdate.normalized_payload = {
       executive_summary: a.executive_summary,
       improvements: a.improvements,
       strengths: a.strengths,
       audience_insights: a.audience_insights,
       market_references: a.market_references,
+      marketing_era: a.marketing_era,
+      cognitive_biases: a.cognitive_biases,
+      hormozi_analysis: a.hormozi_analysis,
+      kpi_analysis: a.kpi_analysis,
+      timing_analysis: a.timing_analysis,
+      brand_sentiment: a.brand_sentiment,
     };
 
     await supabaseAdmin
