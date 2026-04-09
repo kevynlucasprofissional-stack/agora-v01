@@ -196,11 +196,12 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{ json: { socio_output: { score: 60, note: 'mock socio output' } } }];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{ json: { socio_output: { score: 60, note: 'mock socio output' } } }];"
       },
       "id": "LLM_Socio",
       "name": "LLM Socio (mock)",
-      "type": "n8n-nodes-base.function",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2060, 220]
     },
@@ -250,11 +251,12 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{ json: { offer_output: { score: 70, note: 'mock offer output' } } }];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{ json: { offer_output: { score: 70, note: 'mock offer output' } } }];"
       },
       "id": "LLM_Offer",
       "name": "LLM Offer (mock)",
-      "type": "n8n-nodes-base.function",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2720, 220]
     },
@@ -304,11 +306,12 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{ json: { perf_output: { score: 55, note: 'mock performance output' } } }];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{ json: { perf_output: { score: 55, note: 'mock performance output' } } }];"
       },
       "id": "LLM_Perf",
       "name": "LLM Performance (mock)",
-      "type": "n8n-nodes-base.function",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [3380, 220]
     },
@@ -358,11 +361,12 @@
     },
     {
       "parameters": {
-        "functionCode": "const socio = $items('LLM Socio (mock)',0,0)[0].json.socio_output;\nconst offer = $items('LLM Offer (mock)',0,0)[0].json.offer_output;\nconst perf = $items('LLM Performance (mock)',0,0)[0].json.perf_output;\n\nreturn [{\n  json: {\n    synthesis_output: {\n      score_overall: 62,\n      score_sociobehavioral: socio.score,\n      score_offer: offer.score,\n      score_performance: perf.score,\n      executive_summary: 'Análise mock n8n',\n      source: 'n8n-mvp'\n    }\n  }\n}];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "const socio = $items('LLM Socio (mock)',0,0)[0].json.socio_output;\nconst offer = $items('LLM Offer (mock)',0,0)[0].json.offer_output;\nconst perf = $items('LLM Performance (mock)',0,0)[0].json.perf_output;\n\nreturn [{\n  json: {\n    synthesis_output: {\n      score_overall: 62,\n      score_sociobehavioral: socio.score,\n      score_offer: offer.score,\n      score_performance: perf.score,\n      executive_summary: 'Análise mock n8n',\n      source: 'n8n-mvp'\n    }\n  }\n}];"
       },
       "id": "LLM_Synth",
       "name": "LLM Synthesis (mock)",
-      "type": "n8n-nodes-base.function",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [4040, 220]
     },
