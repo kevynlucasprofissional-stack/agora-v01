@@ -457,6 +457,8 @@ serve(async (req) => {
 
     // ── Async n8n path ──
     const intakeStep = await run.startStep("intake", { rawPrompt, title });
+    // Mover o step para 'running' imediatamente antes do dispatch
+    if (intakeStep) await intakeStep.updateStatus("running");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const dispatchResult = await dispatchToN8n({
@@ -476,6 +478,11 @@ serve(async (req) => {
       attempt: 1,
       dispatch_error: dispatchResult.error || null,
       n8n_dispatched: dispatchResult.dispatched,
+      model_used: null,
+      tokens_input: null,
+      tokens_output: null,
+      duration_ms: null,
+      workflow_execution_id: null,
     }));
 
     // ── If dispatch failed: fail run immediately (no orphan) ──
