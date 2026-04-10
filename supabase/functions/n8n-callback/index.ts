@@ -75,9 +75,6 @@ Deno.serve(async (req) => {
       completed_at: new Date().toISOString(),
     };
 
-    if (status === "completed" && analysis) {
-      update.metadata = analysis;
-    }
     if (status === "failed" && errorMsg) {
       update.error_message = errorMsg;
     }
