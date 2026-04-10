@@ -12,7 +12,10 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -30,7 +33,10 @@
       "name": "Validate Secret",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [420, 300]
+      "position": [
+        420,
+        300
+      ]
     },
     {
       "parameters": {
@@ -44,21 +50,42 @@
       "name": "Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [650, 430]
+      "position": [
+        650,
+        430
+      ]
     },
     {
       "parameters": {
         "keepOnlySet": false,
         "values": {
           "string": [
-            { "name": "run_id", "value": "={{$json.body.run_id}}" },
-            { "name": "analysis_request_id", "value": "={{$json.body.analysis_request_id || ''}}" },
-            { "name": "rawPrompt", "value": "={{$json.body.rawPrompt || ''}}" },
-            { "name": "title", "value": "={{$json.body.title || ''}}" },
-            { "name": "started_at", "value": "={{$now.toISO()}}" }
+            {
+              "name": "run_id",
+              "value": "={{$json.body.run_id}}"
+            },
+            {
+              "name": "analysis_request_id",
+              "value": "={{$json.body.analysis_request_id || ''}}"
+            },
+            {
+              "name": "rawPrompt",
+              "value": "={{$json.body.rawPrompt || ''}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.body.title || ''}}"
+            },
+            {
+              "name": "started_at",
+              "value": "={{$now.toISO()}}"
+            }
           ],
           "json": [
-            { "name": "files", "value": "={{$json.body.files || null}}" }
+            {
+              "name": "files",
+              "value": "={{$json.body.files || null}}"
+            }
           ]
         }
       },
@@ -66,31 +93,10 @@
       "name": "Set Context",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
-      "position": [650, 220]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{$env.SUPABASE_URL + '/rest/v1/run_steps?run_id=eq.' + $json.run_id + '&step_kind=eq.intake'}}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\"status\":\"running\",\"started_at\":\"{{$now.toISO()}}\"}",
-        "options": {}
-      },
-      "id": "PATCH_Intake_Running",
-      "name": "PATCH intake running",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [900, 220]
+      "position": [
+        650,
+        220
+      ]
     },
     {
       "parameters": {
@@ -99,8 +105,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -112,7 +124,10 @@
       "name": "MCP IBGE",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1140, 140]
+      "position": [
+        1140,
+        140
+      ]
     },
     {
       "parameters": {
@@ -121,8 +136,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.MCP_RESOURCE_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -134,7 +155,10 @@
       "name": "MCP Benchmark",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1140, 300]
+      "position": [
+        1140,
+        300
+      ]
     },
     {
       "parameters": {
@@ -146,7 +170,10 @@
       "name": "Merge Intake Resources",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [1360, 220]
+      "position": [
+        1360,
+        220
+      ]
     },
     {
       "parameters": {
@@ -155,10 +182,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -170,7 +209,10 @@
       "name": "PATCH intake completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1600, 220]
+      "position": [
+        1600,
+        220
+      ]
     },
     {
       "parameters": {
@@ -179,9 +221,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -192,7 +243,10 @@
       "name": "PATCH socio running",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1840, 220]
+      "position": [
+        1840,
+        220
+      ]
     },
     {
       "parameters": {
@@ -203,7 +257,10 @@
       "name": "LLM Socio (mock)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2060, 220]
+      "position": [
+        2060,
+        220
+      ]
     },
     {
       "parameters": {
@@ -212,9 +269,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -225,7 +291,10 @@
       "name": "PATCH socio completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [2280, 220]
+      "position": [
+        2280,
+        220
+      ]
     },
     {
       "parameters": {
@@ -234,9 +303,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -247,7 +325,10 @@
       "name": "PATCH offer running",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [2500, 220]
+      "position": [
+        2500,
+        220
+      ]
     },
     {
       "parameters": {
@@ -258,7 +339,10 @@
       "name": "LLM Offer (mock)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2720, 220]
+      "position": [
+        2720,
+        220
+      ]
     },
     {
       "parameters": {
@@ -267,9 +351,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -280,7 +373,10 @@
       "name": "PATCH offer completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [2940, 220]
+      "position": [
+        2940,
+        220
+      ]
     },
     {
       "parameters": {
@@ -289,9 +385,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -302,7 +407,10 @@
       "name": "PATCH performance running",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [3160, 220]
+      "position": [
+        3160,
+        220
+      ]
     },
     {
       "parameters": {
@@ -313,7 +421,10 @@
       "name": "LLM Performance (mock)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3380, 220]
+      "position": [
+        3380,
+        220
+      ]
     },
     {
       "parameters": {
@@ -322,9 +433,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -335,7 +455,10 @@
       "name": "PATCH performance completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [3600, 220]
+      "position": [
+        3600,
+        220
+      ]
     },
     {
       "parameters": {
@@ -344,9 +467,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -357,7 +489,10 @@
       "name": "PATCH synthesis running",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [3820, 220]
+      "position": [
+        3820,
+        220
+      ]
     },
     {
       "parameters": {
@@ -368,7 +503,10 @@
       "name": "LLM Synthesis (mock)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4040, 220]
+      "position": [
+        4040,
+        220
+      ]
     },
     {
       "parameters": {
@@ -377,9 +515,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -390,7 +537,10 @@
       "name": "PATCH synthesis completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [4260, 220]
+      "position": [
+        4260,
+        220
+      ]
     },
     {
       "parameters": {
@@ -399,19 +549,28 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-agora-callback-secret", "value": "={{$env.AGORA_CALLBACK_SECRET}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-agora-callback-secret",
+              "value": "={{$env.AGORA_CALLBACK_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"run_id\":$('Set Context').item.json.run_id,\"status\":\"completed\",\"analysis\":$json.synthesis_output,\"agent_responses\":{\"sociobehavioral\":$items('LLM Socio (mock)',0,0)[0].json.socio_output,\"offer_analysis\":$items('LLM Offer (mock)',0,0)[0].json.offer_output,\"performance_timing\":$items('LLM Performance (mock)',0,0)[0].json.perf_output,\"synthesis\":$json.synthesis_output}}"
+        "jsonBody": "={\"run_id\":$('Set Context').item.json.run_id,\"status\":\"completed\",\"analysis\":$items('LLM Synthesis (mock)',0,0)[0].json.synthesis_output,\"agent_responses\":[{\"agent_id\":\"intake\",\"analysis_request_id\":$('Set Context').item.json.analysis_request_id,\"content_text\":$items('PATCH intake completed',0,0)[0].json,\"model_name\":\"gemini-2.5-flash\",\"latency_ms\":null,\"tokens_input\":null,\"tokens_output\":null},{\"agent_id\":\"sociobehavioral\",\"analysis_request_id\":$('Set Context').item.json.analysis_request_id,\"content_text\":$items('LLM Socio (mock)',0,0)[0].json.socio_output,\"model_name\":\"mock\",\"latency_ms\":null,\"tokens_input\":null,\"tokens_output\":null},{\"agent_id\":\"offer_analysis\",\"analysis_request_id\":$('Set Context').item.json.analysis_request_id,\"content_text\":$items('LLM Offer (mock)',0,0)[0].json.offer_output,\"model_name\":\"mock\",\"latency_ms\":null,\"tokens_input\":null,\"tokens_output\":null},{\"agent_id\":\"performance_timing\",\"analysis_request_id\":$('Set Context').item.json.analysis_request_id,\"content_text\":$items('LLM Performance (mock)',0,0)[0].json.perf_output,\"model_name\":\"mock\",\"latency_ms\":null,\"tokens_input\":null,\"tokens_output\":null},{\"agent_id\":\"synthesis\",\"analysis_request_id\":$('Set Context').item.json.analysis_request_id,\"content_text\":$items('LLM Synthesis (mock)',0,0)[0].json.synthesis_output,\"model_name\":\"mock\",\"latency_ms\":null,\"tokens_input\":null,\"tokens_output\":null}]}"
       },
       "id": "Callback_Completed",
       "name": "POST n8n-callback completed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [4480, 220]
+      "position": [
+        4480,
+        220
+      ]
     },
     {
       "parameters": {
@@ -425,7 +584,10 @@
       "name": "Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [4700, 220]
+      "position": [
+        4700,
+        220
+      ]
     },
     {
       "parameters": {},
@@ -433,16 +595,28 @@
       "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
-      "position": [650, 620]
+      "position": [
+        650,
+        620
+      ]
     },
     {
       "parameters": {
         "keepOnlySet": true,
         "values": {
           "string": [
-            { "name": "run_id", "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.run_id || ''}}" },
-            { "name": "started_at", "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.started_at || ''}}" },
-            { "name": "error_message", "value": "={{$json.execution?.error?.message || 'workflow error'}}" }
+            {
+              "name": "run_id",
+              "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.run_id || ''}}"
+            },
+            {
+              "name": "started_at",
+              "value": "={{$json.execution?.data?.resultData?.runData?.['Set Context']?.[0]?.data?.main?.[0]?.[0]?.json?.started_at || ''}}"
+            },
+            {
+              "name": "error_message",
+              "value": "={{$json.execution?.error?.message || 'workflow error'}}"
+            }
           ]
         }
       },
@@ -450,7 +624,10 @@
       "name": "Set Error Context",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
-      "position": [900, 620]
+      "position": [
+        900,
+        620
+      ]
     },
     {
       "parameters": {
@@ -467,7 +644,10 @@
       "name": "IF run_id exists",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1130, 620]
+      "position": [
+        1130,
+        620
+      ]
     },
     {
       "parameters": {
@@ -476,10 +656,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -491,7 +683,10 @@
       "name": "PATCH run_steps failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1370, 550]
+      "position": [
+        1370,
+        550
+      ]
     },
     {
       "parameters": {
@@ -500,26 +695,38 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-agora-callback-secret", "value": "={{$env.AGORA_CALLBACK_SECRET}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-agora-callback-secret",
+              "value": "={{$env.AGORA_CALLBACK_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"run_id\":$json.run_id,\"status\":\"failed\",\"error\":$json.error_message,\"agent_responses\":{}}"
+        "jsonBody": "={\"run_id\":$json.run_id,\"status\":\"failed\",\"error\":$json.error_message,\"agent_responses\":[]}"
       },
       "id": "Callback_Failed",
       "name": "POST n8n-callback failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1600, 550]
+      "position": [
+        1600,
+        550
+      ]
     },
     {
       "parameters": {
         "keepOnlySet": true,
         "values": {
           "string": [
-            { "name": "message", "value": "missing run_id in error context; failed callback skipped" }
+            {
+              "name": "message",
+              "value": "missing run_id in error context; failed callback skipped"
+            }
           ]
         }
       },
@@ -527,93 +734,420 @@
       "name": "Skip failed callback (no run_id)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
-      "position": [1370, 700]
+      "position": [
+        1370,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const runId = $('Set Context').item.json.run_id;\nconst logPayload = {\n  run_id: runId,\n  step_kind: 'intake',\n  attempt: 1,\n  model_used: 'gemini-2.5-flash',\n  tokens_input: null,\n  tokens_output: null,\n  duration_ms: null,\n  workflow_execution_id: $workflow.id,\n  dispatch_error: null\n};\nconsole.log(JSON.stringify(logPayload));\nreturn [{ json: logPayload }];"
+      },
+      "id": "Log_Intake",
+      "name": "Log intake",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const runId = $('Set Context').item.json.run_id;\nconst logPayload = {\n  run_id: runId,\n  step_kind: 'sociobehavioral',\n  attempt: 1,\n  model_used: 'gemini-2.5-flash',\n  tokens_input: null,\n  tokens_output: null,\n  duration_ms: null,\n  workflow_execution_id: $workflow.id,\n  dispatch_error: null\n};\nconsole.log(JSON.stringify(logPayload));\nreturn [{ json: logPayload }];"
+      },
+      "id": "Log_Socio",
+      "name": "Log sociobehavioral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const runId = $('Set Context').item.json.run_id;\nconst logPayload = {\n  run_id: runId,\n  step_kind: 'offer_analysis',\n  attempt: 1,\n  model_used: 'gemini-2.5-flash',\n  tokens_input: null,\n  tokens_output: null,\n  duration_ms: null,\n  workflow_execution_id: $workflow.id,\n  dispatch_error: null\n};\nconsole.log(JSON.stringify(logPayload));\nreturn [{ json: logPayload }];"
+      },
+      "id": "Log_Offer",
+      "name": "Log offer_analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3140,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const runId = $('Set Context').item.json.run_id;\nconst logPayload = {\n  run_id: runId,\n  step_kind: 'performance_timing',\n  attempt: 1,\n  model_used: 'gemini-2.5-flash',\n  tokens_input: null,\n  tokens_output: null,\n  duration_ms: null,\n  workflow_execution_id: $workflow.id,\n  dispatch_error: null\n};\nconsole.log(JSON.stringify(logPayload));\nreturn [{ json: logPayload }];"
+      },
+      "id": "Log_Perf",
+      "name": "Log performance_timing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3800,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const runId = $('Set Context').item.json.run_id;\nconst logPayload = {\n  run_id: runId,\n  step_kind: 'synthesis',\n  attempt: 1,\n  model_used: 'gemini-2.5-flash',\n  tokens_input: null,\n  tokens_output: null,\n  duration_ms: null,\n  workflow_execution_id: $workflow.id,\n  dispatch_error: null\n};\nconsole.log(JSON.stringify(logPayload));\nreturn [{ json: logPayload }];"
+      },
+      "id": "Log_Synth",
+      "name": "Log synthesis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4460,
+        400
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [[{ "node": "Validate Secret", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Validate Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Validate Secret": {
       "main": [
-        [{ "node": "Set Context", "type": "main", "index": 0 }],
-        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Set Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Set Context": {
-      "main": [[{ "node": "PATCH intake running", "type": "main", "index": 0 }]]
-    },
-    "PATCH intake running": {
       "main": [
-        [{ "node": "MCP IBGE", "type": "main", "index": 0 }],
-        [{ "node": "MCP Benchmark", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "MCP IBGE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "MCP Benchmark",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "MCP IBGE": {
-      "main": [[{ "node": "Merge Intake Resources", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Intake Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "MCP Benchmark": {
-      "main": [[{ "node": "Merge Intake Resources", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Intake Resources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge Intake Resources": {
-      "main": [[{ "node": "PATCH intake completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH intake completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH intake completed": {
-      "main": [[{ "node": "PATCH socio running", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log intake": {
+      "main": [
+        [
+          {
+            "node": "PATCH socio running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH socio running": {
-      "main": [[{ "node": "LLM Socio (mock)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "LLM Socio (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "LLM Socio (mock)": {
-      "main": [[{ "node": "PATCH socio completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH socio completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH socio completed": {
-      "main": [[{ "node": "PATCH offer running", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log sociobehavioral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log sociobehavioral": {
+      "main": [
+        [
+          {
+            "node": "PATCH offer running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH offer running": {
-      "main": [[{ "node": "LLM Offer (mock)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "LLM Offer (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "LLM Offer (mock)": {
-      "main": [[{ "node": "PATCH offer completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH offer completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH offer completed": {
-      "main": [[{ "node": "PATCH performance running", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log offer_analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log offer_analysis": {
+      "main": [
+        [
+          {
+            "node": "PATCH performance running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH performance running": {
-      "main": [[{ "node": "LLM Performance (mock)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "LLM Performance (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "LLM Performance (mock)": {
-      "main": [[{ "node": "PATCH performance completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH performance completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH performance completed": {
-      "main": [[{ "node": "PATCH synthesis running", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log performance_timing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log performance_timing": {
+      "main": [
+        [
+          {
+            "node": "PATCH synthesis running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH synthesis running": {
-      "main": [[{ "node": "LLM Synthesis (mock)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "LLM Synthesis (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "LLM Synthesis (mock)": {
-      "main": [[{ "node": "PATCH synthesis completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "PATCH synthesis completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "PATCH synthesis completed": {
-      "main": [[{ "node": "POST n8n-callback completed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Log synthesis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log synthesis": {
+      "main": [
+        [
+          {
+            "node": "POST n8n-callback completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "POST n8n-callback completed": {
-      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Error Trigger": {
-      "main": [[{ "node": "Set Error Context", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Error Context": {
-      "main": [[{ "node": "IF run_id exists", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF run_id exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF run_id exists": {
       "main": [
-        [{ "node": "PATCH run_steps failed", "type": "main", "index": 0 }],
-        [{ "node": "Skip failed callback (no run_id)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "PATCH run_steps failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip failed callback (no run_id)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "PATCH run_steps failed": {
-      "main": [[{ "node": "POST n8n-callback failed", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "POST n8n-callback failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
