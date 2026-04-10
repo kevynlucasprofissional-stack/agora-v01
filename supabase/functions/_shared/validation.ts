@@ -74,6 +74,39 @@ export const N8nCallbackPayloadSchema = z.object({
 
 export type N8nCallbackPayload = z.infer<typeof N8nCallbackPayloadSchema>;
 
+// ── Step update payload (incremental n8n step patches) ───────
+
+const StepUpdateSchema = z.object({
+  step_kind: z.enum([
+    "intake",
+    "sociobehavioral",
+    "offer_analysis",
+    "performance_timing",
+    "synthesis",
+    "image_generation",
+    "post_processing",
+  ]),
+  status: z.enum(["running", "completed", "failed"]),
+  started_at: z.string().max(100).optional().nullable(),
+  completed_at: z.string().max(100).optional().nullable(),
+  duration_ms: z.number().int().nonnegative().optional().nullable(),
+  output_payload: z.record(z.unknown()).optional().nullable(),
+  error_message: z.string().max(10_000).optional().nullable(),
+  model_used: z.string().max(200).optional().nullable(),
+  tokens_input: z.number().int().nonnegative().optional().nullable(),
+  tokens_output: z.number().int().nonnegative().optional().nullable(),
+  workflow_execution_id: z.string().max(500).optional().nullable(),
+  attempt: z.number().int().nonnegative().optional().nullable(),
+});
+
+export const N8nStepUpdatePayloadSchema = z.object({
+  run_id: z.string().uuid("run_id must be a valid UUID"),
+  event_type: z.literal("step_update").optional(),
+  step_update: StepUpdateSchema,
+});
+
+export type N8nStepUpdatePayload = z.infer<typeof N8nStepUpdatePayloadSchema>;
+
 // ── Generic validator helper ─────────────────────────────────
 
 /**
