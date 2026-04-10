@@ -457,8 +457,7 @@ serve(async (req) => {
 
     // ── Async n8n path ──
     const intakeStep = await run.startStep("intake", { rawPrompt, title });
-    // Mover o step para 'running' imediatamente antes do dispatch
-    if (intakeStep) await intakeStep.updateStatus("running");
+    // startStep already marks the step as 'running'
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const dispatchResult = await dispatchToN8n({
