@@ -90,7 +90,19 @@ const StepUpdateSchema = z.object({
   started_at: z.string().max(100).optional().nullable(),
   completed_at: z.string().max(100).optional().nullable(),
   duration_ms: z.number().int().nonnegative().optional().nullable(),
-  output_payload: z.record(z.unknown()).optional().nullable(),
+  output_payload: z.record(z.unknown()).optional().nullable().refine(
+    (val) => {
+      if (val == null) return true;
+      const serialized = JSON.stringify(val);
+      return !serialized.includes("[object Object]");
+    },
+    {
+      message:
+        "output_payload contém valores serializados como '[object Object]'. " +
+        "Certifique-se de enviar objetos JSON reais, não strings coercidas. " +
+        "Use um Code Node no n8n para montar o payload em vez de interpolação {{ }} em JSON textual.",
+    },
+  ),
   error_message: z.string().max(10_000).optional().nullable(),
   model_used: z.string().max(200).optional().nullable(),
   tokens_input: z.number().int().nonnegative().optional().nullable(),
