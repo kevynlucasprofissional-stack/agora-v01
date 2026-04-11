@@ -123,16 +123,19 @@ Headers:
 
 #### Respostas do Step Update
 
-**Sucesso (transição aplicada):**
+**Sucesso (transição aplicada — ex: `pending→running`):**
 ```json
 {
   "ok": true,
   "run_id": "uuid",
   "step_kind": "intake",
   "previous_status": "pending",
-  "new_status": "running"
+  "new_status": "running",
+  "started_at": "2026-04-10T14:30:00.000Z"
 }
 ```
+
+> **Nota:** `started_at` é retornado sempre que a transição envolve o status `running`. Se o payload de entrada não fornecer `started_at`, o backend gera automaticamente um timestamp ISO 8601. Use este valor no node seguinte do n8n para calcular `duration_ms`.
 
 **Idempotente (já no status alvo):**
 ```json

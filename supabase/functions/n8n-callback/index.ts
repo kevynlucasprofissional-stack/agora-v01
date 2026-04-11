@@ -109,7 +109,10 @@ async function handleStepUpdate(
   // Build update object
   const updateObj: Record<string, unknown> = { status: newStatus };
 
-  if (step_update.started_at) updateObj.started_at = step_update.started_at;
+  // Auto-set started_at when transitioning to running (if not provided)
+  const startedAt = step_update.started_at ?? (newStatus === "running" ? new Date().toISOString() : undefined);
+  if (startedAt) updateObj.started_at = startedAt;
+
   if (step_update.completed_at) updateObj.completed_at = step_update.completed_at;
   if (step_update.duration_ms != null) updateObj.duration_ms = step_update.duration_ms;
   if (step_update.output_payload != null) updateObj.output_payload = step_update.output_payload;
@@ -128,13 +131,17 @@ async function handleStepUpdate(
   const ms = (performance.now() - start).toFixed(0);
   console.log(`n8n-callback | step_update | run=${run_id} | step=${step_kind} | ${prevStatus}->${newStatus} | ${ms}ms`);
 
-  return json({
+  // Include started_at in response so n8n can use it for duration calculation
+  const response: Record<string, unknown> = {
     ok: true,
     run_id,
     step_kind,
     previous_status: prevStatus,
     new_status: newStatus,
-  });
+  };
+  if (startedAt) response.started_at = startedAt;
+
+  return json(response);
 }
 
 // ── Legacy Final Callback Handler ───────────────────────────
