@@ -99,9 +99,10 @@ export default function NewAnalysisPage() {
       return;
     }
 
-    // Check if user has any in-progress analysis
+    // Check if user has any in-progress OR recently-completed analysis
     const checkInProgress = async () => {
-      const { data } = await supabase
+      // 1) Check for still-processing analysis
+      const { data: processingData } = await supabase
         .from("analysis_requests")
         .select("id")
         .eq("user_id", user.id)
@@ -109,9 +110,8 @@ export default function NewAnalysisPage() {
         .order("created_at", { ascending: false })
         .limit(1);
 
-      if (data && data.length > 0) {
-        const analysisId = data[0].id;
-        // Find the associated run
+      if (processingData && processingData.length > 0) {
+        const analysisId = processingData[0].id;
         const { data: runs } = await supabase
           .from("analysis_runs")
           .select("id")
@@ -122,7 +122,6 @@ export default function NewAnalysisPage() {
 
         if (runs && runs.length > 0) {
           processingRecoveredRef.current = true;
-          // Update URL params for future recovery
           setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
             next.set("aid", analysisId);
@@ -130,7 +129,25 @@ export default function NewAnalysisPage() {
             return next;
           }, { replace: true });
           resumeProcessing(analysisId, runs[0].id);
+          return;
         }
+      }
+
+      // 2) Check for recently-completed analysis (last 5 min) the user may not have seen
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: completedData } = await supabase
+        .from("analysis_requests")
+        .select("id, completed_at")
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .gte("completed_at", fiveMinAgo)
+        .order("completed_at", { ascending: false })
+        .limit(1);
+
+      if (completedData && completedData.length > 0) {
+        processingRecoveredRef.current = true;
+        console.log(`[recovery] Redirecting to recently-completed analysis ${completedData[0].id}`);
+        navigate(`/app/analysis/${completedData[0].id}/report`, { replace: true });
       }
     };
 
