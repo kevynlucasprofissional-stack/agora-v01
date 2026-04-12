@@ -1,0 +1,1 @@
+ALTER TYPE public.run_step_kind ADD VALUE IF NOT EXISTS 'error_handling';
