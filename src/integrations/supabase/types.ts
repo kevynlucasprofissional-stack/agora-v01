@@ -1046,6 +1046,7 @@ export type Database = {
         | "synthesis"
         | "image_generation"
         | "post_processing"
+        | "error_handling"
       upload_kind:
         | "user_input"
         | "analysis_attachment"
@@ -1217,6 +1218,7 @@ export const Constants = {
         "synthesis",
         "image_generation",
         "post_processing",
+        "error_handling",
       ],
       upload_kind: [
         "user_input",
