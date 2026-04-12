@@ -82,6 +82,61 @@ export default function NewAnalysisPage() {
   const conversationIdRef = useRef<string | null>(conversationId);
   conversationIdRef.current = conversationId;
 
+  // ── Resilient recovery: detect in-progress analysis on mount ──
+  const processingRecoveredRef = useRef(false);
+
+  useEffect(() => {
+    if (processingRecoveredRef.current || !user) return;
+
+    // Check URL params first (user was on this page when they left)
+    const urlAnalysisId = searchParams.get("aid");
+    const urlRunId = searchParams.get("rid");
+
+    if (urlAnalysisId && urlRunId) {
+      // Resume from URL params
+      processingRecoveredRef.current = true;
+      resumeProcessing(urlAnalysisId, urlRunId);
+      return;
+    }
+
+    // Check if user has any in-progress analysis
+    const checkInProgress = async () => {
+      const { data } = await supabase
+        .from("analysis_requests")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "processing")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const analysisId = data[0].id;
+        // Find the associated run
+        const { data: runs } = await supabase
+          .from("analysis_runs")
+          .select("id")
+          .eq("analysis_request_id", analysisId)
+          .eq("status", "running")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (runs && runs.length > 0) {
+          processingRecoveredRef.current = true;
+          // Update URL params for future recovery
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("aid", analysisId);
+            next.set("rid", runs[0].id);
+            return next;
+          }, { replace: true });
+          resumeProcessing(analysisId, runs[0].id);
+        }
+      }
+    };
+
+    checkInProgress();
+  }, [user]);
+
   const hasMessages = messages.length > 0;
   const isBusy = isStreaming || isGeneratingImage;
 
