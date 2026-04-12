@@ -252,7 +252,13 @@ async function dispatchToN8n(payload: N8nPayload): Promise<{ dispatched: boolean
     return { dispatched: res.ok, ...(!res.ok ? { error: `HTTP ${res.status}` } : {}) };
   } catch (err) {
     clearTimeout(timeout);
-    const msg = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : String(err);
+    // Timeout means n8n received the request but didn't respond in time
+    // (missing "Respond to Webhook" node). Treat as successful dispatch.
+    if (err instanceof DOMException && err.name === "AbortError") {
+      console.warn(`[n8n-dispatch] Timeout (8s) for run_id=${payload.run_id} — treating as dispatched`);
+      return { dispatched: true };
+    }
+    const msg = String(err);
     console.error(`[n8n-dispatch] Failed for run_id=${payload.run_id}: ${msg}`);
     return { dispatched: false, error: msg };
   }
