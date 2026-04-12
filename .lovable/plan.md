@@ -1,31 +1,51 @@
 
 
-# Corrigir Code Nodes para n8n 2.x
+# Corrigir Code Node do Synthesis — Alinhar ao Prompt
 
 ## Problema
-Os 4 Code Nodes usam `$items('NODE', 0, 0)` que foi removido no n8n 2.x. A API correta é `$('NODE').first().json`.
+O Code Node atual cobre apenas 7 de 19 campos do prompt, inclui 5 campos inexistentes, e tem um bug de typo em `strengths`.
 
-## Mudança necessária
-Regenerar os 4 arquivos JS (`n8n-code-node-socio.js`, `n8n-code-node-offer.js`, `n8n-code-node-performance.js`, `n8n-code-node-synthesis.js`) substituindo todas as ocorrências de:
+## Mudança
+Regenerar o script do Synthesis no arquivo `/mnt/documents/n8n-code-nodes-v2.md` com o `output_payload` corrigido:
 
-| Padrão antigo (n8n 1.x) | Padrão correto (n8n 2.x) |
-|---|---|
-| `$items('NODE', 0, 0)[0].json` | `$('NODE').first().json` |
-| `$items('NODE', 0, 0)` | `$('NODE').all()` |
+```javascript
+output_payload: {
+  // Scores
+  score_overall: parsed.score_overall ?? null,
+  score_sociobehavioral: parsed.score_sociobehavioral ?? null,
+  score_offer: parsed.score_offer ?? null,
+  score_performance: parsed.score_performance ?? null,
+  // Textuais
+  executive_summary: parsed.executive_summary ?? null,
+  improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+  strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+  audience_insights: Array.isArray(parsed.audience_insights) ? parsed.audience_insights : [],
+  market_references: Array.isArray(parsed.market_references) ? parsed.market_references : [],
+  // Objetos analíticos
+  marketing_era: parsed.marketing_era ?? null,
+  cognitive_biases: Array.isArray(parsed.cognitive_biases) ? parsed.cognitive_biases : [],
+  hormozi_analysis: parsed.hormozi_analysis ?? null,
+  kpi_analysis: parsed.kpi_analysis ?? null,
+  timing_analysis: parsed.timing_analysis ?? null,
+  brand_sentiment: parsed.brand_sentiment ?? null,
+  ibge_insights: parsed.ibge_insights ?? null,
+  // Contextuais
+  industry: parsed.industry ?? null,
+  primary_channel: parsed.primary_channel ?? null,
+  declared_target_audience: parsed.declared_target_audience ?? null,
+  region: parsed.region ?? null
+}
+```
 
-## Nomes dos nós (baseados no screenshot do workflow)
-Cada Code Node referencia 3 nós upstream:
-- **Socio**: `LLM SOCIO`, `POST socio running`, `Set Context`
-- **Offer**: `LLM OFFER`, `POST offer running`, `Set Context`
-- **Performance**: `LLM PERFORMANCE`, `POST performance running`, `Set Context`
-- **Synthesis**: `LLM SYNTHESIS` (ou equivalente), `POST synthesis running`, `Set Context`
-
-## Entrega
-Arquivo consolidado em `/mnt/documents/n8n-code-nodes-v2.md` com os 4 scripts corrigidos, prontos para copiar e colar no n8n.
+## O que será removido
+- `key_recommendations`, `weaknesses`, `opportunities`, `threats`, `industry_data` (campos fantasma)
 
 ## O que será preservado
-- Toda a lógica de sanitização (remoção de markdown fences, JSON.parse seguro)
-- Cálculo de `duration_ms` e `completed_at`
-- Estrutura do `output_payload` por agente
-- Contrato do `n8n-callback` inalterado
+- Suporte híbrido (tool call vs texto)
+- Cálculo de `duration_ms` e timestamps
+- Estrutura do `_final_callback`
+- Referências a `LLM SYNTHESIS`, `POST synthesis running`, `Set Context`
+
+## Entrega
+Arquivo atualizado em `/mnt/documents/n8n-code-nodes-v2.md` com o script corrigido.
 
