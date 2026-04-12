@@ -85,6 +85,7 @@ const StepUpdateSchema = z.object({
     "synthesis",
     "image_generation",
     "post_processing",
+    "error_handling",
   ]),
   status: z.enum(["running", "completed", "failed"]),
   started_at: z.string().max(100).optional().nullable(),
