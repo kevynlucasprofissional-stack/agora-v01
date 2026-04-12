@@ -546,14 +546,33 @@ export default function NewAnalysisPage() {
     setLoading(false);
   };
 
+  const STEP_KIND_TO_AGENT_INDEX: Record<string, number> = {
+    intake: 0,
+    sociobehavioral: 1,
+    offer_analysis: 2,
+    performance_timing: 3,
+    synthesis: 4,
+  };
+
+  const deriveCurrentAgent = (steps: { step_kind: string; status: string }[]): number => {
+    // Find the highest-order step that is "running" — that's the active agent
+    for (let i = steps.length - 1; i >= 0; i--) {
+      if (steps[i].status === "running") {
+        return STEP_KIND_TO_AGENT_INDEX[steps[i].step_kind] ?? 0;
+      }
+    }
+    // Otherwise, find the last completed step and show the next one as active
+    for (let i = steps.length - 1; i >= 0; i--) {
+      if (steps[i].status === "completed") {
+        const idx = STEP_KIND_TO_AGENT_INDEX[steps[i].step_kind] ?? 0;
+        return Math.min(idx + 1, agentOrder.length - 1);
+      }
+    }
+    return 0;
+  };
+
   const runRealAnalysis = async (analysisId: string) => {
     setStep("processing");
-
-    // Animate agent icons while waiting
-    const agentTimers: NodeJS.Timeout[] = [];
-    for (let i = 1; i < agentOrder.length; i++) {
-      agentTimers.push(setTimeout(() => { setCurrentAgent(i); }, i * 5000));
-    }
 
     try {
       const fullPrompt = getFullPrompt();
@@ -584,8 +603,38 @@ export default function NewAnalysisPage() {
 
       const dispatchData = await resp.json();
       console.log("[analyze] Dispatch accepted:", dispatchData);
+      const runId = dispatchData.run_id as string | undefined;
 
-      // ── Step 2: Subscribe to realtime updates on analysis_requests ──
+      // ── Step 2: Poll run_steps for real-time agent progress ──
+      const STEP_POLL_INTERVAL = 3000;
+      let stepPollTimer: ReturnType<typeof setInterval> | null = null;
+
+      if (runId) {
+        stepPollTimer = setInterval(async () => {
+          try {
+            const { data: steps } = await supabase
+              .from("run_steps")
+              .select("step_kind, status")
+              .eq("run_id", runId)
+              .order("step_order", { ascending: true });
+
+            if (steps && steps.length > 0) {
+              // Filter only pipeline steps (ignore image_generation, post_processing, error_handling)
+              const pipelineSteps = steps.filter(
+                (s) => s.step_kind in STEP_KIND_TO_AGENT_INDEX
+              );
+              if (pipelineSteps.length > 0) {
+                const agentIdx = deriveCurrentAgent(pipelineSteps);
+                setCurrentAgent(agentIdx);
+              }
+            }
+          } catch (err) {
+            console.warn("[step-poll] Error polling run_steps:", err);
+          }
+        }, STEP_POLL_INTERVAL);
+      }
+
+      // ── Step 3: Subscribe to realtime updates on analysis_requests ──
       const channel = supabase
         .channel(`analysis-${analysisId}`)
         .on(
@@ -601,13 +650,13 @@ export default function NewAnalysisPage() {
             console.log("[realtime] analysis_requests update:", updated.status);
 
             if (updated.status === "completed") {
-              agentTimers.forEach(clearTimeout);
+              if (stepPollTimer) clearInterval(stepPollTimer);
               setCurrentAgent(agentOrder.length - 1);
               channel.unsubscribe();
               setStep("completed");
               setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
             } else if (updated.status === "failed") {
-              agentTimers.forEach(clearTimeout);
+              if (stepPollTimer) clearInterval(stepPollTimer);
               channel.unsubscribe();
               toast.error("A análise falhou. Tente novamente.");
               setStep("intake");
@@ -616,7 +665,7 @@ export default function NewAnalysisPage() {
         )
         .subscribe();
 
-      // ── Step 3: Fallback polling (in case realtime misses the event) ──
+      // ── Step 4: Fallback polling (in case realtime misses the event) ──
       const POLL_INTERVAL = 5000;
       const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minutes
       const pollStart = Date.now();
@@ -624,8 +673,8 @@ export default function NewAnalysisPage() {
       const pollTimer = setInterval(async () => {
         if (Date.now() - pollStart > MAX_POLL_TIME) {
           clearInterval(pollTimer);
+          if (stepPollTimer) clearInterval(stepPollTimer);
           channel.unsubscribe();
-          agentTimers.forEach(clearTimeout);
           toast.error("Tempo limite excedido. Verifique o histórico de análises.");
           setStep("intake");
           return;
@@ -639,22 +688,21 @@ export default function NewAnalysisPage() {
 
         if (current?.status === "completed") {
           clearInterval(pollTimer);
+          if (stepPollTimer) clearInterval(stepPollTimer);
           channel.unsubscribe();
-          agentTimers.forEach(clearTimeout);
           setCurrentAgent(agentOrder.length - 1);
           setStep("completed");
           setTimeout(() => navigate(`/app/analysis/${analysisId}/report`), 1500);
         } else if (current?.status === "failed") {
           clearInterval(pollTimer);
+          if (stepPollTimer) clearInterval(stepPollTimer);
           channel.unsubscribe();
-          agentTimers.forEach(clearTimeout);
           toast.error("A análise falhou. Tente novamente.");
           setStep("intake");
         }
       }, POLL_INTERVAL);
 
     } catch (e) {
-      agentTimers.forEach(clearTimeout);
       console.error("Analysis error:", e);
       toast.error(e instanceof Error ? e.message : "Erro ao analisar campanha.");
 
