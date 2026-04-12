@@ -838,6 +838,63 @@ export default function NewAnalysisPage() {
     }
   };
 
+  // Processing / completed view
+  if (step === "processing" || step === "completed") {
+    return (
+      <div className="max-w-3xl mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-2xl font-bold">
+            {step === "completed" ? "Análise Concluída!" : "Processando Análise..."}
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            {step === "completed" ? "Redirecionando para o relatório..." : "Os agentes especialistas estão analisando sua campanha."}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-12">
+          {agentOrder.map((code, idx) => {
+            const Icon = agentIcons[code];
+            const info = AGENT_INFO[code];
+            const isActive = idx === currentAgent && step === "processing";
+            const isDone = idx < currentAgent || step === "completed";
+
+            return (
+              <div key={code} className="flex flex-col items-center text-center w-20 sm:w-24">
+                <motion.div
+                  animate={{ opacity: isDone || isActive ? 1 : 0.3, scale: isActive ? 1.15 : 1 }}
+                  transition={{ duration: 0.3 }}
+                  className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border-2 transition-colors ${
+                    isActive ? "border-primary bg-primary/10" :
+                    isDone ? "border-success/50 bg-success/10" : "border-border bg-card"
+                  }`}
+                >
+                  {isDone ? <Check className="h-5 w-5 sm:h-6 sm:w-6 text-success" /> : <Icon className="h-5 w-5 sm:h-6 sm:w-6" />}
+                  {isActive && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                  )}
+                </motion.div>
+                <span className="mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground leading-tight">
+                  {info.name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {step === "processing" && (
+          <div className="glass-card p-6 text-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {AGENT_INFO[agentOrder[currentAgent]].name} está processando...
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Chat-style intake view
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
