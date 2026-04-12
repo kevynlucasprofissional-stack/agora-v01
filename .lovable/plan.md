@@ -1,108 +1,133 @@
 
 
-# Auditoria do Workflow n8n vs Backend — Erros e Plano de Correção
+# Auditoria Completa: Workflow n8n + Frontend — Plano de Correção
 
-## Erros Encontrados
+## Situação Atual
 
-### CRÍTICO — Quebram o fluxo
+O workflow funciona end-to-end (a última run `c96ced5f` completou com todos os 5 steps). Os problemas restantes são de **experiência do usuário** e **resiliência**.
 
-**1. Code Nodes dos agentes individuais não mapeiam todos os campos do prompt**
+---
 
-| Agent | Code Node | Campo do Prompt | Campo no Code Node | Problema |
-|-------|-----------|-----------------|---------------------|----------|
-| SOCIO | `Code in JavaScript` | `score_sociobehavioral` | `score` | Nome errado |
-| SOCIO | | `marketing_era` (objeto) | — | Ausente |
-| SOCIO | | `audience_insights` (array) | — | Ausente |
-| SOCIO | | `brand_sentiment` (objeto) | — | Ausente |
-| OFFER | `Code in JavaScript1` | `score_offer` | `score` | Nome errado |
-| OFFER | | `hormozi_analysis.overall_value` | `value_equation_score`, `improvements`, `strengths` | Sub-campos errados (prompt pede `overall_value` string, code espera campos inexistentes) |
-| OFFER | | `diagnostics` | — | Ausente (prompt pede, code ignora) |
-| PERF | `Code in JavaScript2` | `score_performance` | `score` | Nome errado |
-| PERF | | `kpi_analysis.recommended_north_star` | `north_star_metric` | Nome errado |
-| PERF | | `kpi_analysis.recommended_kpis` | `kpis` | Nome errado |
-| PERF | | `timing_analysis.demand_momentum` | `momentum_score` | Tipo e nome errados (prompt: string, code: number) |
-| PERF | | `timing_analysis.context_shock` | `external_shocks` (array) | Tipo e nome errados (prompt: string, code: array) |
+## Problema Principal: UI de Progresso Desconectada dos Steps Reais
 
-Estes erros significam que o `output_payload` de cada step intermediário salvo em `run_steps` está incompleto ou com nomes incorretos. Embora o **callback final** use o SYNTHESIS PARSE (que já está correto), se alguma feature futura ler `run_steps.output_payload` dos agentes individuais, os dados estarão errados.
+### Diagnóstico
 
-**2. Error Handler — `step_kind: "error_handling"` não existe no enum Zod**
+No `NewAnalysisPage.tsx` (linhas 552-556), a animação dos agentes é baseada em **timers fixos de 5 segundos**:
 
-O schema Zod aceita: `intake`, `sociobehavioral`, `offer_analysis`, `performance_timing`, `synthesis`, `image_generation`, `post_processing`. O valor `"error_handling"` será rejeitado com 400. O error handler falha silenciosamente.
-
-**3. Error Handler — JSON inválido no body**
-
-```json
-"run_id": $json.run_id,        // ← falta aspas
-"error_message": $json.error_message  // ← falta aspas
+```text
+for (let i = 1; i < agentOrder.length; i++) {
+  agentTimers.push(setTimeout(() => setCurrentAgent(i), i * 5000));
+}
 ```
 
-Isso gera JSON malformado. O callback receberá um parse error.
+Isso significa que:
+- O agente "Sociocomportamental" aparece ativo aos 5s independente do status real
+- Se o LLM demorar 15s num step, a UI já mostra outro agente como ativo
+- Se falhar num step intermediário, a UI continua animando alegremente
 
-**4. Error Handler — Header inconsistente**
+O backend **já envia step_updates em tempo real** (comprovado pelo banco: `run_steps` tem `started_at` e `completed_at` reais). A UI simplesmente não os consome.
 
-Os nós do happy path usam `$env.X_AGORA_CALLBACK_SECRET`, mas os nós de erro usam `$env.AGORA_CALLBACK_SECRET`. Se forem variáveis diferentes, os callbacks de erro retornam 401.
+### Solução
 
-**5. Webhook `responseMode: "responseNode"` sem Respond node no happy path**
+Substituir os timers fixos por **polling dos `run_steps`** (a mesma infraestrutura de polling que já existe para `analysis_requests`). A cada 3s, consultar `run_steps` da run atual e derivar o `currentAgent` do estado real:
 
-O webhook está configurado com `responseMode: "responseNode"`, o que exige um nó `Respond to Webhook` no fluxo. Só existe o `Respond 401` no caminho de erro. No happy path, o `analyze-campaign` edge function ficará pendurado por 8 segundos até dar timeout. Isso não é fatal (o dispatch usa `AbortController` com 8s), mas desperdiça tempo e gera logs de timeout desnecessários.
-
-### MODERADO — Funciona mas gera risco
-
-**6. URL com protocolo duplicado**
-
+```text
+run_steps polling (3s):
+  intake=completed → agente 0 done
+  socio=running    → agente 1 ativo
+  socio=completed  → agente 1 done
+  offer=running    → agente 2 ativo
+  ...
 ```
+
+Opcionalmente, usar Realtime no `run_steps` em vez de polling.
+
+---
+
+## Problema Secundário: Error Handler Envia Payload Errado
+
+### Diagnóstico
+
+O nó "Code in JavaScript" (error handler) constrói um objeto com:
+```text
+{ step_callback: { url, body }, final_callback: { url, body } }
+```
+
+Mas o próximo nó "POST n8n-callback failed (legacy)" envia `{{ $json }}` — ou seja, envia o **wrapper inteiro** (com `step_callback` e `final_callback` como chaves), não o `body` do `final_callback`. O backend recebe um payload sem `run_id` no nível raiz e retorna 400.
+
+### Solução (n8n)
+
+Mudar o error handler para gerar dois outputs separados, ou simplificar para enviar direto o payload legacy:
+
+```javascript
+return [{
+  json: {
+    run_id: runId,
+    status: "failed",
+    error: errorMessage.substring(0, 10000)
+  }
+}];
+```
+
+---
+
+## Outros Problemas Identificados
+
+### 3. URL com Protocolo Duplicado (risco moderado)
+
+Todos os HTTP Request nodes usam:
+```text
 url: "=https://{{$env.SUPABASE_URL + '/functions/v1/...'}}"
 ```
 
-Se `SUPABASE_URL` já contém `https://` (que é o padrão), o resultado será `https://https://aqrcjvtidgxpjhjozwct.supabase.co/functions/v1/...`. Isso quebrará todas as chamadas HTTP (MCP IBGE, MCP Benchmark, e todos os callbacks). **Verifique o valor da variável no n8n.** Se o valor já tem `https://`, remova o prefixo dos nós.
+Se `SUPABASE_URL` já contém `https://`, a URL final será `https://https://...`. O fato de a última run ter funcionado indica que o valor configurado no n8n **não tem** o prefixo. Mas é frágil — documentar para verificação.
 
-**7. `POST intake completed` — usa JSON textual interpolado**
+### 4. Webhook sem Respond Node no Happy Path
 
-```json
-"jsonBody": "={\n  \"run_id\": \"{{ $('Set Context')... }}\",\n..."
-```
+O workflow usa `responseMode: "responseNode"` mas não tem um "Respond to Webhook" no caminho principal. O fix no `analyze-campaign` (tratar AbortError como sucesso) mitiga isso, mas adicionar um nó "Respond 202" após "Set Context" eliminaria o timeout de 8s e os logs desnecessários.
 
-Funciona para campos simples (strings, números), mas é frágil. Não é erro agora, mas seria se campos complexos fossem adicionados ao intake no futuro.
+### 5. Intake marcado como "failed" em runs falhas
 
-## Plano de Correção
+Nos dados, runs falhas (ex: `34939393`) mostram `intake` com status `failed` e `socio` com status `running` — isso sugere que o error handler do n8n tentou algo mas não conseguiu atualizar corretamente o run. Consistente com o erro do payload do error handler (problema #2).
 
-### Parte 1 — Correções no Workflow n8n (fora do código)
+---
 
-**1a.** Corrigir os 3 Code Nodes dos agentes para mapear exatamente os campos dos prompts:
+## Plano de Implementação
 
-- **SOCIO**: adicionar `marketing_era`, `audience_insights`, `brand_sentiment`; renomear `score` para `score_sociobehavioral`
-- **OFFER**: renomear `score` para `score_offer`; corrigir sub-campos de `hormozi_analysis` (`overall_value` em vez de `value_equation_score`/`improvements`/`strengths`); adicionar `diagnostics`
-- **PERF**: renomear `score` para `score_performance`; corrigir nomes em `kpi_analysis` e `timing_analysis` para alinhar ao prompt
+### Parte 1 — Frontend: UI reativa aos steps reais
 
-**1b.** Corrigir Error Handler:
-- Converter os 2 nós HTTP Request de erro para usar Code Nodes que constroem o JSON programaticamente
-- Unificar o nome da variável de secret para `X_AGORA_CALLBACK_SECRET`
+**Arquivo:** `src/pages/app/NewAnalysisPage.tsx`
 
-**1c.** Adicionar Respond to Webhook no happy path (logo após Set Context) para desbloquear o caller imediatamente:
-```
-Set Context → Respond 202 → MCP IBGE/Benchmark (continua assíncrono)
-```
+1. Remover os `setTimeout` timers (linhas 553-556)
+2. Adicionar polling de `run_steps` a cada 3 segundos durante o step "processing":
+   - Query: `SELECT step_kind, status FROM run_steps WHERE run_id = ? ORDER BY step_order`
+   - Derivar `currentAgent` do step mais avançado que esteja `running` ou do último `completed`
+3. Mapear `step_kind` → índice do `agentOrder`:
+   - `intake` → 0, `sociobehavioral` → 1, `offer_analysis` → 2, `performance_timing` → 3, `synthesis` → 4
+4. Precisamos do `run_id` — ele vem na resposta do dispatch (`analyze-campaign` retorna `{ run_id }`). Guardar em state.
 
-**1d.** Verificar e corrigir o prefixo `https://` duplicado nas URLs.
+### Parte 2 — n8n: Corrigir Error Handler (documento)
 
-### Parte 2 — Correção no Backend (dentro do código)
+Atualizar `/mnt/documents/n8n-workflow-fixes.md` com o Code Node corrigido do error handler que envia diretamente o payload legacy sem wrapper.
 
-**2a.** Adicionar `"error_handling"` ao enum `step_kind` em `validation.ts` para que o error handler do n8n não seja rejeitado pelo Zod. Alternativa: usar um step_kind existente no error handler. A opção mais limpa é adicionar ao enum.
+### Parte 3 — n8n: Respond to Webhook (documento)
 
-### Parte 3 — Entregável
+Incluir instrução para adicionar nó "Respond to Webhook" com status 202 logo após "Set Context".
 
-Gerar um documento `/mnt/documents/n8n-workflow-fixes.md` com:
-- Os 3 Code Nodes corrigidos (SOCIO, OFFER, PERF) prontos para colar
-- O Code Node do Error Handler corrigido
-- Instruções de configuração do Respond 202
-- A migration do `step_kind` enum
+---
 
-## Arquivos impactados no repositório
-- `supabase/functions/_shared/validation.ts` — adicionar `"error_handling"` ao enum
+## Arquivos Impactados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/app/NewAnalysisPage.tsx` | Substituir timers por polling de `run_steps` |
+| `/mnt/documents/n8n-workflow-fixes.md` | Atualizar error handler + Respond 202 |
 
 ## O que será preservado
-- Contrato do `n8n-callback` (legacy e step_update)
-- SYNTHESIS PARSE e Code in JavaScript3 (já estão corretos)
-- Máquina de estados e idempotência
-- Validação defensiva contra `[object Object]`
+
+- Contrato do `n8n-callback` (step_update + legacy)
+- Realtime subscription em `analysis_requests` (para completed/failed)
+- Fallback polling de `analysis_requests`
+- Toda a lógica de chat/intake
+- Máquina de estados do backend
 
