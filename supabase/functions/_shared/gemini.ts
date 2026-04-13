@@ -231,17 +231,18 @@ export async function callGeminiText(
 ): Promise<string> {
   const apiKey = _apiKey || getGeminiKey();
   const model = opts?.model || "gemini-2.5-flash";
-  const res = await fetch(GEMINI_OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  );
 
   if (!res.ok) {
     const status = res.status;
@@ -250,7 +251,7 @@ export async function callGeminiText(
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  return data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
 }
 
 /**
