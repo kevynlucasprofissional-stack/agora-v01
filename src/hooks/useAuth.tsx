@@ -33,13 +33,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
 
-    if (profileData) {
+      if (profileError || !profileData) {
+        console.warn("Failed to fetch profile:", profileError?.message);
+        return;
+      }
+
       setProfile(profileData);
 
       // Check if trial has expired
@@ -52,11 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? profileData.original_plan_id
         : profileData.current_plan_id;
 
-      const { data: planData } = await supabase
+      const { data: planData, error: planError } = await supabase
         .from("plans")
         .select("*")
         .eq("id", planIdToUse)
         .single();
+      
+      if (planError) {
+        console.warn("Failed to fetch plan:", planError.message);
+      }
       if (planData) setPlan(planData);
 
       // If trial expired and profile still shows standard, revert in DB
@@ -66,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .update({ current_plan_id: profileData.original_plan_id, trial_ends_at: null })
           .eq("id", userId);
       }
+    } catch (err) {
+      console.warn("fetchProfile unexpected error:", err);
     }
   };
 
