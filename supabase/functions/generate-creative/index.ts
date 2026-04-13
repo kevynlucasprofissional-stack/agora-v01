@@ -129,10 +129,15 @@ REGRAS:
 - O visual deve ser coerente com o contexto fornecido
 - Inclua compliance_warnings se houver restrições identificadas`;
 
-    const strategistOutput = parseAIJson(
-      await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" }),
-      STRATEGIST_FALLBACK,
-    );
+    let strategistOutput = STRATEGIST_FALLBACK;
+    try {
+      strategistOutput = parseAIJson(
+        await callGeminiText(strategistPrompt, GEMINI_API_KEY, { model: "gemini-2.5-flash" }),
+        STRATEGIST_FALLBACK,
+      );
+    } catch (error) {
+      console.warn("Strategist generation failed, using fallback:", error);
+    }
 
     // ─── 3. Image Generation (shared helper) ───
     const imagePrompt = `${strategistOutput.nano_banana_prompt || "Professional marketing creative background"}
