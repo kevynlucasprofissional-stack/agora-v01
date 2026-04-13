@@ -43,6 +43,28 @@ const ACTION_MODES = [
 
 type FileContent = { name: string; type: string; content: string; isBase64: boolean };
 
+function ProcessingTip({ tips }: { tips: string[] }) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setIndex((p) => (p + 1) % tips.length), 6000);
+    return () => clearInterval(timer);
+  }, [tips.length]);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={index}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.4 }}
+        className="text-xs text-muted-foreground italic"
+      >
+        {tips[index]}
+      </motion.p>
+    </AnimatePresence>
+  );
+}
+
 export default function NewAnalysisPage() {
   const { user } = useAuth();
   const { uploadsLimit } = usePlanAccess();
@@ -857,56 +879,182 @@ export default function NewAnalysisPage() {
 
   // Processing / completed view
   if (step === "processing" || step === "completed") {
+    const progressPercent = step === "completed"
+      ? 100
+      : Math.round(((currentAgent) / agentOrder.length) * 100 + (1 / agentOrder.length) * 50);
+
+    const PROCESSING_TIPS = [
+      "💡 Campanhas com CTA claro convertem até 3x mais.",
+      "📊 Dados socioeconômicos ajudam a refinar o público-alvo.",
+      "🎯 Ofertas com urgência real superam as genéricas em 47%.",
+      "🧠 O cérebro processa imagens 60.000x mais rápido que texto.",
+      "📱 72% das compras online começam no mobile.",
+      "🔍 Testes A/B consistentes aumentam ROI em até 30%.",
+      "⏰ O horário de envio impacta até 25% da taxa de abertura.",
+      "🎨 Cores consistentes aumentam reconhecimento de marca em 80%.",
+      "📈 Segmentar por comportamento gera 3x mais engajamento.",
+      "✨ Personalização no assunto aumenta abertura em 26%.",
+    ];
+
     return (
-      <div className="max-w-3xl mx-auto py-12">
-        <div className="text-center mb-12">
+      <div className="max-w-3xl mx-auto py-12 px-4">
+        <div className="text-center mb-10">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, type: "spring" }}
+          >
+            {step === "completed" ? (
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/20 mb-4">
+                <Check className="h-8 w-8 text-success" />
+              </div>
+            ) : (
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+              </div>
+            )}
+          </motion.div>
           <h1 className="text-2xl font-bold">
-            {step === "completed" ? "Análise Concluída!" : "Processando Análise..."}
+            {step === "completed" ? "Análise Concluída! 🎉" : "Analisando sua campanha..."}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {step === "completed" ? "Redirecionando para o relatório..." : "Os agentes especialistas estão analisando sua campanha."}
+            {step === "completed"
+              ? "Redirecionando para o relatório..."
+              : "Nossos agentes especializados estão trabalhando na sua campanha."}
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-12">
+        {/* Progress bar */}
+        <div className="mb-10">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Progresso</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+        </div>
+
+        {/* Agent steps */}
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-10">
           {agentOrder.map((code, idx) => {
             const Icon = agentIcons[code];
             const info = AGENT_INFO[code];
             const isActive = idx === currentAgent && step === "processing";
             const isDone = idx < currentAgent || step === "completed";
+            const isPending = !isActive && !isDone;
 
             return (
-              <div key={code} className="flex flex-col items-center text-center w-20 sm:w-24">
+              <motion.div
+                key={code}
+                className="flex flex-col items-center text-center w-20 sm:w-24"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1, duration: 0.4 }}
+              >
                 <motion.div
-                  animate={{ opacity: isDone || isActive ? 1 : 0.3, scale: isActive ? 1.15 : 1 }}
+                  animate={{
+                    opacity: isPending ? 0.35 : 1,
+                    scale: isActive ? 1.15 : 1,
+                  }}
                   transition={{ duration: 0.3 }}
-                  className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border-2 transition-colors ${
-                    isActive ? "border-primary bg-primary/10" :
-                    isDone ? "border-success/50 bg-success/10" : "border-border bg-card"
+                  className={`relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border-2 transition-colors ${
+                    isActive
+                      ? "border-primary bg-primary/15 shadow-lg shadow-primary/20"
+                      : isDone
+                      ? "border-success/60 bg-success/10"
+                      : "border-border bg-card"
                   }`}
                 >
-                  {isDone ? <Check className="h-5 w-5 sm:h-6 sm:w-6 text-success" /> : <Icon className="h-5 w-5 sm:h-6 sm:w-6" />}
+                  <AnimatePresence mode="wait">
+                    {isDone ? (
+                      <motion.div
+                        key="done"
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <Check className="h-6 w-6 sm:h-7 sm:w-7 text-success" strokeWidth={3} />
+                      </motion.div>
+                    ) : isActive ? (
+                      <motion.div
+                        key="active"
+                        animate={{ rotate: [0, 5, -5, 0] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      >
+                        <Icon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                      </motion.div>
+                    ) : (
+                      <motion.div key="pending">
+                        <Icon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/50" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Pulsing ring for active agent */}
                   {isActive && (
-                    <div className="absolute -bottom-1 -right-1">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    </div>
+                    <>
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl border-2 border-primary/40"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0, 0.6] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      />
+                      <div className="absolute -bottom-1.5 -right-1.5 bg-background rounded-full p-0.5">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      </div>
+                    </>
                   )}
                 </motion.div>
-                <span className="mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground leading-tight">
+
+                <span
+                  className={`mt-2 text-[10px] sm:text-xs uppercase tracking-wider leading-tight transition-colors ${
+                    isActive
+                      ? "text-primary font-semibold"
+                      : isDone
+                      ? "text-success font-medium"
+                      : "text-muted-foreground"
+                  }`}
+                >
                   {info.name}
                 </span>
-              </div>
+
+                {isDone && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-[9px] text-success mt-0.5"
+                  >
+                    Concluído ✓
+                  </motion.span>
+                )}
+              </motion.div>
             );
           })}
         </div>
 
+        {/* Current agent card with rotating tips */}
         {step === "processing" && (
-          <div className="glass-card p-6 text-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {AGENT_INFO[agentOrder[currentAgent]].name} está processando...
-            </p>
-          </div>
+          <motion.div
+            key={currentAgent}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="glass-card p-6 text-center space-y-4"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <p className="text-sm font-medium text-foreground">
+                {AGENT_INFO[agentOrder[currentAgent]].name} está analisando...
+              </p>
+            </div>
+            <ProcessingTip tips={PROCESSING_TIPS} />
+          </motion.div>
         )}
       </div>
     );
