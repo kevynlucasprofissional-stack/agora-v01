@@ -74,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Set up listener FIRST (before getSession) so no events are missed
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -89,7 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Then restore session from storage
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        // Stale/invalid refresh token — clear state gracefully
+        console.warn("Session restore failed, signing out:", error.message);
+        supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setPlan(null);
+        setLoading(false);
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
