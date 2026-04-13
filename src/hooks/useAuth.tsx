@@ -87,12 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up listener FIRST (before getSession) so no events are missed
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid potential race conditions with profile trigger
-          setTimeout(() => fetchProfile(session.user.id), 500);
+          // For sign-in events, give session time to fully propagate
+          const delay = event === "SIGNED_IN" ? 1000 : 500;
+          setTimeout(() => fetchProfile(session.user.id), delay);
         } else {
           setProfile(null);
           setPlan(null);
