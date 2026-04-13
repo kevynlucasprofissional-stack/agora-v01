@@ -231,11 +231,11 @@ export async function callGeminiText(
 ): Promise<string> {
   const apiKey = _apiKey || getGeminiKey();
   const model = opts?.model || "gemini-2.5-flash";
-  const url = `${GEMINI_OPENAI_URL}?key=${apiKey}`;
-  const res = await fetch(url, {
+  const res = await fetch(GEMINI_OPENAI_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
