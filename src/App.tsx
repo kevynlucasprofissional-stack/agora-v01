@@ -18,7 +18,6 @@ import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import NotFound from "@/pages/NotFound";
 
 // Public pages (lazy)
-const PetraMixPage = lazy(() => import("@/pages/PetraMixPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
@@ -66,7 +65,6 @@ const App = () => (
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/petramix" element={<Suspense fallback={<PageLoader />}><PetraMixPage /></Suspense>} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pricing" element={<Suspense fallback={<PageLoader />}><PricingPage /></Suspense>} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
