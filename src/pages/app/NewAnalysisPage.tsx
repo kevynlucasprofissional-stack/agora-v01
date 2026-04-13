@@ -43,6 +43,28 @@ const ACTION_MODES = [
 
 type FileContent = { name: string; type: string; content: string; isBase64: boolean };
 
+function ProcessingTip({ tips }: { tips: string[] }) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setIndex((p) => (p + 1) % tips.length), 6000);
+    return () => clearInterval(timer);
+  }, [tips.length]);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={index}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.4 }}
+        className="text-xs text-muted-foreground italic"
+      >
+        {tips[index]}
+      </motion.p>
+    </AnimatePresence>
+  );
+}
+
 export default function NewAnalysisPage() {
   const { user } = useAuth();
   const { uploadsLimit } = usePlanAccess();
