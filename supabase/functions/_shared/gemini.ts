@@ -230,27 +230,45 @@ export async function callGeminiText(
   opts?: { model?: string },
 ): Promise<string> {
   const apiKey = _apiKey || getGeminiKey();
-  const model = opts?.model || "gemini-2.5-flash";
-  const res = await fetch(GEMINI_OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  const primaryModel = opts?.model || "gemini-2.5-flash";
+  const models = Array.from(new Set([primaryModel, "gemini-2.5-flash-lite", "gemini-2.5-pro"]));
 
-  if (!res.ok) {
-    const status = res.status;
-    const body = await res.text();
-    throw new Error(`Gemini ${model} error ${status}: ${body.slice(0, 300)}`);
+  let lastError = "";
+
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+          }),
+        },
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        return data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("") || "";
+      }
+
+      const status = res.status;
+      const body = await res.text();
+      lastError = `Gemini ${model} error ${status}: ${body.slice(0, 300)}`;
+
+      if ((status === 429 || status >= 500) && attempt === 0) {
+        await sleep(1000);
+        continue;
+      }
+
+      break;
+    }
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  throw new Error(lastError || "All AI models failed");
 }
 
 /**
