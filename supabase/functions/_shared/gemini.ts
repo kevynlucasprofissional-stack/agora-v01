@@ -226,14 +226,15 @@ export function sleep(ms: number): Promise<void> {
  */
 export async function callGeminiText(
   prompt: string,
-  apiKey: string,
+  _apiKey?: string,
   opts?: { model?: string },
 ): Promise<string> {
+  const apiKey = _apiKey || getGeminiKey();
   const model = opts?.model || "gemini-2.5-flash";
-  const res = await fetch(GEMINI_OPENAI_URL, {
+  const url = `${GEMINI_OPENAI_URL}?key=${apiKey}`;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
