@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Zap, BarChart3, Users, Target, Shield, ArrowRight, Check } from "lucide-react";
 import { AgoraIcon } from "@/components/AgoraIcon";
 import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
 import { PLAN_FEATURES } from "@/types/database";
+import { useAuth } from "@/hooks/useAuth";
 
 const features = [
   { icon: Users, title: "Análise Sociocomportamental", desc: "Classificação geracional, neuromarketing e vieses cognitivos do seu público real." },
@@ -26,6 +27,12 @@ const fadeUp = {
 };
 
 export default function LandingPage() {
+  const { session, loading } = useAuth();
+
+  if (!loading && session) {
+    return <Navigate to="/app" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
