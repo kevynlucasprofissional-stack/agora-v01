@@ -29,7 +29,7 @@ export function FabricCanvas({ state }: Props) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-8"
+      className="flex-1 min-w-0 overflow-auto bg-muted/30 flex items-center justify-center p-4 md:p-8"
     >
       <div
         style={{

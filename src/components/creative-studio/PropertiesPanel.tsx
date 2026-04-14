@@ -146,7 +146,7 @@ export function PropertiesPanel({ state }: Props) {
 
   if (!obj) {
     return (
-      <div className="w-60 border-l border-border bg-card p-4">
+      <div className="w-full md:w-60 border-l border-border bg-card p-4">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Propriedades</h3>
         <p className="text-xs text-muted-foreground">Selecione um elemento no canvas para editar suas propriedades.</p>
         
@@ -182,7 +182,7 @@ export function PropertiesPanel({ state }: Props) {
 
   return (
     <div
-      className="w-60 border-l border-border bg-card flex flex-col"
+      className="w-full md:w-60 border-l border-border bg-card flex flex-col"
       onPointerDown={(e) => e.stopPropagation()}
       onPointerMove={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}
