@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Wrench, SlidersHorizontal } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCanvasState } from "@/components/creative-studio/useCanvasState";
 import { useWorkspaceState } from "@/components/creative-studio/useWorkspaceState";
@@ -12,18 +12,40 @@ import { StudioHeader } from "@/components/creative-studio/StudioHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { addImpactfulLayers } from "@/components/creative-studio/layerLayoutEngine";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 export default function CreativeStudioPage() {
   const { jobId } = useParams();
   const [searchParams] = useSearchParams();
   const analysisId = searchParams.get("analysis_id") || undefined;
   const conversationId = searchParams.get("conversation_id") || undefined;
+  const isMobile = useIsMobile();
 
   const workspace = useWorkspaceState();
   const canvasState = useCanvasState();
   const [saving, setSaving] = useState(false);
   const [jobProcessed, setJobProcessed] = useState(false);
   const [jobLoading, setJobLoading] = useState(!!jobId);
+
+  // Mobile sheet states
+  const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
+  const [propsSheetOpen, setPropsSheetOpen] = useState(false);
+
+  // Auto-open properties sheet on mobile when object is selected
+  useEffect(() => {
+    if (isMobile && canvasState.selectedObject) {
+      setPropsSheetOpen(true);
+    }
+  }, [isMobile, canvasState.selectedObject]);
+
+  // Auto-open workspace properties sheet on mobile when element is selected
+  useEffect(() => {
+    if (isMobile && workspace.selectedElement) {
+      setPropsSheetOpen(true);
+    }
+  }, [isMobile, workspace.selectedElement]);
 
   // Store job data to apply after canvas is ready
   const pendingJobRef = useRef<any>(null);
@@ -101,7 +123,6 @@ export default function CreativeStudioPage() {
 
     const apply = async () => {
       if (image_url) {
-        // setBackgroundImage now returns a promise — no polling needed
         await canvasState.setBackgroundImage(image_url);
       }
 
@@ -117,7 +138,6 @@ export default function CreativeStudioPage() {
         }
       }
 
-      // Save state to artboard after rendering
       if (workspace.editingId) {
         requestAnimationFrame(() => {
           const json = canvasState.getJSON();
@@ -158,7 +178,6 @@ export default function CreativeStudioPage() {
         });
       }
 
-      // Also save to creative_jobs if linked
       const linkedJobId = jobId || workspace.editingArtboard?.creativeJobId;
       if (linkedJobId) {
         const { error } = await supabase.from("creative_jobs")
@@ -188,7 +207,7 @@ export default function CreativeStudioPage() {
     }
   }, [workspace, canvasState]);
 
-  // ---- Auto-save: save artboard state every 5 seconds when editing ----
+  // ---- Auto-save ----
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSavedJsonRef = useRef<string | null>(null);
 
@@ -217,20 +236,69 @@ export default function CreativeStudioPage() {
 
   const isLinkedArtboard = !!(workspace.editingArtboard?.creativeJobId);
 
+  // ===== EDITOR MODE =====
   if (workspace.editingId) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
-          onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} />
-        <div className="flex flex-1 overflow-hidden">
-          <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId} isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
+          onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} isMobile={isMobile} />
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Desktop: fixed sidebar */}
+          {!isMobile && (
+            <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId}
+              isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
+          )}
+
           <FabricCanvas state={canvasState} />
-          <PropertiesPanel state={canvasState} />
+
+          {/* Desktop: fixed properties panel */}
+          {!isMobile && <PropertiesPanel state={canvasState} />}
+
+          {/* Mobile: FABs */}
+          {isMobile && (
+            <>
+              <Button
+                size="icon"
+                className="fixed bottom-20 left-4 z-50 h-12 w-12 rounded-full shadow-lg"
+                onClick={() => setToolsSheetOpen(true)}
+              >
+                <Wrench className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card"
+                onClick={() => setPropsSheetOpen(true)}
+              >
+                <SlidersHorizontal className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+
+          {/* Mobile: Tools Sheet */}
+          {isMobile && (
+            <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
+              <SheetContent side="left" className="w-72 p-0">
+                <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId}
+                  isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {/* Mobile: Properties Sheet */}
+          {isMobile && (
+            <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
+              <SheetContent side="bottom" className="p-0 max-h-[70vh]">
+                <PropertiesPanel state={canvasState} />
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     );
   }
 
+  // ===== LOADING =====
   if (jobLoading || !workspace.dbLoaded) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-2rem)]">
@@ -239,20 +307,43 @@ export default function CreativeStudioPage() {
     );
   }
 
+  // ===== WORKSPACE MODE =====
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)]">
-      <StudioHeader mode="workspace" workspace={workspace} />
-      <div className="flex flex-1 overflow-hidden">
+      <StudioHeader mode="workspace" workspace={workspace} isMobile={isMobile} />
+      <div className="flex flex-1 overflow-hidden relative">
         <WorkspaceGrid workspace={workspace} />
-        <WorkspacePropertiesPanel
-          element={workspace.selectedElement}
-          onUpdate={workspace.updateElement}
-          onRemove={workspace.removeElement}
-          onEdit={(id) => workspace.setEditingId(id)}
-          onBringToFront={workspace.bringToFront}
-          onSendToBack={workspace.sendToBack}
-          onDuplicate={workspace.duplicateElement}
-        />
+
+        {/* Desktop: fixed panel */}
+        {!isMobile && (
+          <WorkspacePropertiesPanel
+            element={workspace.selectedElement}
+            onUpdate={workspace.updateElement}
+            onRemove={workspace.removeElement}
+            onEdit={(id) => workspace.setEditingId(id)}
+            onBringToFront={workspace.bringToFront}
+            onSendToBack={workspace.sendToBack}
+            onDuplicate={workspace.duplicateElement}
+          />
+        )}
+
+        {/* Mobile: Properties Sheet */}
+        {isMobile && (
+          <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
+            <SheetContent side="bottom" className="p-0 max-h-[70vh]">
+              <WorkspacePropertiesPanel
+                element={workspace.selectedElement}
+                onUpdate={workspace.updateElement}
+                onRemove={workspace.removeElement}
+                onEdit={(id) => { workspace.setEditingId(id); setPropsSheetOpen(false); }}
+                onBringToFront={workspace.bringToFront}
+                onSendToBack={workspace.sendToBack}
+                onDuplicate={workspace.duplicateElement}
+                isMobile
+              />
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </div>
   );

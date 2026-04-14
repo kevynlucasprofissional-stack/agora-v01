@@ -123,7 +123,7 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
   const showAISection = !isLinkedArtboard;
 
   return (
-    <div className="w-64 border-r border-border bg-card flex flex-col">
+    <div className="w-full md:w-64 border-r border-border bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
           {/* Text */}

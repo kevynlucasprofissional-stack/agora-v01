@@ -16,6 +16,7 @@ import type { useWorkspaceState, NoteColor } from "./useWorkspaceState";
 type WorkspaceMode = {
   mode: "workspace";
   workspace: ReturnType<typeof useWorkspaceState>;
+  isMobile?: boolean;
 };
 
 type EditorMode = {
@@ -25,6 +26,7 @@ type EditorMode = {
   saving: boolean;
   onBack: () => void;
   artboardName?: string;
+  isMobile?: boolean;
 };
 
 type Props = WorkspaceMode | EditorMode;
@@ -48,16 +50,85 @@ const NOTE_COLOR_OPTIONS: { value: NoteColor; label: string; bg: string }[] = [
 export function StudioHeader(props: Props) {
   const [newArtboardOpen, setNewArtboardOpen] = useState(false);
   const [noteColorOpen, setNoteColorOpen] = useState(false);
+  const isMobile = props.isMobile ?? false;
 
   if (props.mode === "workspace") {
     const { workspace } = props;
+
+    if (isMobile) {
+      return (
+        <div className="border-b border-border bg-card px-3 py-2 shrink-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Estúdio Criativo</span>
+            <div className="flex items-center gap-1">
+              {/* Snap toggle */}
+              <Button
+                variant={workspace.snapToGrid ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => workspace.setSnapToGrid(!workspace.snapToGrid)}
+                title="Snap to grid"
+              >
+                <Grid3X3 className="h-3.5 w-3.5" />
+              </Button>
+              {/* Create dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 gap-1">
+                    <Plus className="h-4 w-4" /> Criar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setNewArtboardOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-2" /> Artboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setNoteColorOpen(true)}>
+                    <StickyNote className="h-3.5 w-3.5 mr-2" /> Nota
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => workspace.addText()}>
+                    <Type className="h-3.5 w-3.5 mr-2" /> Texto
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    workspace.cancelArrowMode();
+                    workspace.setArrowToolMode("connected");
+                  }}>
+                    <Link className="h-3.5 w-3.5 mr-2" /> Conectar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    workspace.cancelArrowMode();
+                    workspace.setArrowToolMode("freeform");
+                  }}>
+                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Seta livre
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          {/* Zoom row */}
+          <div className="flex items-center gap-2">
+            <ZoomOut className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <Slider
+              value={[workspace.wsZoom * 100]}
+              onValueChange={([v]) => workspace.setWsZoom(v / 100)}
+              min={20} max={300} step={5}
+              className="flex-1"
+            />
+            <ZoomIn className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground w-10">{Math.round(workspace.wsZoom * 100)}%</span>
+          </div>
+
+          {/* Dialogs (shared) */}
+          <ArtboardDialog open={newArtboardOpen} onOpenChange={setNewArtboardOpen} workspace={workspace} />
+          <NoteDialog open={noteColorOpen} onOpenChange={setNoteColorOpen} workspace={workspace} />
+        </div>
+      );
+    }
+
+    // Desktop workspace header
     return (
       <div className="h-12 border-b border-border bg-card px-4 flex items-center gap-3 shrink-0">
         <span className="text-sm font-semibold text-foreground">Estúdio Criativo</span>
-
         <Separator orientation="vertical" className="h-6" />
-
-        {/* Zoom */}
         <div className="flex items-center gap-2">
           <ZoomOut className="h-3.5 w-3.5 text-muted-foreground" />
           <Slider
@@ -69,11 +140,8 @@ export function StudioHeader(props: Props) {
           <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground w-10">{Math.round(workspace.wsZoom * 100)}%</span>
         </div>
-
         <Separator orientation="vertical" className="h-6" />
-
         <div className="flex items-center gap-1.5">
-          {/* New Artboard */}
           <Dialog open={newArtboardOpen} onOpenChange={setNewArtboardOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
@@ -95,7 +163,6 @@ export function StudioHeader(props: Props) {
             </DialogContent>
           </Dialog>
 
-          {/* New Sticky Note */}
           <Dialog open={noteColorOpen} onOpenChange={setNoteColorOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
@@ -117,12 +184,10 @@ export function StudioHeader(props: Props) {
             </DialogContent>
           </Dialog>
 
-          {/* New Text */}
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => workspace.addText()}>
             <Type className="h-3.5 w-3.5" /> Texto
           </Button>
 
-          {/* Arrow tool dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -151,7 +216,6 @@ export function StudioHeader(props: Props) {
 
           <Separator orientation="vertical" className="h-6" />
 
-          {/* Snap toggle */}
           <Button
             variant={workspace.snapToGrid ? "default" : "outline"}
             size="sm"
@@ -162,13 +226,12 @@ export function StudioHeader(props: Props) {
             <Grid3X3 className="h-3.5 w-3.5" />
           </Button>
         </div>
-
         <div className="flex-1" />
       </div>
     );
   }
 
-  // Editor mode
+  // ===== EDITOR MODE =====
   const { state, onSave, saving, onBack, artboardName } = props;
 
   const handleExport = () => {
@@ -181,6 +244,50 @@ export function StudioHeader(props: Props) {
     link.click();
   };
 
+  if (isMobile) {
+    return (
+      <div className="border-b border-border bg-card px-3 py-2 shrink-0 space-y-2">
+        {/* Row 1: Back + name + save/export */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          {artboardName && (
+            <span className="text-xs text-muted-foreground truncate flex-1">{artboardName}</span>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={state.undo} title="Desfazer">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={state.redo} title="Refazer">
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={onSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          </Button>
+          <Button size="icon" className="h-8 w-8" onClick={handleExport}>
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+        {/* Row 2: Format + Zoom */}
+        <div className="flex items-center gap-2">
+          <Select value={state.format} onValueChange={(v) => state.changeFormat(v as CanvasFormat)}>
+            <SelectTrigger className="h-7 text-xs w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(FORMAT_LABELS).map(([k, label]) => (
+                <SelectItem key={k} value={k}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ZoomOut className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Slider value={[state.zoom * 100]} onValueChange={([v]) => state.setZoom(v / 100)} min={10} max={150} step={5} className="flex-1" />
+          <ZoomIn className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground w-10">{Math.round(state.zoom * 100)}%</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop editor header
   return (
     <div className="h-12 border-b border-border bg-card px-4 flex items-center gap-3 shrink-0">
       <Button variant="ghost" size="sm" className="gap-1.5 h-8" onClick={onBack}>
@@ -221,5 +328,46 @@ export function StudioHeader(props: Props) {
         <Download className="h-3.5 w-3.5" /> Exportar PNG
       </Button>
     </div>
+  );
+}
+
+// Shared dialogs extracted for reuse
+function ArtboardDialog({ open, onOpenChange, workspace }: { open: boolean; onOpenChange: (v: boolean) => void; workspace: ReturnType<typeof useWorkspaceState> }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Novo Artboard</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          {Object.entries(FORMAT_LABELS).map(([k, label]) => (
+            <Button key={k} variant="outline" className="h-auto py-3 flex flex-col gap-1"
+              onClick={() => { workspace.addArtboard(k as CanvasFormat); onOpenChange(false); }}
+            >
+              <span className="text-xs font-medium">{label}</span>
+              <span className="text-[10px] text-muted-foreground">{k}</span>
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NoteDialog({ open, onOpenChange, workspace }: { open: boolean; onOpenChange: (v: boolean) => void; workspace: ReturnType<typeof useWorkspaceState> }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader><DialogTitle>Nova Nota</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          {NOTE_COLOR_OPTIONS.map((c) => (
+            <button key={c.value}
+              className="h-12 rounded-lg border border-border/50 hover:ring-2 hover:ring-primary transition-all duration-150 active:scale-95"
+              style={{ backgroundColor: c.bg }}
+              onClick={() => { workspace.addStickyNote(c.value); onOpenChange(false); }}
+              title={c.label}
+            />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

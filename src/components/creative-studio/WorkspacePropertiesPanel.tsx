@@ -41,10 +41,12 @@ type Props = {
   onBringToFront?: (id: string) => void;
   onSendToBack?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  isMobile?: boolean;
 };
 
-export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, onBringToFront, onSendToBack, onDuplicate }: Props) {
+export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, onBringToFront, onSendToBack, onDuplicate, isMobile }: Props) {
   if (!element) {
+    if (isMobile) return null;
     return (
       <div className="w-60 border-l border-border bg-card p-4">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -64,7 +66,7 @@ export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, 
   const showDepth = element.type !== "arrow";
 
   return (
-    <div className="w-60 border-l border-border bg-card p-4 space-y-4 overflow-y-auto">
+    <div className="w-full md:w-60 md:border-l border-border bg-card p-4 space-y-4 overflow-y-auto">
       {/* Header with actions */}
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
