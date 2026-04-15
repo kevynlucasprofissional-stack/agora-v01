@@ -9,8 +9,7 @@
  *  - Retry logic with model fallback
  */
 
-const GEMINI_OPENAI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 /**
  * Get Gemini API key or throw.
@@ -44,18 +43,91 @@ export async function callGemini(opts: GeminiChatOptions): Promise<Response> {
   const apiKey = getGeminiKey();
   const { model = "gemini-2.5-flash", messages, stream = false, tools, tool_choice } = opts;
 
-  const body: Record<string, unknown> = { model, messages, stream };
-  if (tools) body.tools = tools;
-  if (tool_choice) body.tool_choice = tool_choice;
+  // Convert OpenAI-style messages to native Gemini format
+  const { contents, systemInstruction } = toGeminiContents(messages);
 
-  return fetch(GEMINI_OPENAI_URL, {
+  const body: Record<string, unknown> = { contents };
+  if (systemInstruction) body.systemInstruction = systemInstruction;
+
+  // Convert OpenAI-style tools to Gemini native function declarations
+  if (tools && tools.length > 0) {
+    const functionDeclarations = tools.map((t: any) => ({
+      name: t.function.name,
+      description: t.function.description,
+      parameters: t.function.parameters,
+    }));
+    body.tools = [{ functionDeclarations }];
+    if (tool_choice && (tool_choice as any).function?.name) {
+      body.toolConfig = {
+        functionCallingConfig: {
+          mode: "ANY",
+          allowedFunctionNames: [(tool_choice as any).function.name],
+        },
+      };
+    }
+  }
+
+  const action = stream ? "streamGenerateContent?alt=sse" : "generateContent";
+  const sep = stream ? "&" : "?";
+  const url = `${GEMINI_BASE}/${model}:${action}${sep}key=${apiKey}`;
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  if (!stream) {
+    // Wrap native response in OpenAI-compatible format for consumers
+    if (response.ok) {
+      const data = await response.json();
+      const candidate = data?.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+
+      // Check for function call response
+      const fnCall = parts.find((p: any) => p.functionCall);
+      if (fnCall) {
+        const wrapped = {
+          choices: [{
+            message: {
+              role: "assistant",
+              tool_calls: [{
+                function: {
+                  name: fnCall.functionCall.name,
+                  arguments: JSON.stringify(fnCall.functionCall.args),
+                },
+              }],
+            },
+          }],
+        };
+        return new Response(JSON.stringify(wrapped), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Plain text response
+      const text = parts.map((p: any) => p.text || "").join("");
+      const wrapped = {
+        choices: [{
+          message: { role: "assistant", content: text },
+        }],
+      };
+      return new Response(JSON.stringify(wrapped), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  } else if (response.ok) {
+    // For streaming, transform Gemini SSE to OpenAI SSE format
+    return new Response(transformGeminiStream(response.body!), {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }
+
+  // Pass through error responses
+  return response;
 }
 
 /**
