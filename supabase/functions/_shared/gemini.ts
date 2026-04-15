@@ -68,7 +68,8 @@ export async function callGemini(opts: GeminiChatOptions): Promise<Response> {
   }
 
   const action = stream ? "streamGenerateContent?alt=sse" : "generateContent";
-  const url = `${GEMINI_BASE}/${model}:${action}&key=${apiKey}`;
+  const sep = stream ? "&" : "?";
+  const url = `${GEMINI_BASE}/${model}:${action}${sep}key=${apiKey}`;
 
   const response = await fetch(url, {
     method: "POST",
