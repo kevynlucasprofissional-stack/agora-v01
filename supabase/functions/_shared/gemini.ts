@@ -9,8 +9,7 @@
  *  - Retry logic with model fallback
  */
 
-const GEMINI_OPENAI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 /**
  * Get Gemini API key or throw.
