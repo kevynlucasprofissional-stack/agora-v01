@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { errorResponse, jsonResponse, handleAIStatus, withErrorHandler } from "../_shared/errors.ts";
-import { callGemini } from "../_shared/gemini.ts";
+import { getGeminiKey, sleep } from "../_shared/gemini.ts";
 
 serve(async (req) => {
   const cors = handleCors(req);
@@ -25,69 +25,59 @@ serve(async (req) => {
     if (payload.strengths?.length) contextParts.push(`Pontos fortes: ${payload.strengths.join("; ")}`);
     if (payload.improvements?.length) contextParts.push(`Gargalos: ${payload.improvements.join("; ")}`);
 
-    const systemPrompt = `[PRIORIDADE ALTA: NUNCA RETORNE JSON PARA O USUÁRIO] Você é um analista de comportamento de consumo e perfil geracional.
+    const systemPrompt = `Você é um analista de comportamento de consumo e perfil geracional.
 Dado o contexto de uma campanha de marketing, gere EXATAMENTE um JSON com dois campos:
 - "consumption_behavior": insight curto (máx 150 caracteres) sobre o comportamento de consumo do público-alvo desta campanha específica. Seja específico e acionável.
 - "target_generation": insight curto (máx 150 caracteres) identificando a geração-alvo (Gen Z, Millennials, Gen X, Boomers) e seu comportamento digital relevante para esta campanha.
 
 Responda APENAS com o JSON, sem markdown, sem backticks.`;
 
-    const response = await callGemini({
-      model: "gemini-2.5-flash-lite",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: contextParts.join("\n") },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "audience_insights",
-            description: "Return audience behavior and generation insights",
-            parameters: {
-              type: "object",
-              properties: {
-                consumption_behavior: {
-                  type: "string",
-                  description: "Max 150 chars insight about consumption behavior",
-                },
-                target_generation: {
-                  type: "string",
-                  description: "Max 150 chars insight about target generation",
-                },
-              },
-              required: ["consumption_behavior", "target_generation"],
-              additionalProperties: false,
+    const apiKey = getGeminiKey();
+    const models = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"];
+    let lastError = "";
+
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: contextParts.join("\n") }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { responseMimeType: "application/json" },
+              }),
             },
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "audience_insights" } },
-    });
+          );
 
-    if (!response.ok) {
-      const aiError = handleAIStatus(response.status);
-      if (aiError) return aiError;
-      const t = await response.text();
-      console.error("AI error:", response.status, t);
-      return errorResponse(500, "AI gateway error", { category: "model" });
+          if (res.status === 429) return handleAIStatus(429)!;
+          if (res.status === 402) return handleAIStatus(402)!;
+
+          if (!res.ok) {
+            const t = await res.text();
+            lastError = `${model} ${res.status}: ${t.slice(0, 200)}`;
+            console.warn(lastError);
+            if (res.status >= 500 && attempt === 0) { await sleep(1500); continue; }
+            break;
+          }
+
+          const data = await res.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const cleaned = text.replace(/```json\n?/g, "").replace(/```/g, "").trim();
+          const insights = JSON.parse(cleaned);
+
+          return jsonResponse(insights);
+        } catch (err) {
+          lastError = `${model} fetch error: ${err}`;
+          console.warn(lastError);
+          if (attempt === 0) await sleep(1000);
+        }
+      }
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    let insights: { consumption_behavior: string; target_generation: string };
-
-    if (toolCall?.function?.arguments) {
-      insights =
-        typeof toolCall.function.arguments === "string"
-          ? JSON.parse(toolCall.function.arguments)
-          : toolCall.function.arguments;
-    } else {
-      const content = data.choices?.[0]?.message?.content || "";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```/g, "").trim();
-      insights = JSON.parse(cleaned);
-    }
-
-    return jsonResponse(insights);
+    console.error("All models failed:", lastError);
+    return errorResponse(500, "AI gateway error", { category: "model" });
   })(req);
 });
