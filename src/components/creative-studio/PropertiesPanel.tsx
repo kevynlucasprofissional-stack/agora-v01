@@ -6,12 +6,13 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline, Trash2, EyeOff } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline, Trash2, EyeOff, X } from "lucide-react";
 import type { useCanvasState } from "./useCanvasState";
 import * as fabric from "fabric";
 
 type Props = {
   state: ReturnType<typeof useCanvasState>;
+  onClose?: () => void;
 };
 
 const FONTS = [
