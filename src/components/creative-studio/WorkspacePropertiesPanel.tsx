@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Bold, Italic, ArrowUpToLine, ArrowDownToLine, Copy } from "lucide-react";
+import { Trash2, Bold, Italic, ArrowUpToLine, ArrowDownToLine, Copy, X } from "lucide-react";
 import type { WorkspaceElement, Artboard, StickyNote, WorkspaceText, Arrow, NoteColor } from "./useWorkspaceState";
 import type { CanvasFormat } from "./useCanvasState";
 
@@ -41,10 +41,11 @@ type Props = {
   onBringToFront?: (id: string) => void;
   onSendToBack?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  onClose?: () => void;
   isMobile?: boolean;
 };
 
-export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, onBringToFront, onSendToBack, onDuplicate, isMobile }: Props) {
+export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, onBringToFront, onSendToBack, onDuplicate, onClose, isMobile }: Props) {
   if (!element) {
     if (isMobile) return null;
     return (
@@ -85,6 +86,12 @@ export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, 
             onClick={() => onRemove(element.id)} title="Excluir (Delete)">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
+          {onClose && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              onClick={onClose} title="Fechar">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
