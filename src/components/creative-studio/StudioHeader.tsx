@@ -16,7 +16,7 @@ import type { useWorkspaceState, NoteColor } from "./useWorkspaceState";
 type WorkspaceMode = {
   mode: "workspace";
   workspace: ReturnType<typeof useWorkspaceState>;
-  isMobile?: boolean;
+  isCompact?: boolean;
 };
 
 type EditorMode = {
@@ -26,7 +26,7 @@ type EditorMode = {
   saving: boolean;
   onBack: () => void;
   artboardName?: string;
-  isMobile?: boolean;
+  isCompact?: boolean;
 };
 
 type Props = WorkspaceMode | EditorMode;
@@ -50,18 +50,17 @@ const NOTE_COLOR_OPTIONS: { value: NoteColor; label: string; bg: string }[] = [
 export function StudioHeader(props: Props) {
   const [newArtboardOpen, setNewArtboardOpen] = useState(false);
   const [noteColorOpen, setNoteColorOpen] = useState(false);
-  const isMobile = props.isMobile ?? false;
+  const isCompact = props.isCompact ?? false;
 
   if (props.mode === "workspace") {
     const { workspace } = props;
 
-    if (isMobile) {
+    if (isCompact) {
       return (
         <div className="border-b border-border bg-card px-3 py-2 shrink-0 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-foreground">Estúdio Criativo</span>
             <div className="flex items-center gap-1">
-              {/* Snap toggle */}
               <Button
                 variant={workspace.snapToGrid ? "default" : "outline"}
                 size="icon"
@@ -71,7 +70,6 @@ export function StudioHeader(props: Props) {
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
               </Button>
-              {/* Create dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" className="h-8 gap-1">
@@ -104,7 +102,6 @@ export function StudioHeader(props: Props) {
               </DropdownMenu>
             </div>
           </div>
-          {/* Zoom row */}
           <div className="flex items-center gap-2">
             <ZoomOut className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <Slider
@@ -116,8 +113,6 @@ export function StudioHeader(props: Props) {
             <ZoomIn className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground w-10">{Math.round(workspace.wsZoom * 100)}%</span>
           </div>
-
-          {/* Dialogs (shared) */}
           <ArtboardDialog open={newArtboardOpen} onOpenChange={setNewArtboardOpen} workspace={workspace} />
           <NoteDialog open={noteColorOpen} onOpenChange={setNoteColorOpen} workspace={workspace} />
         </div>
@@ -244,7 +239,7 @@ export function StudioHeader(props: Props) {
     link.click();
   };
 
-  if (isMobile) {
+  if (isCompact) {
     return (
       <div className="border-b border-border bg-card px-3 py-2 shrink-0 space-y-2">
         {/* Row 1: Back + name + save/export */}
