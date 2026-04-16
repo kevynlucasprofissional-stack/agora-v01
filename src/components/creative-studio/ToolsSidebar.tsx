@@ -23,9 +23,10 @@ type Props = {
   conversationId?: string;
   isLinkedArtboard?: boolean;
   onAfterGenerate?: () => void;
+  onItemAdded?: () => void;
 };
 
-export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboard, onAfterGenerate }: Props) {
+export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboard, onAfterGenerate, onItemAdded }: Props) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
