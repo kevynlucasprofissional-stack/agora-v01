@@ -131,13 +131,13 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Texto</h3>
             <div className="space-y-1.5">
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => state.addText("Título", { fontSize: 64, fontWeight: "bold" })}>
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => { state.addText("Título", { fontSize: 64, fontWeight: "bold" }); onItemAdded?.(); }}>
                 <Heading1 className="h-4 w-4" /> Título
               </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => state.addText("Subtítulo", { fontSize: 36, fontWeight: "600" })}>
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => { state.addText("Subtítulo", { fontSize: 36, fontWeight: "600" }); onItemAdded?.(); }}>
                 <Heading2 className="h-4 w-4" /> Subtítulo
               </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => state.addText("Corpo de texto", { fontSize: 20 })}>
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => { state.addText("Corpo de texto", { fontSize: 20 }); onItemAdded?.(); }}>
                 <AlignLeft className="h-4 w-4" /> Corpo
               </Button>
             </div>
@@ -149,16 +149,16 @@ export function ToolsSidebar({ state, analysisId, conversationId, isLinkedArtboa
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Formas</h3>
             <div className="grid grid-cols-4 gap-1.5">
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => state.addShape("rect")} title="Retângulo">
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { state.addShape("rect"); onItemAdded?.(); }} title="Retângulo">
                 <Square className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => state.addShape("circle")} title="Círculo">
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { state.addShape("circle"); onItemAdded?.(); }} title="Círculo">
                 <Circle className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => state.addShape("triangle")} title="Triângulo">
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { state.addShape("triangle"); onItemAdded?.(); }} title="Triângulo">
                 <Triangle className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => state.addShape("line")} title="Linha">
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { state.addShape("line"); onItemAdded?.(); }} title="Linha">
                 <Minus className="h-4 w-4" />
               </Button>
             </div>
