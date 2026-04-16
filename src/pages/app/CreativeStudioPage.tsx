@@ -337,6 +337,7 @@ export default function CreativeStudioPage() {
                 onBringToFront={workspace.bringToFront}
                 onSendToBack={workspace.sendToBack}
                 onDuplicate={workspace.duplicateElement}
+                onClose={() => setPropsSheetOpen(false)}
                 isMobile
               />
             </SheetContent>
