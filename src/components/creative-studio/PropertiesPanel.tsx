@@ -97,7 +97,7 @@ function NumberInput({
   );
 }
 
-export function PropertiesPanel({ state }: Props) {
+export function PropertiesPanel({ state, onClose }: Props) {
   const obj = state.selectedObject;
   const [props, setProps] = useState<Record<string, any>>({});
   const objIdRef = useRef<number | null>(null);
@@ -198,9 +198,16 @@ export function PropertiesPanel({ state }: Props) {
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Propriedades</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={deleteObject} title="Excluir">
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={deleteObject} title="Excluir">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+              {onClose && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 bg-destructive/10 text-destructive hover:bg-destructive/20" onClick={onClose} title="Fechar">
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Fill */}
