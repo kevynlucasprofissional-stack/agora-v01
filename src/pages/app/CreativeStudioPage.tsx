@@ -299,7 +299,7 @@ export default function CreativeStudioPage() {
   // ===== LOADING =====
   if (jobLoading || !workspace.dbLoaded) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-2rem)]">
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3rem)] -mx-4 -my-4 md:-m-6">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
