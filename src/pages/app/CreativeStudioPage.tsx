@@ -286,8 +286,8 @@ export default function CreativeStudioPage() {
           {/* Compact: Properties Sheet */}
           {isCompact && (
             <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
-              <SheetContent side="bottom" className="p-0 max-h-[70vh]">
-                <PropertiesPanel state={canvasState} />
+              <SheetContent side="bottom" className="p-0 max-h-[70vh] [&>button]:hidden">
+                <PropertiesPanel state={canvasState} onClose={() => setPropsSheetOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
@@ -328,7 +328,7 @@ export default function CreativeStudioPage() {
         {/* Compact: Properties Sheet */}
         {isCompact && workspace.selectedElement && (
           <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
-            <SheetContent side="bottom" className="p-0 max-h-[70vh]">
+            <SheetContent side="bottom" className="p-0 max-h-[70vh] [&>button]:hidden">
               <WorkspacePropertiesPanel
                 element={workspace.selectedElement}
                 onUpdate={workspace.updateElement}
