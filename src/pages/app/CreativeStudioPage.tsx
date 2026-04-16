@@ -278,7 +278,7 @@ export default function CreativeStudioPage() {
             <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
               <SheetContent side="left" className="w-72 p-0">
                 <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId}
-                  isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
+                  isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} onItemAdded={() => setToolsSheetOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
