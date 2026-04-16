@@ -237,7 +237,7 @@ export default function CreativeStudioPage() {
   // ===== EDITOR MODE =====
   if (workspace.editingId) {
     return (
-      <div className="flex flex-col h-[calc(100vh-2rem)]">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3rem)] -mx-4 -my-4 md:-m-6">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
           onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} isCompact={isCompact} />
         <div className="flex flex-1 overflow-hidden relative">
@@ -307,7 +307,7 @@ export default function CreativeStudioPage() {
 
   // ===== WORKSPACE MODE =====
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)]">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3rem)] -mx-4 -my-4 md:-m-6">
       <StudioHeader mode="workspace" workspace={workspace} isCompact={isCompact} />
       <div className="flex flex-1 overflow-hidden relative">
         <WorkspaceGrid workspace={workspace} />
