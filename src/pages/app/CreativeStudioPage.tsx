@@ -12,16 +12,28 @@ import { StudioHeader } from "@/components/creative-studio/StudioHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { addImpactfulLayers } from "@/components/creative-studio/layerLayoutEngine";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+
+// Studio uses 1024px breakpoint so tablets also get mobile layout
+function useIsCompact() {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setCompact(mql.matches);
+    mql.addEventListener("change", onChange);
+    setCompact(mql.matches);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return compact;
+}
 
 export default function CreativeStudioPage() {
   const { jobId } = useParams();
   const [searchParams] = useSearchParams();
   const analysisId = searchParams.get("analysis_id") || undefined;
   const conversationId = searchParams.get("conversation_id") || undefined;
-  const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
 
   const workspace = useWorkspaceState();
   const canvasState = useCanvasState();
@@ -29,23 +41,9 @@ export default function CreativeStudioPage() {
   const [jobProcessed, setJobProcessed] = useState(false);
   const [jobLoading, setJobLoading] = useState(!!jobId);
 
-  // Mobile sheet states
+  // Mobile sheet states — only opened explicitly via FABs
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [propsSheetOpen, setPropsSheetOpen] = useState(false);
-
-  // Auto-open properties sheet on mobile when object is selected
-  useEffect(() => {
-    if (isMobile && canvasState.selectedObject) {
-      setPropsSheetOpen(true);
-    }
-  }, [isMobile, canvasState.selectedObject]);
-
-  // Auto-open workspace properties sheet on mobile when element is selected
-  useEffect(() => {
-    if (isMobile && workspace.selectedElement) {
-      setPropsSheetOpen(true);
-    }
-  }, [isMobile, workspace.selectedElement]);
 
   // Store job data to apply after canvas is ready
   const pendingJobRef = useRef<any>(null);
@@ -241,10 +239,10 @@ export default function CreativeStudioPage() {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <StudioHeader mode="editor" state={canvasState} onSave={handleSave} saving={saving}
-          onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} isMobile={isMobile} />
+          onBack={handleBackToWorkspace} artboardName={workspace.editingArtboard?.name} isCompact={isCompact} />
         <div className="flex flex-1 overflow-hidden relative">
           {/* Desktop: fixed sidebar */}
-          {!isMobile && (
+          {!isCompact && (
             <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId}
               isLinkedArtboard={isLinkedArtboard} onAfterGenerate={handleAfterGenerate} />
           )}
@@ -252,10 +250,10 @@ export default function CreativeStudioPage() {
           <FabricCanvas state={canvasState} />
 
           {/* Desktop: fixed properties panel */}
-          {!isMobile && <PropertiesPanel state={canvasState} />}
+          {!isCompact && <PropertiesPanel state={canvasState} />}
 
-          {/* Mobile: FABs */}
-          {isMobile && (
+          {/* Compact: FABs */}
+          {isCompact && (
             <>
               <Button
                 size="icon"
@@ -275,8 +273,8 @@ export default function CreativeStudioPage() {
             </>
           )}
 
-          {/* Mobile: Tools Sheet */}
-          {isMobile && (
+          {/* Compact: Tools Sheet */}
+          {isCompact && (
             <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
               <SheetContent side="left" className="w-72 p-0">
                 <ToolsSidebar state={canvasState} analysisId={analysisId} conversationId={conversationId}
@@ -285,8 +283,8 @@ export default function CreativeStudioPage() {
             </Sheet>
           )}
 
-          {/* Mobile: Properties Sheet */}
-          {isMobile && (
+          {/* Compact: Properties Sheet */}
+          {isCompact && (
             <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
               <SheetContent side="bottom" className="p-0 max-h-[70vh]">
                 <PropertiesPanel state={canvasState} />
@@ -310,12 +308,12 @@ export default function CreativeStudioPage() {
   // ===== WORKSPACE MODE =====
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)]">
-      <StudioHeader mode="workspace" workspace={workspace} isMobile={isMobile} />
+      <StudioHeader mode="workspace" workspace={workspace} isCompact={isCompact} />
       <div className="flex flex-1 overflow-hidden relative">
         <WorkspaceGrid workspace={workspace} />
 
         {/* Desktop: fixed panel */}
-        {!isMobile && (
+        {!isCompact && (
           <WorkspacePropertiesPanel
             element={workspace.selectedElement}
             onUpdate={workspace.updateElement}
@@ -327,8 +325,8 @@ export default function CreativeStudioPage() {
           />
         )}
 
-        {/* Mobile: Properties Sheet */}
-        {isMobile && (
+        {/* Compact: Properties Sheet */}
+        {isCompact && workspace.selectedElement && (
           <Sheet open={propsSheetOpen} onOpenChange={setPropsSheetOpen}>
             <SheetContent side="bottom" className="p-0 max-h-[70vh]">
               <WorkspacePropertiesPanel
@@ -343,6 +341,18 @@ export default function CreativeStudioPage() {
               />
             </SheetContent>
           </Sheet>
+        )}
+
+        {/* Compact: FAB to open properties when element selected */}
+        {isCompact && workspace.selectedElement && !propsSheetOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card"
+            onClick={() => setPropsSheetOpen(true)}
+          >
+            <SlidersHorizontal className="h-5 w-5" />
+          </Button>
         )}
       </div>
     </div>

@@ -66,7 +66,7 @@ export function WorkspacePropertiesPanel({ element, onUpdate, onRemove, onEdit, 
   const showDepth = element.type !== "arrow";
 
   return (
-    <div className="w-full md:w-60 md:border-l border-border bg-card p-4 space-y-4 overflow-y-auto">
+    <div className="w-full lg:w-60 lg:border-l border-border bg-card p-4 space-y-4 overflow-y-auto">
       {/* Header with actions */}
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
