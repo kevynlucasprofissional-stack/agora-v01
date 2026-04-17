@@ -60,6 +60,12 @@ export default function AnalysisReportPage() {
   const summary = payload?.executive_summary as string | undefined;
   const rawImprovements = payload?.improvements;
   const rawStrengths = payload?.strengths;
+  const ibgeInsights = payload?.ibge_insights as { region?: string; key_indicators?: Record<string, any>; demographic_summary?: string; relevance?: string } | string | null | undefined;
+  const industry = (payload?.industry as string | undefined) ?? analysis.industry ?? undefined;
+  const primaryChannel = (payload?.primary_channel as string | undefined) ?? analysis.primary_channel ?? undefined;
+  const region = (payload?.region as string | undefined) ?? analysis.region ?? undefined;
+  const declaredAudience = (payload?.declared_target_audience as string | undefined) ?? analysis.declared_target_audience ?? undefined;
+  const audienceInsightsArr = payload?.audience_insights as Array<{ generation?: string; emoji?: string; feedback?: string }> | undefined;
 
   // Support old (string[]), new (categorized {category,items}[]), and inline ({title,description,...}[]) formats
   type CategorizedItem = { category: string; items: string[] };
