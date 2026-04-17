@@ -457,40 +457,47 @@ export default function AnalysisReportPage() {
           </div>
         )}
 
-        {/* Synthetic Audience */}
-        {/* Comportamento e Perfil do Público-Alvo */}
-        <div className="glass-card p-6">
-          <span className="inline-block px-3 py-1 rounded-md bg-destructive/15 text-destructive text-sm font-medium mb-4">
-            Comportamento e perfil público-alvo
-          </span>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {(() => {
-              const cards = audienceInsights
-                ? [
-                    { title: "Comportamento de Consumo", content: audienceInsights.consumption_behavior },
-                    { title: "Geração Alvo Real", content: audienceInsights.target_generation },
-                  ]
-                : audienceBehavior?.cards && audienceBehavior.cards.length > 0
-                ? audienceBehavior.cards
-                : [
-                    { title: "Comportamento de Consumo", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
-                    { title: "Geração Alvo Real", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
-                  ];
-              return cards.map((card, i) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.1 }}
-                className="rounded-xl bg-primary/10 p-5 shadow-sm"
-              >
-                <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
-              </motion.div>
-              ));
-            })()}
+        {/* Audiência Sintética (n8n audience_insights) */}
+        {audienceInsightsArr && audienceInsightsArr.length > 0 ? (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Users className="h-4 w-4" /> Audiência Sintética</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {audienceInsightsArr.map((a, i) => (
+                <motion.div
+                  key={`${a.generation || "gen"}-${i}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="rounded-xl bg-primary/10 p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {a.emoji && <span className="text-xl">{a.emoji}</span>}
+                    <h4 className="font-semibold text-sm">{a.generation || `Persona ${i + 1}`}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed italic">"{a.feedback}"</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : audienceBehavior?.cards && audienceBehavior.cards.length > 0 ? (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Users className="h-4 w-4" /> Comportamento e Perfil do Público-Alvo</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {audienceBehavior.cards.map((card, i) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="rounded-xl bg-primary/10 p-5 shadow-sm"
+                >
+                  <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {/* Feedback */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
