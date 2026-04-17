@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Download, ThumbsUp, ThumbsDown, ArrowLeft, Users, Zap, BarChart3,
   Sparkles, Globe, Brain, TrendingUp, AlertTriangle, Target, Clock, Eye, Plus,
-  FileText, Presentation, ChevronDown, ChevronUp,
+  FileText, Presentation, ChevronDown, ChevronUp, MapPin, Building2, Radio,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -27,8 +27,6 @@ export default function AnalysisReportPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
   const [expandedBiases, setExpandedBiases] = useState(false);
-  const [audienceInsights, setAudienceInsights] = useState<{ consumption_behavior: string; target_generation: string } | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -37,29 +35,6 @@ export default function AnalysisReportPage() {
       setLoading(false);
     });
   }, [id]);
-
-  // Fetch audience insights when analysis is loaded and completed
-  useEffect(() => {
-    if (!analysis || analysis.status !== "completed") return;
-    setInsightsLoading(true);
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audience-insights`;
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ analysis }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.consumption_behavior && data.target_generation) {
-          setAudienceInsights(data);
-        }
-      })
-      .catch((e) => console.error("Audience insights error:", e))
-      .finally(() => setInsightsLoading(false));
-  }, [analysis]);
 
 
 
@@ -85,6 +60,12 @@ export default function AnalysisReportPage() {
   const summary = payload?.executive_summary as string | undefined;
   const rawImprovements = payload?.improvements;
   const rawStrengths = payload?.strengths;
+  const ibgeInsights = payload?.ibge_insights as { region?: string; key_indicators?: Record<string, any>; demographic_summary?: string; relevance?: string } | string | null | undefined;
+  const industry = (payload?.industry as string | undefined) ?? analysis.industry ?? undefined;
+  const primaryChannel = (payload?.primary_channel as string | undefined) ?? analysis.primary_channel ?? undefined;
+  const region = (payload?.region as string | undefined) ?? analysis.region ?? undefined;
+  const declaredAudience = (payload?.declared_target_audience as string | undefined) ?? analysis.declared_target_audience ?? undefined;
+  const audienceInsightsArr = payload?.audience_insights as Array<{ generation?: string; emoji?: string; feedback?: string }> | undefined;
 
   // Support old (string[]), new (categorized {category,items}[]), and inline ({title,description,...}[]) formats
   type CategorizedItem = { category: string; items: string[] };
@@ -205,19 +186,84 @@ export default function AnalysisReportPage() {
         {analysis && <ReportChatBlock analysis={analysis} />}
 
         {/* Marketing Era */}
-        {marketingEra && (
-          <div className="glass-card p-6">
-            <h3 className="section-label mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Era do Marketing</h3>
-            <div className="flex items-center gap-4 mb-3">
-              <span className="text-3xl font-display font-bold text-primary">{marketingEra.era}</span>
-              <div className="flex gap-1">
-                {["1.0", "2.0", "3.0", "4.0"].map((era) => (
-                  <div key={era} className={`h-2 w-8 rounded-full ${parseFloat(era) <= parseFloat(marketingEra.era) ? "bg-primary" : "bg-border"}`} />
-                ))}
+        {marketingEra && (() => {
+          const eraNum = parseFloat((String(marketingEra.era).match(/\d+(\.\d+)?/) || ["0"])[0]);
+          return (
+            <div className="glass-card p-6">
+              <h3 className="section-label mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Era do Marketing</h3>
+              <div className="flex items-center gap-4 mb-3 flex-wrap">
+                <span className="text-3xl font-display font-bold text-primary">{marketingEra.era}</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((era) => (
+                    <div key={era} className={`h-2 w-8 rounded-full transition-colors ${era <= eraNum ? "bg-primary" : "bg-border"}`} />
+                  ))}
+                </div>
               </div>
+              <p className="text-sm text-muted-foreground mb-2">{marketingEra.description}</p>
+              <p className="text-sm text-foreground/80"><strong>Recomendação:</strong> {marketingEra.recommendation}</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">{marketingEra.description}</p>
-            <p className="text-sm text-foreground/80"><strong>Recomendação:</strong> {marketingEra.recommendation}</p>
+          );
+        })()}
+
+        {/* Contexto da Análise */}
+        {(industry || primaryChannel || region || declaredAudience) && (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Contexto da Análise</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {industry && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Building2 className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Indústria</span></div>
+                  <p className="text-sm font-medium">{industry}</p>
+                </div>
+              )}
+              {primaryChannel && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Radio className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Canal Principal</span></div>
+                  <p className="text-sm font-medium">{primaryChannel}</p>
+                </div>
+              )}
+              {region && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><MapPin className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Região</span></div>
+                  <p className="text-sm font-medium">{region}</p>
+                </div>
+              )}
+              {declaredAudience && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Users className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Público Declarado</span></div>
+                  <p className="text-sm font-medium">{declaredAudience}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* IBGE Insights */}
+        {ibgeInsights && (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-3 flex items-center gap-2"><Globe className="h-4 w-4" /> Dados Demográficos (IBGE)</h3>
+            {typeof ibgeInsights === "string" ? (
+              <p className="text-sm text-muted-foreground leading-relaxed">{ibgeInsights}</p>
+            ) : (
+              <div className="space-y-3">
+                {ibgeInsights.demographic_summary && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{ibgeInsights.demographic_summary}</p>
+                )}
+                {ibgeInsights.key_indicators && Object.keys(ibgeInsights.key_indicators).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Object.entries(ibgeInsights.key_indicators).map(([k, v]) => (
+                      <div key={k} className="p-2 rounded-lg bg-accent/30">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                        <p className="text-sm font-medium mt-0.5">{String(v)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ibgeInsights.relevance && (
+                  <p className="text-xs text-foreground/70 italic"><strong>Relevância:</strong> {ibgeInsights.relevance}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -240,17 +286,20 @@ export default function AnalysisReportPage() {
                 { label: "Probabilidade", value: hormoziAnalysis.perceived_likelihood, icon: "📈" },
                 { label: "Tempo (rapidez)", value: hormoziAnalysis.time_delay, icon: "⚡" },
                 { label: "Facilidade", value: hormoziAnalysis.effort_sacrifice, icon: "🧘" },
-              ].map((item) => (
-                <div key={item.label} className="text-center">
-                  <span className="text-2xl">{item.icon}</span>
-                  <div className="flex justify-center gap-0.5 my-2">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <div key={n} className={`h-2 w-4 rounded-sm ${n <= item.value ? "bg-primary" : "bg-border"}`} />
-                    ))}
+              ].map((item) => {
+                const clamped = Math.max(0, Math.min(5, Math.round(Number(item.value) || 0)));
+                return (
+                  <div key={item.label} className="text-center">
+                    <span className="text-2xl">{item.icon}</span>
+                    <div className="flex justify-center gap-0.5 my-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <div key={n} className={`h-2 w-4 rounded-sm ${n <= clamped ? "bg-primary" : "bg-border"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <p className="text-sm text-muted-foreground">{hormoziAnalysis.overall_value}</p>
           </div>
@@ -408,40 +457,47 @@ export default function AnalysisReportPage() {
           </div>
         )}
 
-        {/* Synthetic Audience */}
-        {/* Comportamento e Perfil do Público-Alvo */}
-        <div className="glass-card p-6">
-          <span className="inline-block px-3 py-1 rounded-md bg-destructive/15 text-destructive text-sm font-medium mb-4">
-            Comportamento e perfil público-alvo
-          </span>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {(() => {
-              const cards = audienceInsights
-                ? [
-                    { title: "Comportamento de Consumo", content: audienceInsights.consumption_behavior },
-                    { title: "Geração Alvo Real", content: audienceInsights.target_generation },
-                  ]
-                : audienceBehavior?.cards && audienceBehavior.cards.length > 0
-                ? audienceBehavior.cards
-                : [
-                    { title: "Comportamento de Consumo", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
-                    { title: "Geração Alvo Real", content: insightsLoading ? "Gerando insights com IA..." : "Dados não disponíveis. Execute a análise para gerar insights." },
-                  ];
-              return cards.map((card, i) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.1 }}
-                className="rounded-xl bg-primary/10 p-5 shadow-sm"
-              >
-                <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
-              </motion.div>
-              ));
-            })()}
+        {/* Audiência Sintética (n8n audience_insights) */}
+        {audienceInsightsArr && audienceInsightsArr.length > 0 ? (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Users className="h-4 w-4" /> Audiência Sintética</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {audienceInsightsArr.map((a, i) => (
+                <motion.div
+                  key={`${a.generation || "gen"}-${i}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="rounded-xl bg-primary/10 p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {a.emoji && <span className="text-xl">{a.emoji}</span>}
+                    <h4 className="font-semibold text-sm">{a.generation || `Persona ${i + 1}`}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed italic">"{a.feedback}"</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : audienceBehavior?.cards && audienceBehavior.cards.length > 0 ? (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Users className="h-4 w-4" /> Comportamento e Perfil do Público-Alvo</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {audienceBehavior.cards.map((card, i) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="rounded-xl bg-primary/10 p-5 shadow-sm"
+                >
+                  <h4 className="font-semibold text-sm mb-2">{card.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{card.content}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {/* Feedback */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
