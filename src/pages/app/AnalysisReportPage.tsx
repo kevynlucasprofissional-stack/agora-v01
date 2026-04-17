@@ -186,19 +186,84 @@ export default function AnalysisReportPage() {
         {analysis && <ReportChatBlock analysis={analysis} />}
 
         {/* Marketing Era */}
-        {marketingEra && (
-          <div className="glass-card p-6">
-            <h3 className="section-label mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Era do Marketing</h3>
-            <div className="flex items-center gap-4 mb-3">
-              <span className="text-3xl font-display font-bold text-primary">{marketingEra.era}</span>
-              <div className="flex gap-1">
-                {["1.0", "2.0", "3.0", "4.0"].map((era) => (
-                  <div key={era} className={`h-2 w-8 rounded-full ${parseFloat(era) <= parseFloat(marketingEra.era) ? "bg-primary" : "bg-border"}`} />
-                ))}
+        {marketingEra && (() => {
+          const eraNum = parseFloat((String(marketingEra.era).match(/\d+(\.\d+)?/) || ["0"])[0]);
+          return (
+            <div className="glass-card p-6">
+              <h3 className="section-label mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Era do Marketing</h3>
+              <div className="flex items-center gap-4 mb-3 flex-wrap">
+                <span className="text-3xl font-display font-bold text-primary">{marketingEra.era}</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((era) => (
+                    <div key={era} className={`h-2 w-8 rounded-full transition-colors ${era <= eraNum ? "bg-primary" : "bg-border"}`} />
+                  ))}
+                </div>
               </div>
+              <p className="text-sm text-muted-foreground mb-2">{marketingEra.description}</p>
+              <p className="text-sm text-foreground/80"><strong>Recomendação:</strong> {marketingEra.recommendation}</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">{marketingEra.description}</p>
-            <p className="text-sm text-foreground/80"><strong>Recomendação:</strong> {marketingEra.recommendation}</p>
+          );
+        })()}
+
+        {/* Contexto da Análise */}
+        {(industry || primaryChannel || region || declaredAudience) && (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Contexto da Análise</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {industry && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Building2 className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Indústria</span></div>
+                  <p className="text-sm font-medium">{industry}</p>
+                </div>
+              )}
+              {primaryChannel && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Radio className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Canal Principal</span></div>
+                  <p className="text-sm font-medium">{primaryChannel}</p>
+                </div>
+              )}
+              {region && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><MapPin className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Região</span></div>
+                  <p className="text-sm font-medium">{region}</p>
+                </div>
+              )}
+              {declaredAudience && (
+                <div className="p-3 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-1.5 mb-1"><Users className="h-3 w-3 text-muted-foreground" /><span className="text-[10px] uppercase tracking-wider text-muted-foreground">Público Declarado</span></div>
+                  <p className="text-sm font-medium">{declaredAudience}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* IBGE Insights */}
+        {ibgeInsights && (
+          <div className="glass-card p-6">
+            <h3 className="section-label mb-3 flex items-center gap-2"><Globe className="h-4 w-4" /> Dados Demográficos (IBGE)</h3>
+            {typeof ibgeInsights === "string" ? (
+              <p className="text-sm text-muted-foreground leading-relaxed">{ibgeInsights}</p>
+            ) : (
+              <div className="space-y-3">
+                {ibgeInsights.demographic_summary && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{ibgeInsights.demographic_summary}</p>
+                )}
+                {ibgeInsights.key_indicators && Object.keys(ibgeInsights.key_indicators).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Object.entries(ibgeInsights.key_indicators).map(([k, v]) => (
+                      <div key={k} className="p-2 rounded-lg bg-accent/30">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                        <p className="text-sm font-medium mt-0.5">{String(v)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ibgeInsights.relevance && (
+                  <p className="text-xs text-foreground/70 italic"><strong>Relevância:</strong> {ibgeInsights.relevance}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
