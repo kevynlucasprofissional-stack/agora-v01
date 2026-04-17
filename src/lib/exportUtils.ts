@@ -134,6 +134,28 @@ export function exportToPptx(analysis: AnalysisRequest, payload: Record<string, 
     slide2.addText(s.label, { x, y: 3, w: 2.8, h: 0.5, fontSize: 14, color: "AAAAAA", align: "center" });
   });
 
+  // Slide Contexto + IBGE
+  const ctxBits: string[] = [];
+  if (payload?.industry ?? analysis.industry) ctxBits.push(`Indústria: ${payload?.industry ?? analysis.industry}`);
+  if (payload?.primary_channel ?? analysis.primary_channel) ctxBits.push(`Canal: ${payload?.primary_channel ?? analysis.primary_channel}`);
+  if (payload?.region ?? analysis.region) ctxBits.push(`Região: ${payload?.region ?? analysis.region}`);
+  if (payload?.declared_target_audience ?? analysis.declared_target_audience) ctxBits.push(`Público: ${payload?.declared_target_audience ?? analysis.declared_target_audience}`);
+  if (ctxBits.length || payload?.ibge_insights) {
+    const slideCtx = pptx.addSlide();
+    slideCtx.background = { fill: "1a1a2e" };
+    slideCtx.addText("Contexto da Análise", { x: 0.5, y: 0.3, w: 12, h: 0.8, fontSize: 28, bold: true, color: "FFFFFF" });
+    ctxBits.forEach((c, i) => {
+      slideCtx.addText(`• ${c}`, { x: 0.5, y: 1.3 + i * 0.5, w: 12, h: 0.4, fontSize: 16, color: "CCCCCC" });
+    });
+    const ibge = payload?.ibge_insights;
+    if (ibge) {
+      const yIbge = 1.3 + ctxBits.length * 0.5 + 0.3;
+      slideCtx.addText("Dados Demográficos (IBGE)", { x: 0.5, y: yIbge, w: 12, h: 0.6, fontSize: 20, bold: true, color: "FFFFFF" });
+      const ibgeText = typeof ibge === "string" ? ibge : (ibge.demographic_summary || "") + (ibge.relevance ? `\n\nRelevância: ${ibge.relevance}` : "");
+      slideCtx.addText(ibgeText, { x: 0.5, y: yIbge + 0.7, w: 12, h: 2, fontSize: 14, color: "CCCCCC" });
+    }
+  }
+
   // Slide 3: Era + Hormozi
   if (payload?.marketing_era || payload?.hormozi_analysis) {
     const slide3 = pptx.addSlide();
