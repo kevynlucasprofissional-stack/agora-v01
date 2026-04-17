@@ -27,11 +27,40 @@ export async function exportToDocx(analysis: AnalysisRequest, payload: Record<st
   children.push(new Paragraph({ children: [new TextRun({ text: `Oferta: ${Number(analysis.score_offer ?? 0).toFixed(0)}/100`, size: 22 })] }));
   children.push(new Paragraph({ children: [new TextRun({ text: `Performance: ${Number(analysis.score_performance ?? 0).toFixed(0)}/100`, size: 22 })], spacing: { after: 300 } }));
 
+  // Contexto
+  const ctxParts: string[] = [];
+  const industry = payload?.industry ?? analysis.industry;
+  const channel = payload?.primary_channel ?? analysis.primary_channel;
+  const region = payload?.region ?? analysis.region;
+  const audienceDeclared = payload?.declared_target_audience ?? analysis.declared_target_audience;
+  if (industry) ctxParts.push(`Indústria: ${industry}`);
+  if (channel) ctxParts.push(`Canal: ${channel}`);
+  if (region) ctxParts.push(`Região: ${region}`);
+  if (audienceDeclared) ctxParts.push(`Público declarado: ${audienceDeclared}`);
+  if (ctxParts.length) {
+    children.push(new Paragraph({ text: "Contexto da Análise", heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 200 } }));
+    for (const c of ctxParts) {
+      children.push(new Paragraph({ children: [new TextRun({ text: `• ${c}`, size: 22 })], spacing: { after: 60 } }));
+    }
+  }
+
   // Marketing Era
   if (payload?.marketing_era) {
     children.push(new Paragraph({ text: `Era do Marketing: ${payload.marketing_era.era}`, heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 100 } }));
     children.push(new Paragraph({ children: [new TextRun({ text: payload.marketing_era.description, size: 22 })], spacing: { after: 100 } }));
     children.push(new Paragraph({ children: [new TextRun({ text: `Recomendação: ${payload.marketing_era.recommendation}`, italics: true, size: 22 })], spacing: { after: 300 } }));
+  }
+
+  // IBGE Insights
+  if (payload?.ibge_insights) {
+    const ibge = payload.ibge_insights;
+    children.push(new Paragraph({ text: "Dados Demográficos (IBGE)", heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 200 } }));
+    if (typeof ibge === "string") {
+      children.push(new Paragraph({ children: [new TextRun({ text: ibge, size: 22 })], spacing: { after: 200 } }));
+    } else {
+      if (ibge.demographic_summary) children.push(new Paragraph({ children: [new TextRun({ text: ibge.demographic_summary, size: 22 })], spacing: { after: 100 } }));
+      if (ibge.relevance) children.push(new Paragraph({ children: [new TextRun({ text: `Relevância: ${ibge.relevance}`, italics: true, size: 22 })], spacing: { after: 200 } }));
+    }
   }
 
   // Executive Summary
