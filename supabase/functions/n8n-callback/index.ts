@@ -201,8 +201,44 @@ async function handleLegacyCallback(raw: Record<string, unknown>, start: number)
   if (updateErr) throw updateErr;
 
   // ── Persist analysis results to analysis_requests ──
-  if (status === "completed" && analysis && run.analysis_request_id) {
-    const analysisData = analysis as Record<string, any>;
+  if (status === "completed" && run.analysis_request_id) {
+    // Fallback: if `analysis` is missing or incomplete, read from synthesis step output
+    let analysisData: Record<string, any> = (analysis as Record<string, any>) ?? {};
+
+    const needsFallback =
+      !analysisData ||
+      analysisData.score_overall == null ||
+      analysisData.score_sociobehavioral == null ||
+      analysisData.score_offer == null ||
+      analysisData.score_performance == null ||
+      !analysisData.executive_summary;
+
+    if (needsFallback) {
+      const { data: synthStep } = await sb
+        .from("run_steps")
+        .select("output_payload")
+        .eq("run_id", run_id)
+        .eq("step_kind", "synthesis")
+        .maybeSingle();
+
+      const synth = (synthStep?.output_payload as Record<string, any>) ?? {};
+      // Support both flat scores and nested { scores: {...} } shapes
+      const nestedScores = (synth.scores as Record<string, any>) ?? {};
+      const merged: Record<string, any> = {
+        ...synth,
+        ...nestedScores,
+        ...analysisData, // explicit analysis values still win when present
+      };
+      // Ensure score fields fall back when analysisData has nulls
+      for (const k of ["score_overall", "score_sociobehavioral", "score_offer", "score_performance"]) {
+        if (merged[k] == null) {
+          merged[k] = synth[k] ?? nestedScores[k] ?? null;
+        }
+      }
+      analysisData = merged;
+      console.log(`n8n-callback | run=${run_id} | scores fallback from synthesis step: overall=${analysisData.score_overall}`);
+    }
+
     const requestUpdate: Record<string, unknown> = {
       status: "completed",
       completed_at: new Date().toISOString(),
