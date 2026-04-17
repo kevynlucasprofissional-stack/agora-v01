@@ -27,8 +27,6 @@ export default function AnalysisReportPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(null);
   const [expandedBiases, setExpandedBiases] = useState(false);
-  const [audienceInsights, setAudienceInsights] = useState<{ consumption_behavior: string; target_generation: string } | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -37,29 +35,6 @@ export default function AnalysisReportPage() {
       setLoading(false);
     });
   }, [id]);
-
-  // Fetch audience insights when analysis is loaded and completed
-  useEffect(() => {
-    if (!analysis || analysis.status !== "completed") return;
-    setInsightsLoading(true);
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audience-insights`;
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ analysis }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.consumption_behavior && data.target_generation) {
-          setAudienceInsights(data);
-        }
-      })
-      .catch((e) => console.error("Audience insights error:", e))
-      .finally(() => setInsightsLoading(false));
-  }, [analysis]);
 
 
 
