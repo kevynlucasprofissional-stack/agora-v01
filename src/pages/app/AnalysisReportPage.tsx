@@ -286,17 +286,20 @@ export default function AnalysisReportPage() {
                 { label: "Probabilidade", value: hormoziAnalysis.perceived_likelihood, icon: "📈" },
                 { label: "Tempo (rapidez)", value: hormoziAnalysis.time_delay, icon: "⚡" },
                 { label: "Facilidade", value: hormoziAnalysis.effort_sacrifice, icon: "🧘" },
-              ].map((item) => (
-                <div key={item.label} className="text-center">
-                  <span className="text-2xl">{item.icon}</span>
-                  <div className="flex justify-center gap-0.5 my-2">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <div key={n} className={`h-2 w-4 rounded-sm ${n <= item.value ? "bg-primary" : "bg-border"}`} />
-                    ))}
+              ].map((item) => {
+                const clamped = Math.max(0, Math.min(5, Math.round(Number(item.value) || 0)));
+                return (
+                  <div key={item.label} className="text-center">
+                    <span className="text-2xl">{item.icon}</span>
+                    <div className="flex justify-center gap-0.5 my-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <div key={n} className={`h-2 w-4 rounded-sm ${n <= clamped ? "bg-primary" : "bg-border"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <p className="text-sm text-muted-foreground">{hormoziAnalysis.overall_value}</p>
           </div>
