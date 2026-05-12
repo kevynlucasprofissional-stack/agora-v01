@@ -9,7 +9,7 @@ import { sleep } from "./gemini.ts";
 const GEMINI_IMAGE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
 const GEMINI_FALLBACK_IMAGE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent";
 
 export interface ImageResult {
   imageData: any | null;
@@ -54,9 +54,9 @@ export async function generateImageWithRetry(
       } else {
         const errorBody = await res.text();
         console.error(`Primary attempt ${attempt + 1} failed: ${res.status} - ${errorBody.slice(0, 300)}`);
-        if (res.status === 429 && attempt < maxRetries) {
-          await sleep(Math.pow(2, attempt) * 1500);
-          continue;
+        if (res.status === 429) {
+          console.warn("Primary image model quota/rate limited; switching to Gemini fallback image model");
+          break;
         }
       }
     } catch (err) {
