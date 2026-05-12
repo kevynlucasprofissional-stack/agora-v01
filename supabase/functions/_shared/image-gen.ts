@@ -9,7 +9,7 @@ import { sleep } from "./gemini.ts";
 const GEMINI_IMAGE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
 const GEMINI_FALLBACK_IMAGE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
 
 export interface ImageResult {
   imageData: any | null;
@@ -67,7 +67,7 @@ export async function generateImageWithRetry(
 
   // Fallback model (text-only for compatibility)
   try {
-    console.log("Trying fallback image model...");
+    console.log("Trying fallback image model (gemini-2.5-flash-image)...");
     const textPart = parts.find((p: any) => p.text);
     const fallbackBody = JSON.stringify({
       contents: [{ parts: textPart ? [textPart] : parts }],
